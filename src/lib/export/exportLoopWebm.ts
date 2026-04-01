@@ -27,23 +27,29 @@ export async function exportLoopWebm(
     recorder.onstop = () => resolve();
   });
 
-  recorder.start();
+  const w = window as Window & { __SYNTH_EXPORT_TIME__?: number };
 
-  const totalFrames = Math.floor(durationSec * fps);
-  for (let frame = 0; frame < totalFrames; frame += 1) {
-    const t = (frame / totalFrames) * durationSec;
-    (window as Window & { __SYNTH_EXPORT_TIME__?: number }).__SYNTH_EXPORT_TIME__ = t;
-    await new Promise((resolve) => requestAnimationFrame(resolve));
+  try {
+    recorder.start();
+
+    const totalFrames = Math.floor(durationSec * fps);
+    for (let frame = 0; frame < totalFrames; frame += 1) {
+      const t = (frame / totalFrames) * durationSec;
+      w.__SYNTH_EXPORT_TIME__ = t;
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+    }
+
+    recorder.stop();
+    await done;
+
+    const blob = new Blob(chunks, { type: "video/webm" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  } finally {
+    delete w.__SYNTH_EXPORT_TIME__;
   }
-
-  recorder.stop();
-  await done;
-
-  const blob = new Blob(chunks, { type: "video/webm" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(url);
 }

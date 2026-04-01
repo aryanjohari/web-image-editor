@@ -28,6 +28,8 @@ export type SynthParams = {
   colorA: string;
   colorB: string;
   duotoneBlend: number;
+  halftoneIntensity: number;
+  scanlineIntensity: number;
 };
 
 type SynthState = SynthParams & {
@@ -53,6 +55,8 @@ export const useSynthStore = create<SynthState>((set) => ({
   colorA: "#000000",
   colorB: "#ffffff",
   duotoneBlend: 0.0,
+  halftoneIntensity: 0,
+  scanlineIntensity: 0,
   panelOpen: true,
   imageTexture: null,
   imageResolution: { width: 1, height: 1 },

@@ -23,6 +23,8 @@ export function StackPanel() {
     colorA,
     colorB,
     duotoneBlend,
+    halftoneIntensity,
+    scanlineIntensity,
     setParam,
   } = useSynthStore();
 
@@ -114,6 +116,24 @@ export function StackPanel() {
         />
       </label>
       <SliderControl label="Duotone Blend" min={0} max={1} value={duotoneBlend} synthParam="duotoneBlend" />
+
+      <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+        Textures
+      </p>
+      <SliderControl
+        label="Halftone Intensity"
+        min={0}
+        max={1}
+        value={halftoneIntensity}
+        synthParam="halftoneIntensity"
+      />
+      <SliderControl
+        label="Scanline Intensity"
+        min={0}
+        max={1}
+        value={scanlineIntensity}
+        synthParam="scanlineIntensity"
+      />
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-white/20 p-4 pt-4">

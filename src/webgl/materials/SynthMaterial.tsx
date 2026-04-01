@@ -66,6 +66,8 @@ export function SynthMaterial() {
       u_colorA: { value: new Color(s.colorA) },
       u_colorB: { value: new Color(s.colorB) },
       u_duotoneBlend: { value: s.duotoneBlend },
+      u_halftone: { value: s.halftoneIntensity },
+      u_scanline: { value: s.scanlineIntensity },
     };
   }, [size.width, size.height, imageTexture]);
 
@@ -88,7 +90,12 @@ export function SynthMaterial() {
 
     const synth = useSynthStore.getState();
 
-    mat.uniforms.u_time.value = state.clock.elapsedTime * synth.timeScale;
+    const exportTime = (window as Window & { __SYNTH_EXPORT_TIME__?: number })
+      .__SYNTH_EXPORT_TIME__;
+    mat.uniforms.u_time.value =
+      typeof exportTime === "number"
+        ? exportTime * synth.timeScale
+        : state.clock.elapsedTime * synth.timeScale;
     mat.uniforms.u_resolution.value.set(state.size.width, state.size.height);
     mat.uniforms.u_imageResolution.value.set(
       synth.imageResolution.width,
@@ -110,6 +117,8 @@ export function SynthMaterial() {
     mat.uniforms.u_colorA.value.setStyle(synth.colorA);
     mat.uniforms.u_colorB.value.setStyle(synth.colorB);
     mat.uniforms.u_duotoneBlend.value = synth.duotoneBlend;
+    mat.uniforms.u_halftone.value = synth.halftoneIntensity;
+    mat.uniforms.u_scanline.value = synth.scanlineIntensity;
   });
 
   return (

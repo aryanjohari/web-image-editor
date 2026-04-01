@@ -15,6 +15,8 @@ uniform float u_twirlIntensity;
 uniform vec3 u_colorA;
 uniform vec3 u_colorB;
 uniform float u_duotoneBlend;
+uniform float u_halftone;
+uniform float u_scanline;
 
 varying vec2 v_uv;
 
@@ -82,6 +84,18 @@ vec3 applyDuotone(vec3 color, vec3 cA, vec3 cB, float blend) {
   return mix(color, mappedColor, blend);
 }
 
+vec3 applyHalftone(vec3 color, vec2 uv, float resolution, float intensity) {
+  float luma = dot(color, vec3(0.299, 0.587, 0.114));
+  float dots = sin(uv.x * resolution * 0.5) * sin(uv.y * resolution * 0.5);
+  vec3 halftoneColor = mix(vec3(0.0), vec3(1.0), step(dots, luma));
+  return mix(color, halftoneColor, intensity);
+}
+
+vec3 applyScanlines(vec3 color, vec2 uv, float resolution, float intensity) {
+  float lines = 0.5 + 0.5 * sin(uv.y * resolution * 1.5);
+  return mix(color, color * lines, intensity);
+}
+
 void main() {
   // object-fit: contain — entire image visible; letterbox (black) outside centered content rect
   vec2 canvas = max(u_resolution, vec2(1.0));
@@ -111,6 +125,8 @@ void main() {
   vec4 texel = texture2D(u_texture, finalUV);
   vec3 rgb = colorMutation(texel.rgb);
   rgb = applyDuotone(rgb, u_colorA, u_colorB, u_duotoneBlend);
+  rgb = applyHalftone(rgb, finalUV, u_resolution.y, u_halftone);
+  rgb = applyScanlines(rgb, finalUV, u_resolution.y, u_scanline);
   float grain = proceduralNoise(v_uv);
   rgb += vec3(grain);
   rgb = clamp(rgb, 0.0, 1.0);

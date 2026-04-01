@@ -35,16 +35,16 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 1. **File upload** — User picks PNG/JPEG/WebP. `TextureLoader` decodes via object URL, applies texture settings, then **`setImageTexture`** stores the Three.js `Texture` plus **native bitmap dimensions** in Zustand.
 2. **Zustand (`useSynthStore`)** — Holds:
    - `imageTexture` / `imageResolution` (for aspect-aware sampling)
-   - `SynthParams`: `meltIntensity`, `colorBleed`, `noiseLevel`, `posterizeSteps`, `timeScale`
+   - `SynthParams`: `meltIntensity`, `colorBleed`, `noiseLevel`, `posterizeSteps`, `timeScale`, `maskCenterX` / `maskCenterY` / `maskRadius`, `twirlIntensity`, `colorA` / `colorB` / `duotoneBlend`, `halftoneIntensity` / `scanlineIntensity`
    - UI: `panelOpen`, setters
 3. **React Three Fiber** — `<Canvas>` with **`gl={{ preserveDrawingBuffer: true }}`** (needed for **PNG export**), **`dpr={[1, 2]}`**, default **`OrthographicCamera`** (manual frustum: ±1 plane, Z toward scene).
 4. **Scene graph** — `SynthScene`: one **`mesh`** with **`planeGeometry(2, 2)`** filling the clip-space quad and **`SynthMaterial`** (shader pipeline).
-5. **Fragment shader** — Samples `u_texture` after **object-fit: cover** UV remapping, then applies **space distortion (melt)**, **color mutation (bleed + posterize)**, and **procedural noise**, driven by uniforms updated every frame from the store and R3F clock.
+5. **Fragment shader** — Samples `u_texture` after **object-fit: contain** UV remapping (letterboxed centered content). Applies **melt** on UVs, **localized mask** + **twirl** blend, then **color mutation (bleed + posterize)**, **duotone**, **halftone / scanlines**, and **procedural grain**. **`u_time`** normally follows the R3F clock × `timeScale`; during WebM export it follows **`window.__SYNTH_EXPORT_TIME__`** × `timeScale` so the recording matches the deterministic timeline (see Export).
 
 ### Key implementation details (for maintainers & AI)
 
 - **Material remount:** `SynthMaterial` is keyed by `imageTexture?.uuid` so swapping images gets a clean material lifecycle when needed (`SynthCanvas.tsx` / `SynthScene`).
-- **Uniform updates:** Initial `useMemo` seeds uniforms; **`useFrame`** pulls fresh values via `useSynthStore.getState()` so sliders can write through the store without relying on React render timing (`SliderControl` uses `getState().setParam`).
+- **Uniform updates:** Initial `useMemo` seeds uniforms; **`useFrame`** pulls fresh values via `useSynthStore.getState()` so sliders can write through the store without relying on React render timing (`SliderControl` uses `getState().setParam`). **`u_time`** uses `__SYNTH_EXPORT_TIME__` when that global is set during WebM capture, then returns to the scene clock after export clears it (`exportLoopWebm.ts` `finally`).
 - **Fallback texture:** When no image is loaded, a 1×1 `DataTexture` avoids invalid sampler state (`SynthMaterial.tsx`).
 - **Vertex stage:** Pass-through UVs to the fragment shader (`vertex.glsl`).
 
@@ -58,22 +58,42 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 - **Loading:** `URL.createObjectURL` → `TextureLoader` → revoke URL after load.
 - **Color space:** `SRGBColorSpace` on the loaded texture.
 - **NPOT / filtering:** `generateMipmaps = false`, **`LinearFilter`** for min/mag — avoids mip requirements on **non-power-of-two** sizes and keeps sampling predictable for full-screen quad use.
-- **Object-fit: cover (shader):** Fragment shader maps quad UVs to texture space using **`u_resolution`** (draw buffer / canvas pixels) and **`u_imageResolution`** (bitmap pixels) so the image **fills the view without stretching**, cropping centered like CSS `object-fit: cover` (`objectFitCoverUV` in `fragment.glsl`).
+- **Object-fit: contain (shader):** Fragment shader maps quad UVs to texture space using **`u_resolution`** (draw buffer / canvas pixels) and **`u_imageResolution`** (bitmap pixels) so the **entire image is visible** inside the canvas, **letterboxed** (black bars) when aspects differ—like CSS `object-fit: contain` (logic is inline in `fragment.glsl`).
 
-### Active parameter sliders (5)
+### Feature areas (Phases 1–4)
 
-| Label | Store key | Shader role (summary) |
-|--------|-----------|------------------------|
-| **Melt Intensity** | `meltIntensity` | UV warp via summed trig waves + time |
-| **Color Bleed** | `colorBleed` | Channel cross-talk matrix on RGB |
-| **Noise Level** | `noiseLevel` | Animated hash-based grain added to RGB |
-| **Posterize Steps** | `posterizeSteps` | Per-channel floor quantization (2–24 in UI) |
-| **Time Scale** | `timeScale` | Scales R3F elapsed time for animation-heavy effects |
+**Base signal & motion**
+
+| Control | Store keys | Shader role |
+|--------|------------|-------------|
+| Melt, bleed, posterize, noise | `meltIntensity`, `colorBleed`, `posterizeSteps`, `noiseLevel` | `spaceDistortion`, `colorMutation`, `proceduralNoise` |
+| Time | `timeScale` | Scales `u_time` (R3F clock or export override) for animated melt and grain |
+
+**Localized masking (center / radius)**
+
+- **Sliders:** `maskCenterX`, `maskCenterY`, `maskRadius`
+- **Shader:** Radial weight on **`baseUV`** via `smoothstep` around `u_maskCenter` and `u_maskRadius`. That mask **blends** the twirled UV with the undistorted UV so warp is localized, not full-frame only.
+
+**Warp (twirl)**
+
+- **Slider:** `twirlIntensity`
+- **Shader:** `applyTwirl` rotates UVs around the mask center; strength is gated by the mask above.
+
+**Pro color engine (duotone)**
+
+- **Controls:** `colorA`, `colorB` (pickers), `duotoneBlend`
+- **Shader:** After bleed/posterize, **`applyDuotone`** maps luminance between the two colors and mixes with the original by `u_duotoneBlend`.
+
+**Textures (halftone / scanlines)**
+
+- **Sliders:** `halftoneIntensity`, `scanlineIntensity`
+- **Uniforms:** `u_halftone`, `u_scanline`
+- **Shader:** **`applyHalftone`** and **`applyScanlines`** run on RGB **after duotone, before grain**, using **`finalUV`** and **`u_resolution.y`** as the resolution scale so the pattern tracks output size.
 
 ### Export
 
-- **PNG — working:** Reads the WebGL `<canvas>`, draws to an offscreen 2D canvas (optional scale; default export uses **1.5×** in `StackPanel`), triggers download (`exportImage.ts`). Depends on **`preserveDrawingBuffer: true`**.
-- **WebM — present in UI:** `exportLoopWebm` uses **`MediaRecorder`** + `captureStream`. It sets **`window.__SYNTH_EXPORT_TIME__`** during the capture loop, but **the shader / material does not read this value yet** — animation during export still follows the live R3F clock. Treat loop export as **experimental** until uniforms wire to that override.
+- **PNG:** Reads the WebGL `<canvas>`, draws to an offscreen 2D canvas (optional scale; default export uses **1.5×** in `StackPanel`), triggers download (`exportImage.ts`). Depends on **`preserveDrawingBuffer: true`**.
+- **WebM loop (synced):** `exportLoopWebm` uses **`MediaRecorder`** + `captureStream`. Each frame it sets **`window.__SYNTH_EXPORT_TIME__`** to the export timeline; **`SynthMaterial`** drives **`u_time`** from that value (× `timeScale`) while present, so the recorded loop matches the deterministic clock. A **`finally`** block **deletes** the property after capture so live preview returns to the R3F clock.
 
 ### Shell UX
 
@@ -84,23 +104,15 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 ## Constraints & Gotchas (for AI / contributors)
 
-- **Single full-screen effect:** No layer compositor, masks, or multi-pass pipeline yet — all logic is in one fragment program.
+- **Single full-screen effect:** No multi-pass compositor or separate layer stack — localized masking and all color/texture steps still live in **one** fragment program.
 - **Export coupling:** PNG/WebM grab `document.querySelector("canvas")` — assumes **one** prominent canvas (fragile if the DOM gains more canvases).
 - **Debug logging:** `useSynthStore` / `UploadButton` use `DEBUG = true` console noise; tune before production polish.
-- **WebM time override:** `__SYNTH_EXPORT_TIME__` is written but not consumed — documented above to prevent false assumptions about deterministic export.
 
 ---
 
-## Roadmap
+## Future direction
 
-Placeholder phases for product direction (not implemented in this document’s snapshot):
-
-| Phase | Theme | Intent |
-|-------|--------|--------|
-| **Phase 1** | **Localized Masking** | Apply parameter regions spatially (brush / matte / weight map) instead of global full-frame math only. |
-| **Phase 2** | **Pro Color Engine** | Richer color science: grading curves, spaces, intentional film/print models beyond the current bleed + posterize matrix. |
-| **Phase 3** | **Texture Generators** | Procedural sources and/or multi-input blending — not only single uploaded stills. |
-| **Phase 4** | **Video Export** | Reliable timeline-driven export (uniform time override, audio sync if needed, format choices) building on or replacing the current WebM experiment. |
+Possible next steps (not implemented here): **audio reactivity** (FFT or envelope driving uniforms), richer **texture / print models** or multi-input blending, **multi-pass** or layer-style compositing, and export options (codec, duration UI, optional audio sync).
 
 ---
 
