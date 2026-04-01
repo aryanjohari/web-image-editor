@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from "react";
 import {
+  Color,
   DataTexture,
   LinearFilter,
   RGBAFormat,
@@ -59,6 +60,12 @@ export function SynthMaterial() {
       u_colorBleed: { value: s.colorBleed },
       u_noiseLevel: { value: s.noiseLevel },
       u_posterizeSteps: { value: s.posterizeSteps },
+      u_maskCenter: { value: new Vector2(s.maskCenterX, s.maskCenterY) },
+      u_maskRadius: { value: s.maskRadius },
+      u_twirlIntensity: { value: s.twirlIntensity },
+      u_colorA: { value: new Color(s.colorA) },
+      u_colorB: { value: new Color(s.colorB) },
+      u_duotoneBlend: { value: s.duotoneBlend },
     };
   }, [size.width, size.height, imageTexture]);
 
@@ -97,6 +104,12 @@ export function SynthMaterial() {
     mat.uniforms.u_colorBleed.value = synth.colorBleed;
     mat.uniforms.u_noiseLevel.value = synth.noiseLevel;
     mat.uniforms.u_posterizeSteps.value = synth.posterizeSteps;
+    mat.uniforms.u_maskCenter.value.set(synth.maskCenterX, synth.maskCenterY);
+    mat.uniforms.u_maskRadius.value = synth.maskRadius;
+    mat.uniforms.u_twirlIntensity.value = synth.twirlIntensity;
+    mat.uniforms.u_colorA.value.setStyle(synth.colorA);
+    mat.uniforms.u_colorB.value.setStyle(synth.colorB);
+    mat.uniforms.u_duotoneBlend.value = synth.duotoneBlend;
   });
 
   return (

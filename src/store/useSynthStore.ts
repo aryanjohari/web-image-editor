@@ -21,6 +21,13 @@ export type SynthParams = {
   noiseLevel: number;
   posterizeSteps: number;
   timeScale: number;
+  maskCenterX: number;
+  maskCenterY: number;
+  maskRadius: number;
+  twirlIntensity: number;
+  colorA: string;
+  colorB: string;
+  duotoneBlend: number;
 };
 
 type SynthState = SynthParams & {
@@ -39,6 +46,13 @@ export const useSynthStore = create<SynthState>((set) => ({
   noiseLevel: 0.04,
   posterizeSteps: 8,
   timeScale: 1.0,
+  maskCenterX: 0.5,
+  maskCenterY: 0.5,
+  maskRadius: 0.5,
+  twirlIntensity: 0.0,
+  colorA: "#000000",
+  colorB: "#ffffff",
+  duotoneBlend: 0.0,
   panelOpen: true,
   imageTexture: null,
   imageResolution: { width: 1, height: 1 },

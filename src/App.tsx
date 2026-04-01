@@ -31,7 +31,7 @@ export default function App() {
         </Canvas>
       </div>
 
-      <aside className="h-full w-[320px] shrink-0 overflow-hidden border-l border-white/20 bg-zinc-950/90">
+      <aside className="flex h-full min-h-0 w-[320px] shrink-0 flex-col overflow-hidden border-l border-white/20 bg-zinc-950/90">
         <StackPanel />
       </aside>
 

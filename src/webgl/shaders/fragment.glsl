@@ -9,6 +9,12 @@ uniform float u_meltIntensity;
 uniform float u_colorBleed;
 uniform float u_noiseLevel;
 uniform float u_posterizeSteps;
+uniform vec2 u_maskCenter;
+uniform float u_maskRadius;
+uniform float u_twirlIntensity;
+uniform vec3 u_colorA;
+uniform vec3 u_colorB;
+uniform float u_duotoneBlend;
 
 varying vec2 v_uv;
 
@@ -60,6 +66,22 @@ vec3 colorMutation(vec3 col) {
   return clamp(col, 0.0, 1.0);
 }
 
+vec2 applyTwirl(vec2 uv, vec2 center, float intensity) {
+  vec2 offset = uv - center;
+  float dist = length(offset);
+  float angle = dist * intensity;
+  float s = sin(angle);
+  float c = cos(angle);
+  mat2 rot = mat2(c, -s, s, c);
+  return center + rot * offset;
+}
+
+vec3 applyDuotone(vec3 color, vec3 cA, vec3 cB, float blend) {
+  float luminance = dot(color, vec3(0.299, 0.587, 0.114));
+  vec3 mappedColor = mix(cA, cB, luminance);
+  return mix(color, mappedColor, blend);
+}
+
 void main() {
   // object-fit: contain — entire image visible; letterbox (black) outside centered content rect
   vec2 canvas = max(u_resolution, vec2(1.0));
@@ -82,10 +104,13 @@ void main() {
     return;
   }
 
-  vec2 uv = delta / (image * containScale) + 0.5;
-  uv = spaceDistortion(uv);
-  vec4 texel = texture2D(u_texture, uv);
+  vec2 baseUV = delta / (image * containScale) + 0.5;
+  float mask = smoothstep(u_maskRadius, u_maskRadius - 0.1, distance(baseUV, u_maskCenter));
+  vec2 distortedUV = applyTwirl(spaceDistortion(baseUV), u_maskCenter, u_twirlIntensity);
+  vec2 finalUV = mix(baseUV, distortedUV, mask);
+  vec4 texel = texture2D(u_texture, finalUV);
   vec3 rgb = colorMutation(texel.rgb);
+  rgb = applyDuotone(rgb, u_colorA, u_colorB, u_duotoneBlend);
   float grain = proceduralNoise(v_uv);
   rgb += vec3(grain);
   rgb = clamp(rgb, 0.0, 1.0);
