@@ -28,6 +28,7 @@ export type SynthParams = {
   colorA: string;
   colorB: string;
   duotoneBlend: number;
+  colorCycleSpeed: number;
   halftoneIntensity: number;
   scanlineIntensity: number;
 };
@@ -55,6 +56,7 @@ export const useSynthStore = create<SynthState>((set) => ({
   colorA: "#000000",
   colorB: "#ffffff",
   duotoneBlend: 0.0,
+  colorCycleSpeed: 0,
   halftoneIntensity: 0,
   scanlineIntensity: 0,
   panelOpen: true,

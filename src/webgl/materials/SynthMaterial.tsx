@@ -66,6 +66,7 @@ export function SynthMaterial() {
       u_colorA: { value: new Color(s.colorA) },
       u_colorB: { value: new Color(s.colorB) },
       u_duotoneBlend: { value: s.duotoneBlend },
+      u_colorCycleSpeed: { value: s.colorCycleSpeed },
       u_halftone: { value: s.halftoneIntensity },
       u_scanline: { value: s.scanlineIntensity },
     };
@@ -117,6 +118,7 @@ export function SynthMaterial() {
     mat.uniforms.u_colorA.value.setStyle(synth.colorA);
     mat.uniforms.u_colorB.value.setStyle(synth.colorB);
     mat.uniforms.u_duotoneBlend.value = synth.duotoneBlend;
+    mat.uniforms.u_colorCycleSpeed.value = synth.colorCycleSpeed;
     mat.uniforms.u_halftone.value = synth.halftoneIntensity;
     mat.uniforms.u_scanline.value = synth.scanlineIntensity;
   });

@@ -23,6 +23,7 @@ export function StackPanel() {
     colorA,
     colorB,
     duotoneBlend,
+    colorCycleSpeed,
     halftoneIntensity,
     scanlineIntensity,
     setParam,
@@ -116,6 +117,13 @@ export function StackPanel() {
         />
       </label>
       <SliderControl label="Duotone Blend" min={0} max={1} value={duotoneBlend} synthParam="duotoneBlend" />
+      <SliderControl
+        label="Color Cycle Speed"
+        min={0}
+        max={5}
+        value={colorCycleSpeed}
+        synthParam="colorCycleSpeed"
+      />
 
       <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
         Textures

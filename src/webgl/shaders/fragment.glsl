@@ -15,6 +15,7 @@ uniform float u_twirlIntensity;
 uniform vec3 u_colorA;
 uniform vec3 u_colorB;
 uniform float u_duotoneBlend;
+uniform float u_colorCycleSpeed;
 uniform float u_halftone;
 uniform float u_scanline;
 
@@ -80,7 +81,9 @@ vec2 applyTwirl(vec2 uv, vec2 center, float intensity) {
 
 vec3 applyDuotone(vec3 color, vec3 cA, vec3 cB, float blend) {
   float luminance = dot(color, vec3(0.299, 0.587, 0.114));
-  vec3 mappedColor = mix(cA, cB, luminance);
+  float lfo = sin(u_time * u_colorCycleSpeed);
+  float t = clamp(luminance + lfo * 0.25, 0.0, 1.0);
+  vec3 mappedColor = mix(cA, cB, t);
   return mix(color, mappedColor, blend);
 }
 

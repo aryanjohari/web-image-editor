@@ -1,6 +1,6 @@
 # The Algorithm Engine
 
-Master architectural document for **web-image-editor**: a browser-based, math-driven visual synthesizer. The product treats an uploaded image as a signal that passes through a **single full-screen quad** rendered with **custom GLSL**. All “effects” are **parameterized mathematical transforms** (UV distortion, channel mixing, quantization, procedural noise) rather than a stack of bitmap filters.
+Master architectural document for **web-image-editor**: a browser-based, math-driven visual synthesizer. The product treats an uploaded image as a signal that passes through a **single full-screen quad** rendered with **custom GLSL**. All “effects” are **parameterized mathematical transforms** (UV distortion, channel mixing, quantization, procedural noise, time-modulated color) rather than a stack of bitmap filters.
 
 This README is written so an AI assistant (or a new contributor) can quickly grasp **context**, **capabilities**, **data flow**, and **constraints** without spelunking the tree.
 
@@ -35,11 +35,11 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 1. **File upload** — User picks PNG/JPEG/WebP. `TextureLoader` decodes via object URL, applies texture settings, then **`setImageTexture`** stores the Three.js `Texture` plus **native bitmap dimensions** in Zustand.
 2. **Zustand (`useSynthStore`)** — Holds:
    - `imageTexture` / `imageResolution` (for aspect-aware sampling)
-   - `SynthParams`: `meltIntensity`, `colorBleed`, `noiseLevel`, `posterizeSteps`, `timeScale`, `maskCenterX` / `maskCenterY` / `maskRadius`, `twirlIntensity`, `colorA` / `colorB` / `duotoneBlend`, `halftoneIntensity` / `scanlineIntensity`
+   - `SynthParams`: `meltIntensity`, `colorBleed`, `noiseLevel`, `posterizeSteps`, `timeScale`, `maskCenterX` / `maskCenterY` / `maskRadius`, `twirlIntensity`, `colorA` / `colorB` / `duotoneBlend`, `colorCycleSpeed`, `halftoneIntensity` / `scanlineIntensity`
    - UI: `panelOpen`, setters
 3. **React Three Fiber** — `<Canvas>` with **`gl={{ preserveDrawingBuffer: true }}`** (needed for **PNG export**), **`dpr={[1, 2]}`**, default **`OrthographicCamera`** (manual frustum: ±1 plane, Z toward scene).
 4. **Scene graph** — `SynthScene`: one **`mesh`** with **`planeGeometry(2, 2)`** filling the clip-space quad and **`SynthMaterial`** (shader pipeline).
-5. **Fragment shader** — Samples `u_texture` after **object-fit: contain** UV remapping (letterboxed centered content). Applies **melt** on UVs, **localized mask** + **twirl** blend, then **color mutation (bleed + posterize)**, **duotone**, **halftone / scanlines**, and **procedural grain**. **`u_time`** normally follows the R3F clock × `timeScale`; during WebM export it follows **`window.__SYNTH_EXPORT_TIME__`** × `timeScale` so the recording matches the deterministic timeline (see Export).
+5. **Fragment shader** — Samples `u_texture` after **object-fit: contain** UV remapping (letterboxed centered content). Applies **melt** on UVs, **localized mask** + **twirl** blend, then **color mutation (bleed + posterize)**, **duotone** (optionally **LFO-modulated** via `u_colorCycleSpeed`), **halftone / scanlines**, and **procedural grain**. **`u_time`** normally follows the R3F clock × `timeScale`; during WebM export it follows **`window.__SYNTH_EXPORT_TIME__`** × `timeScale` so melt, grain, and duotone LFO stay in sync with the recording (see Export).
 
 ### Key implementation details (for maintainers & AI)
 
@@ -60,14 +60,14 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 - **NPOT / filtering:** `generateMipmaps = false`, **`LinearFilter`** for min/mag — avoids mip requirements on **non-power-of-two** sizes and keeps sampling predictable for full-screen quad use.
 - **Object-fit: contain (shader):** Fragment shader maps quad UVs to texture space using **`u_resolution`** (draw buffer / canvas pixels) and **`u_imageResolution`** (bitmap pixels) so the **entire image is visible** inside the canvas, **letterboxed** (black bars) when aspects differ—like CSS `object-fit: contain` (logic is inline in `fragment.glsl`).
 
-### Feature areas (Phases 1–4)
+### Feature areas (shipped phases)
 
 **Base signal & motion**
 
 | Control | Store keys | Shader role |
 |--------|------------|-------------|
 | Melt, bleed, posterize, noise | `meltIntensity`, `colorBleed`, `posterizeSteps`, `noiseLevel` | `spaceDistortion`, `colorMutation`, `proceduralNoise` |
-| Time | `timeScale` | Scales `u_time` (R3F clock or export override) for animated melt and grain |
+| Time | `timeScale` | Scales `u_time` (R3F clock or export override) for melt, grain, and duotone LFO |
 
 **Localized masking (center / radius)**
 
@@ -79,10 +79,11 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 - **Slider:** `twirlIntensity`
 - **Shader:** `applyTwirl` rotates UVs around the mask center; strength is gated by the mask above.
 
-**Pro color engine (duotone)**
+**Pro color engine (duotone + LFO)**
 
-- **Controls:** `colorA`, `colorB` (pickers), `duotoneBlend`
-- **Shader:** After bleed/posterize, **`applyDuotone`** maps luminance between the two colors and mixes with the original by `u_duotoneBlend`.
+- **Controls:** `colorA`, `colorB` (pickers), `duotoneBlend`, **Color Cycle Speed** (`colorCycleSpeed`, UI range 0–5)
+- **Uniforms:** `u_duotoneBlend`, `u_colorCycleSpeed`
+- **Shader:** **`applyDuotone`** maps image luminance to a mix of `u_colorA` / `u_colorB`. A sine LFO, **`sin(u_time * u_colorCycleSpeed)`**, offsets that mix coordinate (scaled and clamped) so highlights and shadows **shift between the two inks** over time. When **`colorCycleSpeed` is 0**, `u_time * 0` yields no offset—duotone is **static** aside from `duotoneBlend`.
 
 **Textures (halftone / scanlines)**
 
@@ -112,7 +113,7 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 ## Future direction
 
-Possible next steps (not implemented here): **audio reactivity** (FFT or envelope driving uniforms), richer **texture / print models** or multi-input blending, **multi-pass** or layer-style compositing, and export options (codec, duration UI, optional audio sync).
+Possible next steps (not implemented here): **audio reactivity** (FFT or envelope driving uniforms or additional LFO targets), richer **texture / print models** or multi-input blending, **multi-pass** or layer-style compositing, and export options (codec, duration UI, optional audio sync).
 
 ---
 
