@@ -10,6 +10,7 @@ import {
   Texture,
   UnsignedByteType,
   Vector2,
+  Vector3,
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useSynthStore } from "@/store/useSynthStore";
@@ -75,7 +76,12 @@ export function SynthMaterial() {
         ),
       },
       u_texture: { value: imageTexture ?? fallbackTexture },
+      u_decalTexture: { value: transparentFallbackTexture },
+      u_decalTransform: { value: new Vector3(s.decalOffsetX, s.decalOffsetY, s.decalScale) },
+      u_linkDecalToMath: { value: s.linkDecalToMath ? 1.0 : 0.0 },
       u_textTexture: { value: transparentFallbackTexture },
+      u_textTransform: { value: new Vector3(s.textOffsetX, s.textOffsetY, s.textScale) },
+      u_linkTextToMath: { value: s.linkTextToMath ? 1.0 : 0.0 },
       u_texSize: { value: new Vector2(...textureBitmapDimensions(imageTexture)) },
       u_meltIntensity: { value: s.meltIntensity },
       u_colorBleed: { value: s.colorBleed },
@@ -117,14 +123,12 @@ export function SynthMaterial() {
     if (nextText.length > 0) {
       const generated = createTextTexture(nextText, size.width, size.height, textColor, textSize);
       if (generated) {
-        mat.uniforms.u_textTexture.value = generated;
         textTextureRef.current = generated;
         mat.needsUpdate = true;
         return;
       }
     }
 
-    mat.uniforms.u_textTexture.value = transparentFallbackTexture;
     mat.needsUpdate = true;
   }, [overlayText, textColor, textSize, size.width, size.height]);
 
@@ -171,6 +175,33 @@ export function SynthMaterial() {
     mat.uniforms.u_colorCycleSpeed.value = synth.colorCycleSpeed;
     mat.uniforms.u_halftone.value = synth.halftoneIntensity;
     mat.uniforms.u_scanline.value = synth.scanlineIntensity;
+
+    const uploadedDecal = synth.decalTexture;
+    const decalTex = uploadedDecal ?? transparentFallbackTexture;
+    if (uploadedDecal) {
+      uploadedDecal.needsUpdate = true;
+    }
+    mat.uniforms.u_decalTexture.value = decalTex;
+    mat.uniforms.u_decalTransform.value.set(synth.decalOffsetX, synth.decalOffsetY, synth.decalScale);
+    mat.uniforms.u_linkDecalToMath.value = synth.linkDecalToMath ? 1.0 : 0.0;
+
+    const textTrimmed = synth.overlayText.trim();
+    const generatedText = textTextureRef.current;
+    const textTex =
+      textTrimmed.length > 0 ? (generatedText ?? transparentFallbackTexture) : transparentFallbackTexture;
+    if (generatedText) {
+      generatedText.needsUpdate = true;
+    }
+    mat.uniforms.u_textTexture.value = textTex;
+
+    const hasUploadedDecal = uploadedDecal != null;
+    if (hasUploadedDecal) {
+      mat.uniforms.u_textTransform.value.set(synth.textOffsetX, synth.textOffsetY, synth.textScale);
+      mat.uniforms.u_linkTextToMath.value = synth.linkTextToMath ? 1.0 : 0.0;
+    } else {
+      mat.uniforms.u_textTransform.value.set(synth.decalOffsetX, synth.decalOffsetY, synth.decalScale);
+      mat.uniforms.u_linkTextToMath.value = synth.linkDecalToMath ? 1.0 : 0.0;
+    }
   });
 
   return (

@@ -34,16 +34,36 @@ export type SynthParams = {
   overlayText: string;
   textColor: string;
   textSize: number;
+  /** Foreground decal (sticker) — PNG with alpha or driven by text-to-texture later. */
+  decalScale: number;
+  decalOffsetX: number;
+  decalOffsetY: number;
+  /** When true, decal sampling follows the same distortion math as the background (shader hook TBD). */
+  linkDecalToMath: boolean;
+  /** Text overlay layer (separate from uploaded decal). When no decal image is set, placement uses decal offset/scale for backward compatibility. */
+  textOffsetX: number;
+  textOffsetY: number;
+  textScale: number;
+  linkTextToMath: boolean;
 };
 
+export type StackTab = "background" | "decal" | "text";
+
 type SynthState = SynthParams & {
+  stackTab: StackTab;
   panelOpen: boolean;
   imageTexture: Texture | null;
   /** Native pixel size of the uploaded image (for shader object-fit: cover). */
   imageResolution: { width: number; height: number };
+  decalTexture: Texture | null;
   setParam: <K extends keyof SynthParams>(key: K, value: SynthParams[K]) => void;
   setPanelOpen: (open: boolean) => void;
   setImageTexture: (texture: Texture | null) => void;
+  setDecalTexture: (texture: Texture | null) => void;
+  /** Delta in normalized canvas space (~UV); Y is already oriented for shader offsets. */
+  updateDecalOffset: (deltaX: number, deltaY: number) => void;
+  updateTextOffset: (deltaX: number, deltaY: number) => void;
+  setStackTab: (tab: StackTab) => void;
 };
 
 export const useSynthStore = create<SynthState>((set) => ({
@@ -65,9 +85,19 @@ export const useSynthStore = create<SynthState>((set) => ({
   overlayText: "",
   textColor: "#ffffff",
   textSize: 100,
+  decalScale: 1.0,
+  decalOffsetX: 0.0,
+  decalOffsetY: 0.0,
+  linkDecalToMath: false,
+  textOffsetX: 0.0,
+  textOffsetY: 0.0,
+  textScale: 1.0,
+  linkTextToMath: false,
+  stackTab: "background",
   panelOpen: true,
   imageTexture: null,
   imageResolution: { width: 1, height: 1 },
+  decalTexture: null,
   setParam: (key, value) => set({ [key]: value } as Pick<SynthState, typeof key>),
   setPanelOpen: (open) => set({ panelOpen: open }),
   setImageTexture: (texture) => {
@@ -86,4 +116,33 @@ export const useSynthStore = create<SynthState>((set) => ({
       imageResolution: readImageDimensionsFromTexture(texture),
     });
   },
+  setDecalTexture: (texture) => {
+    if (DEBUG) {
+      console.debug("[useSynthStore] setDecalTexture called", {
+        ts: new Date().toISOString(),
+        payload: texture,
+      });
+    }
+    set((state) => {
+      const prev = state.decalTexture;
+      if (prev && prev !== texture) {
+        prev.dispose();
+      }
+      if (!texture) {
+        return { decalTexture: null };
+      }
+      return { decalTexture: texture };
+    });
+  },
+  updateDecalOffset: (deltaX, deltaY) =>
+    set((state) => ({
+      decalOffsetX: state.decalOffsetX + deltaX,
+      decalOffsetY: state.decalOffsetY + deltaY,
+    })),
+  updateTextOffset: (deltaX, deltaY) =>
+    set((state) => ({
+      textOffsetX: state.textOffsetX + deltaX,
+      textOffsetY: state.textOffsetY + deltaY,
+    })),
+  setStackTab: (tab) => set({ stackTab: tab }),
 }));

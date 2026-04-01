@@ -1,7 +1,12 @@
 precision highp float;
 
 uniform sampler2D u_texture;
+uniform sampler2D u_decalTexture;
+uniform vec3 u_decalTransform;
+uniform float u_linkDecalToMath;
 uniform sampler2D u_textTexture;
+uniform vec3 u_textTransform;
+uniform float u_linkTextToMath;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec2 u_imageResolution;
@@ -127,14 +132,35 @@ void main() {
   vec2 distortedUV = applyTwirl(spaceDistortion(baseUV), u_maskCenter, u_twirlIntensity);
   vec2 finalUV = mix(baseUV, distortedUV, mask);
   vec4 texel = texture2D(u_texture, finalUV);
-  vec4 textPixel = texture2D(u_textTexture, finalUV);
-  vec3 baseRgb = mix(texel.rgb, textPixel.rgb, textPixel.a);
+  vec3 baseRgb = texel.rgb;
   vec3 rgb = colorMutation(baseRgb);
   rgb = applyDuotone(rgb, u_colorA, u_colorB, u_duotoneBlend);
   rgb = applyHalftone(rgb, finalUV, u_resolution.y, u_halftone);
   rgb = applyScanlines(rgb, finalUV, u_resolution.y, u_scanline);
   float grain = proceduralNoise(v_uv);
   rgb += vec3(grain);
-  rgb = clamp(rgb, 0.0, 1.0);
-  gl_FragColor = vec4(rgb, texel.a);
+  vec3 bgRgb = clamp(rgb, 0.0, 1.0);
+
+  vec2 targetGridForDecal = mix(baseUV, finalUV, u_linkDecalToMath);
+  float decalScale = max(u_decalTransform.z, 0.0001);
+  vec2 decalUV =
+    (targetGridForDecal - vec2(u_decalTransform.x, u_decalTransform.y) - 0.5) / decalScale + 0.5;
+  vec4 decalPixel = texture2D(u_decalTexture, decalUV);
+  if (decalUV.x < 0.0 || decalUV.x > 1.0 || decalUV.y < 0.0 || decalUV.y > 1.0) {
+    decalPixel.a = 0.0;
+  }
+
+  vec3 withDecal = mix(bgRgb, decalPixel.rgb, decalPixel.a);
+
+  vec2 targetGridForText = mix(baseUV, finalUV, u_linkTextToMath);
+  float textLayerScale = max(u_textTransform.z, 0.0001);
+  vec2 textUV =
+    (targetGridForText - vec2(u_textTransform.x, u_textTransform.y) - 0.5) / textLayerScale + 0.5;
+  vec4 textPixel = texture2D(u_textTexture, textUV);
+  if (textUV.x < 0.0 || textUV.x > 1.0 || textUV.y < 0.0 || textUV.y > 1.0) {
+    textPixel.a = 0.0;
+  }
+
+  vec3 compositedRgb = mix(withDecal, textPixel.rgb, textPixel.a);
+  gl_FragColor = vec4(compositedRgb, 1.0);
 }
