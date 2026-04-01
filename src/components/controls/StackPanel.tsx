@@ -26,6 +26,9 @@ export function StackPanel() {
     colorCycleSpeed,
     halftoneIntensity,
     scanlineIntensity,
+    overlayText,
+    textColor,
+    textSize,
     setParam,
   } = useSynthStore();
 
@@ -142,6 +145,30 @@ export function StackPanel() {
         value={scanlineIntensity}
         synthParam="scanlineIntensity"
       />
+
+      <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+        Text
+      </p>
+      <label className="flex w-full flex-col gap-2 text-xs uppercase tracking-wide">
+        <span className="text-zinc-300">Overlay Text</span>
+        <input
+          type="text"
+          className="h-9 w-full border border-zinc-700 bg-zinc-900 px-2 text-sm normal-case tracking-normal text-white"
+          value={overlayText}
+          onChange={(e) => setParam("overlayText", e.target.value)}
+          placeholder="Type text..."
+        />
+      </label>
+      <label className="flex w-full flex-col gap-2 text-xs uppercase tracking-wide">
+        <span className="text-zinc-300">Text Color</span>
+        <input
+          type="color"
+          className="h-9 w-full cursor-pointer border border-zinc-700 bg-zinc-900"
+          value={textColor}
+          onChange={(e) => setParam("textColor", e.target.value)}
+        />
+      </label>
+      <SliderControl label="Text Size" min={24} max={320} value={textSize} synthParam="textSize" />
       </div>
 
       <div className="flex shrink-0 flex-col gap-2 border-t border-white/20 p-4 pt-4">

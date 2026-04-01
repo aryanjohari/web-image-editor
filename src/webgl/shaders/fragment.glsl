@@ -1,6 +1,7 @@
 precision highp float;
 
 uniform sampler2D u_texture;
+uniform sampler2D u_textTexture;
 uniform float u_time;
 uniform vec2 u_resolution;
 uniform vec2 u_imageResolution;
@@ -126,7 +127,9 @@ void main() {
   vec2 distortedUV = applyTwirl(spaceDistortion(baseUV), u_maskCenter, u_twirlIntensity);
   vec2 finalUV = mix(baseUV, distortedUV, mask);
   vec4 texel = texture2D(u_texture, finalUV);
-  vec3 rgb = colorMutation(texel.rgb);
+  vec4 textPixel = texture2D(u_textTexture, finalUV);
+  vec3 baseRgb = mix(texel.rgb, textPixel.rgb, textPixel.a);
+  vec3 rgb = colorMutation(baseRgb);
   rgb = applyDuotone(rgb, u_colorA, u_colorB, u_duotoneBlend);
   rgb = applyHalftone(rgb, finalUV, u_resolution.y, u_halftone);
   rgb = applyScanlines(rgb, finalUV, u_resolution.y, u_scanline);

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useRef } from "react";
 import {
+  CanvasTexture,
   Color,
   DataTexture,
   LinearFilter,
   RGBAFormat,
+  SRGBColorSpace,
   ShaderMaterial,
   Texture,
   UnsignedByteType,
@@ -11,6 +13,7 @@ import {
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { useSynthStore } from "@/store/useSynthStore";
+import { createTextTexture } from "@/utils/textUtils";
 import vertexShader from "@/webgl/shaders/vertex.glsl";
 import fragmentShader from "@/webgl/shaders/fragment.glsl";
 
@@ -28,6 +31,19 @@ fallbackTexture.minFilter = LinearFilter;
 fallbackTexture.magFilter = LinearFilter;
 fallbackTexture.needsUpdate = true;
 
+const transparentFallbackTexture = new DataTexture(
+  new Uint8Array([0, 0, 0, 0]),
+  1,
+  1,
+  RGBAFormat,
+  UnsignedByteType,
+);
+transparentFallbackTexture.generateMipmaps = false;
+transparentFallbackTexture.minFilter = LinearFilter;
+transparentFallbackTexture.magFilter = LinearFilter;
+transparentFallbackTexture.colorSpace = SRGBColorSpace;
+transparentFallbackTexture.needsUpdate = true;
+
 function textureBitmapDimensions(texture: Texture | null): [number, number] {
   const image = texture?.image;
   if (image && typeof image === "object" && "width" in image && "height" in image) {
@@ -40,8 +56,12 @@ function textureBitmapDimensions(texture: Texture | null): [number, number] {
 
 export function SynthMaterial() {
   const materialRef = useRef<ShaderMaterial>(null);
+  const textTextureRef = useRef<CanvasTexture | null>(null);
   const { size } = useThree();
   const imageTexture = useSynthStore((s) => s.imageTexture);
+  const overlayText = useSynthStore((s) => s.overlayText);
+  const textColor = useSynthStore((s) => s.textColor);
+  const textSize = useSynthStore((s) => s.textSize);
 
   const uniforms = useMemo(() => {
     const s = useSynthStore.getState();
@@ -55,6 +75,7 @@ export function SynthMaterial() {
         ),
       },
       u_texture: { value: imageTexture ?? fallbackTexture },
+      u_textTexture: { value: transparentFallbackTexture },
       u_texSize: { value: new Vector2(...textureBitmapDimensions(imageTexture)) },
       u_meltIntensity: { value: s.meltIntensity },
       u_colorBleed: { value: s.colorBleed },
@@ -84,6 +105,35 @@ export function SynthMaterial() {
       materialRef.current.needsUpdate = true;
     }
   }, [imageTexture]);
+
+  useEffect(() => {
+    const mat = materialRef.current;
+    if (!mat) return;
+
+    textTextureRef.current?.dispose();
+    textTextureRef.current = null;
+
+    const nextText = overlayText.trim();
+    if (nextText.length > 0) {
+      const generated = createTextTexture(nextText, size.width, size.height, textColor, textSize);
+      if (generated) {
+        mat.uniforms.u_textTexture.value = generated;
+        textTextureRef.current = generated;
+        mat.needsUpdate = true;
+        return;
+      }
+    }
+
+    mat.uniforms.u_textTexture.value = transparentFallbackTexture;
+    mat.needsUpdate = true;
+  }, [overlayText, textColor, textSize, size.width, size.height]);
+
+  useEffect(() => {
+    return () => {
+      textTextureRef.current?.dispose();
+      textTextureRef.current = null;
+    };
+  }, []);
 
   useFrame((state) => {
     const mat = materialRef.current;

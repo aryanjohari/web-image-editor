@@ -31,6 +31,9 @@ export type SynthParams = {
   colorCycleSpeed: number;
   halftoneIntensity: number;
   scanlineIntensity: number;
+  overlayText: string;
+  textColor: string;
+  textSize: number;
 };
 
 type SynthState = SynthParams & {
@@ -59,6 +62,9 @@ export const useSynthStore = create<SynthState>((set) => ({
   colorCycleSpeed: 0,
   halftoneIntensity: 0,
   scanlineIntensity: 0,
+  overlayText: "",
+  textColor: "#ffffff",
+  textSize: 100,
   panelOpen: true,
   imageTexture: null,
   imageResolution: { width: 1, height: 1 },
