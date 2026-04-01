@@ -9,9 +9,10 @@ export default function App() {
   const setPanelOpen = useSynthStore((state) => state.setPanelOpen);
 
   return (
-    <main className="relative h-screen w-screen overflow-hidden bg-black text-white">
-      <div className="w-full h-full absolute inset-0">
+    <main className="relative flex h-screen w-screen min-h-0 min-w-0 overflow-hidden bg-black text-white">
+      <div className="relative h-full min-h-0 min-w-0 flex-1">
         <Canvas
+          className="h-full w-full"
           dpr={[1, 2]}
           gl={{ antialias: true, preserveDrawingBuffer: true }}
         >
@@ -30,14 +31,14 @@ export default function App() {
         </Canvas>
       </div>
 
-      <aside className="absolute right-0 top-0 h-full w-[320px] overflow-hidden border-l border-white/20 bg-zinc-950/90">
+      <aside className="h-full w-[320px] shrink-0 overflow-hidden border-l border-white/20 bg-zinc-950/90">
         <StackPanel />
       </aside>
 
       {!panelOpen && (
         <button
           type="button"
-          className="absolute right-2 top-2 border border-white bg-black/70 px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
+          className="absolute right-[328px] top-2 z-10 border border-white bg-black/70 px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
           onClick={() => setPanelOpen(true)}
         >
           Open Stack

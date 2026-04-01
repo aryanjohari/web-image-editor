@@ -47,6 +47,12 @@ export function SynthMaterial() {
     return {
       u_time: { value: 0 },
       u_resolution: { value: new Vector2(size.width, size.height) },
+      u_imageResolution: {
+        value: new Vector2(
+          s.imageResolution.width,
+          s.imageResolution.height,
+        ),
+      },
       u_texture: { value: imageTexture ?? fallbackTexture },
       u_texSize: { value: new Vector2(...textureBitmapDimensions(imageTexture)) },
       u_meltIntensity: { value: s.meltIntensity },
@@ -77,6 +83,10 @@ export function SynthMaterial() {
 
     mat.uniforms.u_time.value = state.clock.elapsedTime * synth.timeScale;
     mat.uniforms.u_resolution.value.set(state.size.width, state.size.height);
+    mat.uniforms.u_imageResolution.value.set(
+      synth.imageResolution.width,
+      synth.imageResolution.height,
+    );
     const tex = synth.imageTexture ?? fallbackTexture;
     if (synth.imageTexture) {
       synth.imageTexture.needsUpdate = true;

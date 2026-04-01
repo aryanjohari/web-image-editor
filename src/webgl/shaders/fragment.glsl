@@ -3,6 +3,7 @@ precision highp float;
 uniform sampler2D u_texture;
 uniform float u_time;
 uniform vec2 u_resolution;
+uniform vec2 u_imageResolution;
 uniform vec2 u_texSize;
 uniform float u_meltIntensity;
 uniform float u_colorBleed;
@@ -60,7 +61,29 @@ vec3 colorMutation(vec3 col) {
 }
 
 void main() {
-  vec2 uv = spaceDistortion(v_uv);
+  // object-fit: contain — entire image visible; letterbox (black) outside centered content rect
+  vec2 canvas = max(u_resolution, vec2(1.0));
+  vec2 image = max(u_imageResolution, vec2(1.0));
+  float canvasAspect = canvas.x / canvas.y;
+  float imageAspect = image.x / image.y;
+  float containScale;
+  if (canvasAspect > imageAspect) {
+    containScale = canvas.y / image.y;
+  } else {
+    containScale = canvas.x / image.x;
+  }
+  vec2 canvasCoord = v_uv * canvas;
+  vec2 center = canvas * 0.5;
+  vec2 halfContent = image * containScale * 0.5;
+  vec2 delta = canvasCoord - center;
+
+  if (abs(delta.x) > halfContent.x || abs(delta.y) > halfContent.y) {
+    gl_FragColor = vec4(0.0, 0.0, 0.0, 1.0);
+    return;
+  }
+
+  vec2 uv = delta / (image * containScale) + 0.5;
+  uv = spaceDistortion(uv);
   vec4 texel = texture2D(u_texture, uv);
   vec3 rgb = colorMutation(texel.rgb);
   float grain = proceduralNoise(v_uv);

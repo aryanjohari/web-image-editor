@@ -3,6 +3,18 @@ import type { Texture } from "three";
 
 const DEBUG = true;
 
+function readImageDimensionsFromTexture(texture: Texture): { width: number; height: number } {
+  const image = texture.image;
+  if (image && typeof image === "object" && "width" in image && "height" in image) {
+    const w = (image as { width: number }).width;
+    const h = (image as { height: number }).height;
+    if (typeof w === "number" && typeof h === "number" && w > 0 && h > 0) {
+      return { width: w, height: h };
+    }
+  }
+  return { width: 1, height: 1 };
+}
+
 export type SynthParams = {
   meltIntensity: number;
   colorBleed: number;
@@ -14,6 +26,8 @@ export type SynthParams = {
 type SynthState = SynthParams & {
   panelOpen: boolean;
   imageTexture: Texture | null;
+  /** Native pixel size of the uploaded image (for shader object-fit: cover). */
+  imageResolution: { width: number; height: number };
   setParam: <K extends keyof SynthParams>(key: K, value: SynthParams[K]) => void;
   setPanelOpen: (open: boolean) => void;
   setImageTexture: (texture: Texture | null) => void;
@@ -27,6 +41,7 @@ export const useSynthStore = create<SynthState>((set) => ({
   timeScale: 1.0,
   panelOpen: true,
   imageTexture: null,
+  imageResolution: { width: 1, height: 1 },
   setParam: (key, value) => set({ [key]: value } as Pick<SynthState, typeof key>),
   setPanelOpen: (open) => set({ panelOpen: open }),
   setImageTexture: (texture) => {
@@ -36,6 +51,13 @@ export const useSynthStore = create<SynthState>((set) => ({
         payload: texture,
       });
     }
-    set({ imageTexture: texture });
+    if (!texture) {
+      set({ imageTexture: null, imageResolution: { width: 1, height: 1 } });
+      return;
+    }
+    set({
+      imageTexture: texture,
+      imageResolution: readImageDimensionsFromTexture(texture),
+    });
   },
 }));
