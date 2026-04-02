@@ -7,12 +7,12 @@ import {
   RGBAFormat,
   SRGBColorSpace,
   ShaderMaterial,
-  Texture,
   UnsignedByteType,
   Vector2,
   Vector3,
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
+import type { LayerEffectParams } from "@/store/layerEffects";
 import { useSynthStore } from "@/store/useSynthStore";
 import { createTextTexture } from "@/utils/textUtils";
 import vertexShader from "@/webgl/shaders/vertex.glsl";
@@ -45,14 +45,48 @@ transparentFallbackTexture.magFilter = LinearFilter;
 transparentFallbackTexture.colorSpace = SRGBColorSpace;
 transparentFallbackTexture.needsUpdate = true;
 
-function textureBitmapDimensions(texture: Texture | null): [number, number] {
-  const image = texture?.image;
-  if (image && typeof image === "object" && "width" in image && "height" in image) {
-    const w = (image as { width: number }).width;
-    const h = (image as { height: number }).height;
-    if (typeof w === "number" && typeof h === "number") return [w, h];
-  }
-  return [1, 1];
+function applyLayerUniforms(
+  mat: ShaderMaterial,
+  prefix: "L0" | "L1" | "L2",
+  p: LayerEffectParams,
+  baseTime: number,
+) {
+  const t = baseTime * p.timeScale;
+  const u = mat.uniforms;
+  u[`u_${prefix}_t`].value = t;
+  u[`u_${prefix}_melt`].value = p.meltIntensity;
+  u[`u_${prefix}_bleed`].value = p.colorBleed;
+  u[`u_${prefix}_noise`].value = p.noiseLevel;
+  u[`u_${prefix}_posterize`].value = p.posterizeSteps;
+  (u[`u_${prefix}_maskCenter`].value as Vector2).set(p.maskCenterX, p.maskCenterY);
+  u[`u_${prefix}_maskRadius`].value = p.maskRadius;
+  u[`u_${prefix}_twirl`].value = p.twirlIntensity;
+  (u[`u_${prefix}_colorA`].value as Color).setStyle(p.colorA);
+  (u[`u_${prefix}_colorB`].value as Color).setStyle(p.colorB);
+  u[`u_${prefix}_duotoneBlend`].value = p.duotoneBlend;
+  u[`u_${prefix}_colorCycle`].value = p.colorCycleSpeed;
+  u[`u_${prefix}_halftone`].value = p.halftoneIntensity;
+  u[`u_${prefix}_scanline`].value = p.scanlineIntensity;
+}
+
+function seedLayerUniforms(prefix: "L0" | "L1" | "L2", p: LayerEffectParams, baseTime: number) {
+  const t = baseTime * p.timeScale;
+  return {
+    [`u_${prefix}_t`]: { value: t },
+    [`u_${prefix}_melt`]: { value: p.meltIntensity },
+    [`u_${prefix}_bleed`]: { value: p.colorBleed },
+    [`u_${prefix}_noise`]: { value: p.noiseLevel },
+    [`u_${prefix}_posterize`]: { value: p.posterizeSteps },
+    [`u_${prefix}_maskCenter`]: { value: new Vector2(p.maskCenterX, p.maskCenterY) },
+    [`u_${prefix}_maskRadius`]: { value: p.maskRadius },
+    [`u_${prefix}_twirl`]: { value: p.twirlIntensity },
+    [`u_${prefix}_colorA`]: { value: new Color(p.colorA) },
+    [`u_${prefix}_colorB`]: { value: new Color(p.colorB) },
+    [`u_${prefix}_duotoneBlend`]: { value: p.duotoneBlend },
+    [`u_${prefix}_colorCycle`]: { value: p.colorCycleSpeed },
+    [`u_${prefix}_halftone`]: { value: p.halftoneIntensity },
+    [`u_${prefix}_scanline`]: { value: p.scanlineIntensity },
+  };
 }
 
 export function SynthMaterial() {
@@ -66,8 +100,9 @@ export function SynthMaterial() {
 
   const uniforms = useMemo(() => {
     const s = useSynthStore.getState();
+    const le = s.layerEffects;
+    const baseTime = 0;
     return {
-      u_time: { value: 0 },
       u_resolution: { value: new Vector2(size.width, size.height) },
       u_imageResolution: {
         value: new Vector2(
@@ -82,20 +117,9 @@ export function SynthMaterial() {
       u_textTexture: { value: transparentFallbackTexture },
       u_textTransform: { value: new Vector3(s.textOffsetX, s.textOffsetY, s.textScale) },
       u_linkTextToMath: { value: s.linkTextToMath ? 1.0 : 0.0 },
-      u_texSize: { value: new Vector2(...textureBitmapDimensions(imageTexture)) },
-      u_meltIntensity: { value: s.meltIntensity },
-      u_colorBleed: { value: s.colorBleed },
-      u_noiseLevel: { value: s.noiseLevel },
-      u_posterizeSteps: { value: s.posterizeSteps },
-      u_maskCenter: { value: new Vector2(s.maskCenterX, s.maskCenterY) },
-      u_maskRadius: { value: s.maskRadius },
-      u_twirlIntensity: { value: s.twirlIntensity },
-      u_colorA: { value: new Color(s.colorA) },
-      u_colorB: { value: new Color(s.colorB) },
-      u_duotoneBlend: { value: s.duotoneBlend },
-      u_colorCycleSpeed: { value: s.colorCycleSpeed },
-      u_halftone: { value: s.halftoneIntensity },
-      u_scanline: { value: s.scanlineIntensity },
+      ...seedLayerUniforms("L0", le.background, baseTime),
+      ...seedLayerUniforms("L1", le.decal, baseTime),
+      ...seedLayerUniforms("L2", le.text, baseTime),
     };
   }, [size.width, size.height, imageTexture]);
 
@@ -144,13 +168,12 @@ export function SynthMaterial() {
     if (!mat) return;
 
     const synth = useSynthStore.getState();
+    const le = synth.layerEffects;
 
     const exportTime = (window as Window & { __SYNTH_EXPORT_TIME__?: number })
       .__SYNTH_EXPORT_TIME__;
-    mat.uniforms.u_time.value =
-      typeof exportTime === "number"
-        ? exportTime * synth.timeScale
-        : state.clock.elapsedTime * synth.timeScale;
+    const baseTime = typeof exportTime === "number" ? exportTime : state.clock.elapsedTime;
+
     mat.uniforms.u_resolution.value.set(state.size.width, state.size.height);
     mat.uniforms.u_imageResolution.value.set(
       synth.imageResolution.width,
@@ -161,20 +184,10 @@ export function SynthMaterial() {
       synth.imageTexture.needsUpdate = true;
     }
     mat.uniforms.u_texture.value = tex;
-    mat.uniforms.u_texSize.value.set(...textureBitmapDimensions(synth.imageTexture));
-    mat.uniforms.u_meltIntensity.value = synth.meltIntensity;
-    mat.uniforms.u_colorBleed.value = synth.colorBleed;
-    mat.uniforms.u_noiseLevel.value = synth.noiseLevel;
-    mat.uniforms.u_posterizeSteps.value = synth.posterizeSteps;
-    mat.uniforms.u_maskCenter.value.set(synth.maskCenterX, synth.maskCenterY);
-    mat.uniforms.u_maskRadius.value = synth.maskRadius;
-    mat.uniforms.u_twirlIntensity.value = synth.twirlIntensity;
-    mat.uniforms.u_colorA.value.setStyle(synth.colorA);
-    mat.uniforms.u_colorB.value.setStyle(synth.colorB);
-    mat.uniforms.u_duotoneBlend.value = synth.duotoneBlend;
-    mat.uniforms.u_colorCycleSpeed.value = synth.colorCycleSpeed;
-    mat.uniforms.u_halftone.value = synth.halftoneIntensity;
-    mat.uniforms.u_scanline.value = synth.scanlineIntensity;
+
+    applyLayerUniforms(mat, "L0", le.background, baseTime);
+    applyLayerUniforms(mat, "L1", le.decal, baseTime);
+    applyLayerUniforms(mat, "L2", le.text, baseTime);
 
     const uploadedDecal = synth.decalTexture;
     const decalTex = uploadedDecal ?? transparentFallbackTexture;

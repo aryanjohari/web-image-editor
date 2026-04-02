@@ -1,7 +1,17 @@
 import { create } from "zustand";
 import type { Texture } from "three";
+import {
+  type LayerEffectParams,
+  type LayerEffectsMap,
+  type LayerId,
+  createDefaultLayerEffectsMap,
+} from "@/store/layerEffects";
 
 const DEBUG = true;
+
+export type { LayerEffectParams, LayerId, LayerEffectsMap } from "@/store/layerEffects";
+
+export type StackTab = LayerId;
 
 function readImageDimensionsFromTexture(texture: Texture): { width: number; height: number } {
   const image = texture.image;
@@ -15,73 +25,44 @@ function readImageDimensionsFromTexture(texture: Texture): { width: number; heig
   return { width: 1, height: 1 };
 }
 
+/** Global synth fields (textures, text content, transforms, UI). Per-layer visuals live in `layerEffects`. */
 export type SynthParams = {
-  meltIntensity: number;
-  colorBleed: number;
-  noiseLevel: number;
-  posterizeSteps: number;
-  timeScale: number;
-  maskCenterX: number;
-  maskCenterY: number;
-  maskRadius: number;
-  twirlIntensity: number;
-  colorA: string;
-  colorB: string;
-  duotoneBlend: number;
-  colorCycleSpeed: number;
-  halftoneIntensity: number;
-  scanlineIntensity: number;
   overlayText: string;
   textColor: string;
   textSize: number;
-  /** Foreground decal (sticker) — PNG with alpha or driven by text-to-texture later. */
   decalScale: number;
   decalOffsetX: number;
   decalOffsetY: number;
-  /** When true, decal sampling follows the same distortion math as the background (shader hook TBD). */
   linkDecalToMath: boolean;
-  /** Text overlay layer (separate from uploaded decal). When no decal image is set, placement uses decal offset/scale for backward compatibility. */
   textOffsetX: number;
   textOffsetY: number;
   textScale: number;
   linkTextToMath: boolean;
 };
 
-export type StackTab = "background" | "decal" | "text";
-
 type SynthState = SynthParams & {
+  layerEffects: LayerEffectsMap;
   stackTab: StackTab;
   panelOpen: boolean;
   imageTexture: Texture | null;
-  /** Native pixel size of the uploaded image (for shader object-fit: cover). */
   imageResolution: { width: number; height: number };
   decalTexture: Texture | null;
   setParam: <K extends keyof SynthParams>(key: K, value: SynthParams[K]) => void;
+  setLayerEffect: <K extends keyof LayerEffectParams>(
+    layer: LayerId,
+    key: K,
+    value: LayerEffectParams[K],
+  ) => void;
   setPanelOpen: (open: boolean) => void;
   setImageTexture: (texture: Texture | null) => void;
   setDecalTexture: (texture: Texture | null) => void;
-  /** Delta in normalized canvas space (~UV); Y is already oriented for shader offsets. */
   updateDecalOffset: (deltaX: number, deltaY: number) => void;
   updateTextOffset: (deltaX: number, deltaY: number) => void;
   setStackTab: (tab: StackTab) => void;
 };
 
 export const useSynthStore = create<SynthState>((set) => ({
-  meltIntensity: 0.15,
-  colorBleed: 0.2,
-  noiseLevel: 0.04,
-  posterizeSteps: 8,
-  timeScale: 1.0,
-  maskCenterX: 0.5,
-  maskCenterY: 0.5,
-  maskRadius: 0.5,
-  twirlIntensity: 0.0,
-  colorA: "#000000",
-  colorB: "#ffffff",
-  duotoneBlend: 0.0,
-  colorCycleSpeed: 0,
-  halftoneIntensity: 0,
-  scanlineIntensity: 0,
+  layerEffects: createDefaultLayerEffectsMap(),
   overlayText: "",
   textColor: "#ffffff",
   textSize: 100,
@@ -99,6 +80,13 @@ export const useSynthStore = create<SynthState>((set) => ({
   imageResolution: { width: 1, height: 1 },
   decalTexture: null,
   setParam: (key, value) => set({ [key]: value } as Pick<SynthState, typeof key>),
+  setLayerEffect: (layer, key, value) =>
+    set((state) => ({
+      layerEffects: {
+        ...state.layerEffects,
+        [layer]: { ...state.layerEffects[layer], [key]: value },
+      },
+    })),
   setPanelOpen: (open) => set({ panelOpen: open }),
   setImageTexture: (texture) => {
     if (DEBUG) {

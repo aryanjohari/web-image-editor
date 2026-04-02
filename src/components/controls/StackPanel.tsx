@@ -1,5 +1,6 @@
 import { useLayoutEffect, useRef } from "react";
 import gsap from "gsap";
+import { LayerEffectControls } from "@/components/controls/LayerEffectControls";
 import { SliderControl } from "@/components/controls/SliderControl";
 import { UploadButton } from "@/components/UploadButton";
 import { exportCanvasPng } from "@/lib/export/exportImage";
@@ -13,21 +14,6 @@ export function StackPanel() {
     setPanelOpen,
     stackTab,
     setStackTab,
-    meltIntensity,
-    colorBleed,
-    noiseLevel,
-    posterizeSteps,
-    timeScale,
-    maskCenterX,
-    maskCenterY,
-    maskRadius,
-    twirlIntensity,
-    colorA,
-    colorB,
-    duotoneBlend,
-    colorCycleSpeed,
-    halftoneIntensity,
-    scanlineIntensity,
     overlayText,
     textColor,
     textSize,
@@ -97,85 +83,7 @@ export function StackPanel() {
         {stackTab === "background" ? (
           <>
             <UploadButton variant="background" />
-
-            <SliderControl label="Melt Intensity" min={0} max={1} value={meltIntensity} synthParam="meltIntensity" />
-            <SliderControl label="Color Bleed" min={0} max={1} value={colorBleed} synthParam="colorBleed" />
-            <SliderControl label="Noise Level" min={0} max={0.5} value={noiseLevel} synthParam="noiseLevel" />
-            <SliderControl
-              label="Posterize Steps"
-              min={2}
-              max={24}
-              step={1}
-              value={posterizeSteps}
-              synthParam="posterizeSteps"
-            />
-            <SliderControl label="Time Scale" min={0} max={3} value={timeScale} synthParam="timeScale" />
-
-            <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
-              Mask
-            </p>
-            <SliderControl label="Mask Center X" min={0} max={1} value={maskCenterX} synthParam="maskCenterX" />
-            <SliderControl label="Mask Center Y" min={0} max={1} value={maskCenterY} synthParam="maskCenterY" />
-            <SliderControl label="Mask Radius" min={0} max={1} value={maskRadius} synthParam="maskRadius" />
-
-            <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
-              Warp
-            </p>
-            <SliderControl
-              label="Twirl Intensity"
-              min={-20}
-              max={20}
-              value={twirlIntensity}
-              synthParam="twirlIntensity"
-            />
-
-            <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
-              Duotone
-            </p>
-            <label className="flex w-full flex-col gap-2 text-xs uppercase tracking-wide">
-              <span className="text-zinc-300">Color A</span>
-              <input
-                type="color"
-                className="h-9 w-full cursor-pointer border border-zinc-700 bg-zinc-900"
-                value={colorA}
-                onChange={(e) => setParam("colorA", e.target.value)}
-              />
-            </label>
-            <label className="flex w-full flex-col gap-2 text-xs uppercase tracking-wide">
-              <span className="text-zinc-300">Color B</span>
-              <input
-                type="color"
-                className="h-9 w-full cursor-pointer border border-zinc-700 bg-zinc-900"
-                value={colorB}
-                onChange={(e) => setParam("colorB", e.target.value)}
-              />
-            </label>
-            <SliderControl label="Duotone Blend" min={0} max={1} value={duotoneBlend} synthParam="duotoneBlend" />
-            <SliderControl
-              label="Color Cycle Speed"
-              min={0}
-              max={5}
-              value={colorCycleSpeed}
-              synthParam="colorCycleSpeed"
-            />
-
-            <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
-              Textures
-            </p>
-            <SliderControl
-              label="Halftone Intensity"
-              min={0}
-              max={1}
-              value={halftoneIntensity}
-              synthParam="halftoneIntensity"
-            />
-            <SliderControl
-              label="Scanline Intensity"
-              min={0}
-              max={1}
-              value={scanlineIntensity}
-              synthParam="scanlineIntensity"
-            />
+            <LayerEffectControls layer="background" />
           </>
         ) : stackTab === "decal" ? (
           <>
@@ -212,6 +120,8 @@ export function StackPanel() {
               Drag on the canvas to move the decal (Background and Decal tabs). With a sticker and text, open the Text
               tab to drag the text layer separately.
             </p>
+
+            <LayerEffectControls layer="decal" />
           </>
         ) : (
           <>
@@ -307,6 +217,8 @@ export function StackPanel() {
                 ? "With this tab selected, drag on the canvas to move the text layer."
                 : "With this tab selected, drag on the canvas to move text (same offset as the decal slot)."}
             </p>
+
+            <LayerEffectControls layer="text" />
           </>
         )}
       </div>
