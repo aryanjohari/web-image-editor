@@ -174,6 +174,8 @@ export function SynthMaterial() {
       .__SYNTH_EXPORT_TIME__;
     const baseTime = typeof exportTime === "number" ? exportTime : state.clock.elapsedTime;
 
+    window.__SYNTH_LAST_BASE_TIME__ = baseTime;
+
     mat.uniforms.u_resolution.value.set(state.size.width, state.size.height);
     mat.uniforms.u_imageResolution.value.set(
       synth.imageResolution.width,

@@ -53,6 +53,8 @@ type SynthState = SynthParams & {
     key: K,
     value: LayerEffectParams[K],
   ) => void;
+  replaceLayerEffects: (next: LayerEffectsMap) => void;
+  setImageResolution: (resolution: { width: number; height: number }) => void;
   setPanelOpen: (open: boolean) => void;
   setImageTexture: (texture: Texture | null) => void;
   setDecalTexture: (texture: Texture | null) => void;
@@ -87,6 +89,8 @@ export const useSynthStore = create<SynthState>((set) => ({
         [layer]: { ...state.layerEffects[layer], [key]: value },
       },
     })),
+  replaceLayerEffects: (next) => set({ layerEffects: structuredClone(next) }),
+  setImageResolution: (resolution) => set({ imageResolution: { ...resolution } }),
   setPanelOpen: (open) => set({ panelOpen: open }),
   setImageTexture: (texture) => {
     if (DEBUG) {
