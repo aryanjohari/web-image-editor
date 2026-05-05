@@ -13,12 +13,15 @@ import {
 } from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import type { LayerEffectParams } from "@/store/layerEffects";
+import { MAX_TEXT_LAYERS, resolveTextLayerEffects } from "@/store/textLayers";
 import { useSynthStore } from "@/store/useSynthStore";
 import { createTextTexture } from "@/utils/textUtils";
 import vertexShader from "@/webgl/shaders/vertex.glsl";
 import fragmentShader from "@/webgl/shaders/fragment.glsl";
 
 const DEBUG = false;
+
+const TEXT_PREFIXES = ["T0", "T1", "T2", "T3"] as const;
 
 const fallbackTexture = new DataTexture(
   new Uint8Array([0, 0, 0, 255]),
@@ -47,7 +50,7 @@ transparentFallbackTexture.needsUpdate = true;
 
 function applyLayerUniforms(
   mat: ShaderMaterial,
-  prefix: "L0" | "L1" | "L2",
+  prefix: string,
   p: LayerEffectParams,
   baseTime: number,
 ) {
@@ -69,7 +72,7 @@ function applyLayerUniforms(
   u[`u_${prefix}_scanline`].value = p.scanlineIntensity;
 }
 
-function seedLayerUniforms(prefix: "L0" | "L1" | "L2", p: LayerEffectParams, baseTime: number) {
+function seedLayerUniforms(prefix: string, p: LayerEffectParams, baseTime: number) {
   const t = baseTime * p.timeScale;
   return {
     [`u_${prefix}_t`]: { value: t },
@@ -89,14 +92,20 @@ function seedLayerUniforms(prefix: "L0" | "L1" | "L2", p: LayerEffectParams, bas
   };
 }
 
+function buildTextSlotUniforms(le: { text: LayerEffectParams }, baseTime: number) {
+  let out: Record<string, unknown> = {};
+  for (const prefix of TEXT_PREFIXES) {
+    out = { ...out, ...seedLayerUniforms(prefix, le.text, baseTime) };
+  }
+  return out;
+}
+
 export function SynthMaterial() {
   const materialRef = useRef<ShaderMaterial>(null);
-  const textTextureRef = useRef<CanvasTexture | null>(null);
+  const textTextureRefs = useRef<(CanvasTexture | null)[]>([null, null, null, null]);
   const { size } = useThree();
   const imageTexture = useSynthStore((s) => s.imageTexture);
-  const overlayText = useSynthStore((s) => s.overlayText);
-  const textColor = useSynthStore((s) => s.textColor);
-  const textSize = useSynthStore((s) => s.textSize);
+  const textLayers = useSynthStore((s) => s.textLayers);
 
   const uniforms = useMemo(() => {
     const s = useSynthStore.getState();
@@ -114,12 +123,23 @@ export function SynthMaterial() {
       u_decalTexture: { value: transparentFallbackTexture },
       u_decalTransform: { value: new Vector3(s.decalOffsetX, s.decalOffsetY, s.decalScale) },
       u_linkDecalToMath: { value: s.linkDecalToMath ? 1.0 : 0.0 },
-      u_textTexture: { value: transparentFallbackTexture },
-      u_textTransform: { value: new Vector3(s.textOffsetX, s.textOffsetY, s.textScale) },
+      u_decalBackgroundLumaMask: { value: s.decalBackgroundLumaMask },
       u_linkTextToMath: { value: s.linkTextToMath ? 1.0 : 0.0 },
+      u_textSlot0: { value: transparentFallbackTexture },
+      u_textTransform0: { value: new Vector3(0, 0, 1) },
+      u_textActive0: { value: 0.0 },
+      u_textSlot1: { value: transparentFallbackTexture },
+      u_textTransform1: { value: new Vector3(0, 0, 1) },
+      u_textActive1: { value: 0.0 },
+      u_textSlot2: { value: transparentFallbackTexture },
+      u_textTransform2: { value: new Vector3(0, 0, 1) },
+      u_textActive2: { value: 0.0 },
+      u_textSlot3: { value: transparentFallbackTexture },
+      u_textTransform3: { value: new Vector3(0, 0, 1) },
+      u_textActive3: { value: 0.0 },
       ...seedLayerUniforms("L0", le.background, baseTime),
       ...seedLayerUniforms("L1", le.decal, baseTime),
-      ...seedLayerUniforms("L2", le.text, baseTime),
+      ...buildTextSlotUniforms(le, baseTime),
     };
   }, [size.width, size.height, imageTexture]);
 
@@ -140,26 +160,37 @@ export function SynthMaterial() {
     const mat = materialRef.current;
     if (!mat) return;
 
-    textTextureRef.current?.dispose();
-    textTextureRef.current = null;
-
-    const nextText = overlayText.trim();
-    if (nextText.length > 0) {
-      const generated = createTextTexture(nextText, size.width, size.height, textColor, textSize);
-      if (generated) {
-        textTextureRef.current = generated;
-        mat.needsUpdate = true;
-        return;
-      }
+    for (let i = 0; i < MAX_TEXT_LAYERS; i++) {
+      textTextureRefs.current[i]?.dispose();
+      textTextureRefs.current[i] = null;
     }
 
+    const layers = useSynthStore.getState().textLayers;
+    for (let i = 0; i < MAX_TEXT_LAYERS; i++) {
+      const layer = layers[i];
+      if (!layer) continue;
+      const trimmed = layer.text.trim();
+      if (trimmed.length === 0) continue;
+      const generated = createTextTexture(
+        layer.text,
+        size.width,
+        size.height,
+        layer.color,
+        layer.fontSize,
+      );
+      if (generated) {
+        textTextureRefs.current[i] = generated;
+      }
+    }
     mat.needsUpdate = true;
-  }, [overlayText, textColor, textSize, size.width, size.height]);
+  }, [textLayers, size.width, size.height]);
 
   useEffect(() => {
     return () => {
-      textTextureRef.current?.dispose();
-      textTextureRef.current = null;
+      for (let i = 0; i < MAX_TEXT_LAYERS; i++) {
+        textTextureRefs.current[i]?.dispose();
+        textTextureRefs.current[i] = null;
+      }
     };
   }, []);
 
@@ -189,7 +220,6 @@ export function SynthMaterial() {
 
     applyLayerUniforms(mat, "L0", le.background, baseTime);
     applyLayerUniforms(mat, "L1", le.decal, baseTime);
-    applyLayerUniforms(mat, "L2", le.text, baseTime);
 
     const uploadedDecal = synth.decalTexture;
     const decalTex = uploadedDecal ?? transparentFallbackTexture;
@@ -199,23 +229,52 @@ export function SynthMaterial() {
     mat.uniforms.u_decalTexture.value = decalTex;
     mat.uniforms.u_decalTransform.value.set(synth.decalOffsetX, synth.decalOffsetY, synth.decalScale);
     mat.uniforms.u_linkDecalToMath.value = synth.linkDecalToMath ? 1.0 : 0.0;
-
-    const textTrimmed = synth.overlayText.trim();
-    const generatedText = textTextureRef.current;
-    const textTex =
-      textTrimmed.length > 0 ? (generatedText ?? transparentFallbackTexture) : transparentFallbackTexture;
-    if (generatedText) {
-      generatedText.needsUpdate = true;
-    }
-    mat.uniforms.u_textTexture.value = textTex;
+    mat.uniforms.u_decalBackgroundLumaMask.value = synth.decalBackgroundLumaMask;
 
     const hasUploadedDecal = uploadedDecal != null;
-    if (hasUploadedDecal) {
-      mat.uniforms.u_textTransform.value.set(synth.textOffsetX, synth.textOffsetY, synth.textScale);
-      mat.uniforms.u_linkTextToMath.value = synth.linkTextToMath ? 1.0 : 0.0;
-    } else {
-      mat.uniforms.u_textTransform.value.set(synth.decalOffsetX, synth.decalOffsetY, synth.decalScale);
-      mat.uniforms.u_linkTextToMath.value = synth.linkDecalToMath ? 1.0 : 0.0;
+    const linkTextUniform = hasUploadedDecal
+      ? synth.linkTextToMath
+        ? 1.0
+        : 0.0
+      : synth.linkDecalToMath
+        ? 1.0
+        : 0.0;
+    mat.uniforms.u_linkTextToMath.value = linkTextUniform;
+
+    const layers = synth.textLayers;
+    for (let i = 0; i < MAX_TEXT_LAYERS; i++) {
+      const prefix = TEXT_PREFIXES[i];
+      const layer = layers[i];
+      const params = layer
+        ? resolveTextLayerEffects(layer, le.text, synth.textLayerEffects)
+        : le.text;
+      applyLayerUniforms(mat, prefix, params, baseTime);
+
+      const slotTex = textTextureRefs.current[i];
+      const trimmed = layer?.text.trim() ?? "";
+      const active = layer && trimmed.length > 0 ? 1.0 : 0.0;
+      mat.uniforms[`u_textActive${i}`].value = active;
+      mat.uniforms[`u_textSlot${i}`].value =
+        active > 0.5 ? (slotTex ?? transparentFallbackTexture) : transparentFallbackTexture;
+      if (slotTex) {
+        slotTex.needsUpdate = true;
+      }
+
+      let ox = 0;
+      let oy = 0;
+      let sc = 1;
+      if (layer) {
+        if (hasUploadedDecal) {
+          ox = layer.offsetX;
+          oy = layer.offsetY;
+          sc = layer.scale;
+        } else {
+          ox = synth.decalOffsetX;
+          oy = synth.decalOffsetY;
+          sc = synth.decalScale;
+        }
+      }
+      mat.uniforms[`u_textTransform${i}`].value.set(ox, oy, sc);
     }
   });
 

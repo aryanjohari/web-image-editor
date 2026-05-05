@@ -4,12 +4,20 @@ import {
   type LayerEffectParams,
   type LayerEffectsMap,
   type LayerId,
+  createDefaultLayerEffects,
   createDefaultLayerEffectsMap,
 } from "@/store/layerEffects";
+import {
+  MAX_TEXT_LAYERS,
+  type TextLayer,
+  createTextLayer,
+  initialTextLayersBootstrap,
+} from "@/store/textLayers";
 
-const DEBUG = true;
+const DEBUG = false;
 
 export type { LayerEffectParams, LayerId, LayerEffectsMap } from "@/store/layerEffects";
+export type { TextLayer } from "@/store/textLayers";
 
 export type StackTab = LayerId;
 
@@ -25,22 +33,22 @@ function readImageDimensionsFromTexture(texture: Texture): { width: number; heig
   return { width: 1, height: 1 };
 }
 
-/** Global synth fields (textures, text content, transforms, UI). Per-layer visuals live in `layerEffects`. */
+/** Global synth fields (textures, transforms, UI). Per-layer visuals live in `layerEffects`; text stacks use `textLayers` + optional `textLayerEffects`. */
 export type SynthParams = {
-  overlayText: string;
-  textColor: string;
-  textSize: number;
   decalScale: number;
   decalOffsetX: number;
   decalOffsetY: number;
+  /** 0 = normal alpha-over; 1 = multiply background by decal texture luminance (per sampled decal pixel). */
+  decalBackgroundLumaMask: number;
   linkDecalToMath: boolean;
-  textOffsetX: number;
-  textOffsetY: number;
-  textScale: number;
   linkTextToMath: boolean;
 };
 
 type SynthState = SynthParams & {
+  textLayers: TextLayer[];
+  selectedTextLayerId: string;
+  /** Private effect params for text layers with `effectsLinked === false`. */
+  textLayerEffects: Record<string, LayerEffectParams>;
   layerEffects: LayerEffectsMap;
   stackTab: StackTab;
   panelOpen: boolean;
@@ -54,30 +62,44 @@ type SynthState = SynthParams & {
     value: LayerEffectParams[K],
   ) => void;
   replaceLayerEffects: (next: LayerEffectsMap) => void;
+  setTextLayers: (layers: TextLayer[]) => void;
+  setSelectedTextLayerId: (id: string) => void;
+  setTextLayerEffects: (next: Record<string, LayerEffectParams>) => void;
+  addTextLayer: () => void;
+  removeTextLayer: (id: string) => void;
+  updateTextLayer: (id: string, partial: Partial<TextLayer>) => void;
+  setTextLayerEffectsLinked: (id: string, linked: boolean) => void;
+  setTextLayerEffect: <K extends keyof LayerEffectParams>(
+    textLayerId: string,
+    key: K,
+    value: LayerEffectParams[K],
+  ) => void;
   setImageResolution: (resolution: { width: number; height: number }) => void;
   setPanelOpen: (open: boolean) => void;
   setImageTexture: (texture: Texture | null) => void;
   setDecalTexture: (texture: Texture | null) => void;
   updateDecalOffset: (deltaX: number, deltaY: number) => void;
-  updateTextOffset: (deltaX: number, deltaY: number) => void;
+  updateSelectedTextLayerOffset: (deltaX: number, deltaY: number) => void;
   setStackTab: (tab: StackTab) => void;
+  /** Restore default layer effects, decal/text transforms, and a fresh single text layer. Keeps uploaded images. */
+  resetSynthLookToDefaults: () => void;
 };
+
+const bootstrap = initialTextLayersBootstrap();
 
 export const useSynthStore = create<SynthState>((set) => ({
   layerEffects: createDefaultLayerEffectsMap(),
-  overlayText: "",
-  textColor: "#ffffff",
-  textSize: 100,
+  textLayers: bootstrap.textLayers,
+  selectedTextLayerId: bootstrap.selectedTextLayerId,
+  textLayerEffects: {},
   decalScale: 1.0,
   decalOffsetX: 0.0,
   decalOffsetY: 0.0,
+  decalBackgroundLumaMask: 0.0,
   linkDecalToMath: false,
-  textOffsetX: 0.0,
-  textOffsetY: 0.0,
-  textScale: 1.0,
   linkTextToMath: false,
   stackTab: "background",
-  panelOpen: true,
+  panelOpen: false,
   imageTexture: null,
   imageResolution: { width: 1, height: 1 },
   decalTexture: null,
@@ -90,24 +112,83 @@ export const useSynthStore = create<SynthState>((set) => ({
       },
     })),
   replaceLayerEffects: (next) => set({ layerEffects: structuredClone(next) }),
+  setTextLayers: (textLayers) => set({ textLayers }),
+  setSelectedTextLayerId: (selectedTextLayerId) => set({ selectedTextLayerId }),
+  setTextLayerEffects: (textLayerEffects) => set({ textLayerEffects: structuredClone(textLayerEffects) }),
+  addTextLayer: () =>
+    set((state) => {
+      if (state.textLayers.length >= MAX_TEXT_LAYERS) return state;
+      const next = createTextLayer();
+      return {
+        textLayers: [...state.textLayers, next],
+        selectedTextLayerId: next.id,
+      };
+    }),
+  removeTextLayer: (id) =>
+    set((state) => {
+      const textLayers = state.textLayers.filter((l) => l.id !== id);
+      const { [id]: _, ...restEffects } = state.textLayerEffects;
+      let selectedTextLayerId = state.selectedTextLayerId;
+      if (selectedTextLayerId === id) {
+        selectedTextLayerId = textLayers[0]?.id ?? "";
+      }
+      return { textLayers, textLayerEffects: restEffects, selectedTextLayerId };
+    }),
+  updateTextLayer: (id, partial) =>
+    set((state) => ({
+      textLayers: state.textLayers.map((l) => (l.id === id ? { ...l, ...partial } : l)),
+    })),
+  setTextLayerEffectsLinked: (id, linked) =>
+    set((state) => {
+      const layer = state.textLayers.find((l) => l.id === id);
+      if (!layer) return state;
+      const nextLayers = state.textLayers.map((l) =>
+        l.id === id ? { ...l, effectsLinked: linked } : l,
+      );
+      let nextEffects = { ...state.textLayerEffects };
+      if (linked) {
+        const { [id]: _, ...rest } = nextEffects;
+        nextEffects = rest;
+      } else {
+        nextEffects = {
+          ...nextEffects,
+          [id]: structuredClone(state.layerEffects.text),
+        };
+      }
+      return { textLayers: nextLayers, textLayerEffects: nextEffects };
+    }),
+  setTextLayerEffect: (textLayerId, key, value) =>
+    set((state) => ({
+      textLayerEffects: {
+        ...state.textLayerEffects,
+        [textLayerId]: {
+          ...(state.textLayerEffects[textLayerId] ?? createDefaultLayerEffects()),
+          [key]: value,
+        },
+      },
+    })),
   setImageResolution: (resolution) => set({ imageResolution: { ...resolution } }),
   setPanelOpen: (open) => set({ panelOpen: open }),
-  setImageTexture: (texture) => {
-    if (DEBUG) {
-      console.debug("[useSynthStore] setImageTexture called", {
-        ts: new Date().toISOString(),
-        payload: texture,
-      });
-    }
-    if (!texture) {
-      set({ imageTexture: null, imageResolution: { width: 1, height: 1 } });
-      return;
-    }
-    set({
-      imageTexture: texture,
-      imageResolution: readImageDimensionsFromTexture(texture),
-    });
-  },
+  setImageTexture: (texture) =>
+    set((state) => {
+      if (DEBUG) {
+        console.debug("[useSynthStore] setImageTexture called", {
+          ts: new Date().toISOString(),
+          payload: texture,
+        });
+      }
+      const prev = state.imageTexture;
+      if (prev && prev !== texture) {
+        prev.dispose();
+      }
+      if (!texture) {
+        return { imageTexture: null, imageResolution: { width: 1, height: 1 } };
+      }
+      return {
+        imageTexture: texture,
+        imageResolution: readImageDimensionsFromTexture(texture),
+      };
+    }),
   setDecalTexture: (texture) => {
     if (DEBUG) {
       console.debug("[useSynthStore] setDecalTexture called", {
@@ -131,10 +212,32 @@ export const useSynthStore = create<SynthState>((set) => ({
       decalOffsetX: state.decalOffsetX + deltaX,
       decalOffsetY: state.decalOffsetY + deltaY,
     })),
-  updateTextOffset: (deltaX, deltaY) =>
-    set((state) => ({
-      textOffsetX: state.textOffsetX + deltaX,
-      textOffsetY: state.textOffsetY + deltaY,
-    })),
+  updateSelectedTextLayerOffset: (deltaX, deltaY) =>
+    set((state) => {
+      const id = state.selectedTextLayerId;
+      if (!id) return state;
+      return {
+        textLayers: state.textLayers.map((l) =>
+          l.id === id
+            ? { ...l, offsetX: l.offsetX + deltaX, offsetY: l.offsetY + deltaY }
+            : l,
+        ),
+      };
+    }),
   setStackTab: (tab) => set({ stackTab: tab }),
+  resetSynthLookToDefaults: () => {
+    const b = initialTextLayersBootstrap();
+    set({
+      layerEffects: createDefaultLayerEffectsMap(),
+      decalScale: 1.0,
+      decalOffsetX: 0.0,
+      decalOffsetY: 0.0,
+      decalBackgroundLumaMask: 0.0,
+      linkDecalToMath: false,
+      linkTextToMath: false,
+      textLayers: b.textLayers,
+      selectedTextLayerId: b.selectedTextLayerId,
+      textLayerEffects: {},
+    });
+  },
 }));

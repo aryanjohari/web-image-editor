@@ -48,10 +48,10 @@ export function SynthScene() {
       prevCanvas.current = { x, y };
       const w = Math.max(r.width, 1);
       const h = Math.max(r.height, 1);
-      const { stackTab, decalTexture, updateDecalOffset, updateTextOffset } =
+      const { stackTab, decalTexture, updateDecalOffset, updateSelectedTextLayerOffset, selectedTextLayerId } =
         useSynthStore.getState();
-      if (stackTab === "text" && decalTexture) {
-        updateTextOffset(dx / w, -dy / h);
+      if (stackTab === "text" && decalTexture && selectedTextLayerId) {
+        updateSelectedTextLayerOffset(dx / w, -dy / h);
       } else {
         updateDecalOffset(dx / w, -dy / h);
       }

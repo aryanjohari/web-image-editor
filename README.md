@@ -1,6 +1,6 @@
 # The Algorithm Engine
 
-Master architectural document for **web-image-editor**: a browser-based, math-driven visual synthesizer. The product treats an uploaded image as a signal that passes through a **single full-screen quad** rendered with **custom GLSL**. All “effects” are **parameterized mathematical transforms** (UV distortion, channel mixing, quantization, procedural noise, time-modulated color) rather than a stack of bitmap filters.
+Master architectural document for **web-image-editor**: a browser-based, math-driven visual synthesizer. The product uploads a **background image** plus an optional **decal** sticker and stacks up to **four text overlays**, all rendered on a **single full-screen quad** with **custom GLSL**. Warp, color, and texture math still live in **one fragment program**, but **each logical layer gets its own effect bundle** (uniforms keyed `L0` / `L1` / `T0–T3`) so background, decal, and text can diverge creatively.
 
 This README is written so an AI assistant (or a new contributor) can quickly grasp **context**, **capabilities**, **data flow**, and **constraints** without spelunking the tree.
 
@@ -8,7 +8,7 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 ## Overview
 
-**The Algorithm Engine** is a **WebGL-first image lab**: users upload a raster image, tune a small set of continuous parameters, and see the result in real time on a GPU fragment shader. The experience is intentionally minimal—one plane, one material, one fragment program—so the creative surface area is the **math inside the shader** and the **uniforms** that drive it.
+**The Algorithm Engine** is a **WebGL-first image lab**: users upload raster images, compose overlay content, tune continuous parameters per stack tab, and see the result in real time via a GPU fragment shader. The draw path stays minimal—one plane, one `ShaderMaterial`, one fragment program—while the shader **composites** tinted, warped samples in order: **background texture → decal alpha-over (+ optional luminance-mask blend) → text slots bottom-to-top**.
 
 ---
 
@@ -19,7 +19,7 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 | **App shell** | **React 19** + **Vite 8** | SPA entry (`main.tsx`), layout, controls |
 | **Language** | **TypeScript** | Store, components, typed Three.js usage |
 | **3D / WebGL** | **Three.js** + **React Three Fiber (R3F)** + **@react-three/drei** | `Canvas`, render loop, `OrthographicCamera`, `shaderMaterial` |
-| **State** | **Zustand** | Global synth parameters, texture handle, panel visibility, image pixel dimensions |
+| **State** | **Zustand** | Layer effect maps, text layers, textures, decal transform, UI tabs / panel visibility |
 | **Motion (UI)** | **GSAP** | Slide in/out of the control stack panel |
 | **Styling** | **Tailwind CSS** | Layout, typography, control chrome |
 | **Shaders** | **GLSL** (`.glsl` files) | Bundled via `vite-plugin-glsl`; imported as strings into `ShaderMaterial` |
@@ -32,21 +32,32 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 ### High-level data flow
 
-1. **File upload** — User picks PNG/JPEG/WebP. `TextureLoader` decodes via object URL, applies texture settings, then **`setImageTexture`** stores the Three.js `Texture` plus **native bitmap dimensions** in Zustand.
-2. **Zustand (`useSynthStore`)** — Holds:
-   - `imageTexture` / `imageResolution` (for aspect-aware sampling)
-   - `SynthParams`: `meltIntensity`, `colorBleed`, `noiseLevel`, `posterizeSteps`, `timeScale`, `maskCenterX` / `maskCenterY` / `maskRadius`, `twirlIntensity`, `colorA` / `colorB` / `duotoneBlend`, `colorCycleSpeed`, `halftoneIntensity` / `scanlineIntensity`
-   - UI: `panelOpen`, setters
-3. **React Three Fiber** — `<Canvas>` with **`gl={{ preserveDrawingBuffer: true }}`** (needed for **PNG export**), **`dpr={[1, 2]}`**, default **`OrthographicCamera`** (manual frustum: ±1 plane, Z toward scene).
-4. **Scene graph** — `SynthScene`: one **`mesh`** with **`planeGeometry(2, 2)`** filling the clip-space quad and **`SynthMaterial`** (shader pipeline).
-5. **Fragment shader** — Samples `u_texture` after **object-fit: contain** UV remapping (letterboxed centered content). Applies **melt** on UVs, **localized mask** + **twirl** blend, then **color mutation (bleed + posterize)**, **duotone** (optionally **LFO-modulated** via `u_colorCycleSpeed`), **halftone / scanlines**, and **procedural grain**. **`u_time`** normally follows the R3F clock × `timeScale`; during WebM export it follows **`window.__SYNTH_EXPORT_TIME__`** × `timeScale` so melt, grain, and duotone LFO stay in sync with the recording (see Export).
+1. **File upload** — **Background**: PNG/JPEG/WebP → `TextureLoader` → **`setImageTexture`** stores `Texture` plus **bitmap dimensions**. **Decal**: same formats through **`createProcessedDecalTexture`** (`decalTexture` utils) → **`setDecalTexture`** for the sticker atlas.
+2. **Zustand (`useSynthStore`)** holds:
+   - **`imageTexture` / `imageResolution`** — background sampling and letterbox math
+   - **`decalTexture`** — optional overlay texture
+   - **`SynthParams`** (global synth fields): `decalScale`, `decalOffsetX` / `decalOffsetY`, `decalBackgroundLumaMask`, `linkDecalToMath`, `linkTextToMath`
+   - **`layerEffects`** — `Record<"background" | "decal" | "text", LayerEffectParams>`: full effect bundle (**melt, bleed, noise, posterize, timeScale, radial mask + twirl, duotone colors + cycle speed, halftone, scanlines**) per logical layer master
+   - **`textLayers`** — up to **`MAX_TEXT_LAYERS` (4)** entries (`TextLayer`: id, text, color, `fontSize`, offsets, scale, **`effectsLinked`**)
+   - **`textLayerEffects`** — when a text layer unlinks from the master `layerEffects.text`, its private `LayerEffectParams` live keyed by layer id
+   - **UI**: `stackTab` (`background` | `decal` | `text`), `selectedTextLayerId`, `panelOpen`
+3. **React Three Fiber** — `<Canvas>` with **`gl={{ preserveDrawingBuffer: true }}`** (PNG export), **`dpr={[1, 2]}`**, Drei **`OrthographicCamera`** (`manual`: ±1 frustum, plane at \(z=0\)).
+4. **Scene graph** — **`SynthScene`** (`SynthCanvas.tsx`): one **`mesh`**, **`planeGeometry(2, 2)`**, **`SynthMaterial`**. **`SynthMaterial`** is **`key`**ed by `imageTexture?.uuid` so swaps get a predictable material lifecycle.
+5. **`SynthMaterial`** — Seeds and updates uniforms. **Per-layer time:** each `LayerEffectParams.timeScale` multiplies the shared **`baseTime`** (R3F clock **`elapsedTime`** or **`window.__SYNTH_EXPORT_TIME__`** during WebM capture) into separate uniforms (`u_L0_t`, `u_L1_t`, `u_T0_t`, …).
+6. **Text rasterization** — `createTextTexture` (`textUtils`) builds **`CanvasTexture`**s per populated slot when `textLayers` or viewport size changes; slots map to **`u_textSlot0`…`u_textSlot3`** and transforms **`u_textTransform0…3`** `(offsetX, offsetY, scale)`.
+7. **Fragment shader** — Shared **contain** UVs for the background; **warp + shade pipeline** (`layerWarp` → sample → `layerShade` with bleed, posterize, duotone + LFO, halftone, scanlines, grain) runs per layer prefix. Decal sampling uses **`u_decalTransform`** and optional **`u_linkDecalToMath`** to share background warp grid. Text uses **`u_linkTextToMath`** (semantics coupled to whether a decal is present—see **`SynthMaterial` `useFrame`**). Outputs alpha-composite text slots in slot order (**first list item = drawn first / underneath**).
+
+### Interaction
+
+- **Pointer drag on the canvas** (`SynthScene`): with **Decal or Background** tab active, dragging updates **`decalOffsetX` / `decalOffsetY`**. With **Text** tab active and both a decal and selection, dragging updates **the selected text layer’s** **`offsetX` / `offsetY`** (`updateSelectedTextLayerOffset`). Cursor switches to grab/grabbing during drag.
 
 ### Key implementation details (for maintainers & AI)
 
-- **Material remount:** `SynthMaterial` is keyed by `imageTexture?.uuid` so swapping images gets a clean material lifecycle when needed (`SynthCanvas.tsx` / `SynthScene`).
-- **Uniform updates:** Initial `useMemo` seeds uniforms; **`useFrame`** pulls fresh values via `useSynthStore.getState()` so sliders can write through the store without relying on React render timing (`SliderControl` uses `getState().setParam`). **`u_time`** uses `__SYNTH_EXPORT_TIME__` when that global is set during WebM capture, then returns to the scene clock after export clears it (`exportLoopWebm.ts` `finally`).
-- **Fallback texture:** When no image is loaded, a 1×1 `DataTexture` avoids invalid sampler state (`SynthMaterial.tsx`).
-- **Vertex stage:** Pass-through UVs to the fragment shader (`vertex.glsl`).
+- **Uniform updates:** initial `useMemo` seeds uniforms; **`useFrame`** reads **`useSynthStore.getState()`** so sliders can commit through the store without waiting on React reconcile timing.
+- **Export timeline:** **`exportLoopWebm`** assigns **`window.__SYNTH_EXPORT_TIME__`** each frame; `finally` **deletes** it so preview returns to the scene clock (**same pattern as older single-`u_time` docs**, now applied to each layer’s `u_*_t`).
+- **`window.__SYNTH_LAST_BASE_TIME__`** — written each frame for **preset snapshot** / reproducibility hooks (`preset/snapshot`).
+- **Fallback textures:** 1×1 opaque and transparent **`DataTexture`**s avoid invalid samplers when images are missing (`SynthMaterial.tsx`).
+- **Vertex stage:** Passthrough UVs (`vertex.glsl`).
 
 ---
 
@@ -54,66 +65,52 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 ### Image upload pipeline
 
-- **Formats:** PNG, JPEG, WebP (`accept` on file input).
-- **Loading:** `URL.createObjectURL` → `TextureLoader` → revoke URL after load.
-- **Color space:** `SRGBColorSpace` on the loaded texture.
-- **NPOT / filtering:** `generateMipmaps = false`, **`LinearFilter`** for min/mag — avoids mip requirements on **non-power-of-two** sizes and keeps sampling predictable for full-screen quad use.
-- **Object-fit: contain (shader):** Fragment shader maps quad UVs to texture space using **`u_resolution`** (draw buffer / canvas pixels) and **`u_imageResolution`** (bitmap pixels) so the **entire image is visible** inside the canvas, **letterboxed** (black bars) when aspects differ—like CSS `object-fit: contain` (logic is inline in `fragment.glsl`).
+- **Formats:** PNG, JPEG, WebP on file inputs.
+- **Background:** `SRGBColorSpace`, NPOT-safe **`LinearFilter`**, mipmaps off (same rationale as legacy README).
+- **Object-fit contain (shader):** Fragment shader maps quad space to bitmap space using **`u_resolution`** × **`u_imageResolution`** so content is letterboxed centered (black margins outside).
 
-### Feature areas (shipped phases)
+### Layer tabs & effect bundles
 
-**Base signal & motion**
+The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`layerEffects[layer]`** for **`background`** and **`decal`**. On the **Text** tab, **`effectsLinked`** can pin a layer to **`layerEffects.text`** or carve out **`textLayerEffects[id]`**.
 
-| Control | Store keys | Shader role |
-|--------|------------|-------------|
-| Melt, bleed, posterize, noise | `meltIntensity`, `colorBleed`, `posterizeSteps`, `noiseLevel` | `spaceDistortion`, `colorMutation`, `proceduralNoise` |
-| Time | `timeScale` | Scales `u_time` (R3F clock or export override) for melt, grain, and duotone LFO |
+| Area | Store / keys | Shader |
+|------|----------------|--------|
+| Background | `layerEffects.background` | Prefix **`L0`** |
+| Decal | `layerEffects.decal`, `decal*` params, `linkDecalToMath`, `decalBackgroundLumaMask` | Prefix **`L1`**, decal sample + tint stack |
+| Text (≤4) | `textLayers`, `textLayerEffects`, `linkTextToMath`, placement | Prefixes **`T0`–`T3`**, rasterized canvas textures |
 
-**Localized masking (center / radius)**
+**Decal extras:** **`decalBackgroundLumaMask`** blends from normal alpha-over toward **multiplying the shaded background by raw decal luminance** (shader uses decal RGB before L1 shading for that branch).
 
-- **Sliders:** `maskCenterX`, `maskCenterY`, `maskRadius`
-- **Shader:** Radial weight on **`baseUV`** via `smoothstep` around `u_maskCenter` and `u_maskRadius`. That mask **blends** the twirled UV with the undistorted UV so warp is localized, not full-frame only.
+### Presets (`src/lib/preset/`)
 
-**Warp (twirl)**
-
-- **Slider:** `twirlIntensity`
-- **Shader:** `applyTwirl` rotates UVs around the mask center; strength is gated by the mask above.
-
-**Pro color engine (duotone + LFO)**
-
-- **Controls:** `colorA`, `colorB` (pickers), `duotoneBlend`, **Color Cycle Speed** (`colorCycleSpeed`, UI range 0–5)
-- **Uniforms:** `u_duotoneBlend`, `u_colorCycleSpeed`
-- **Shader:** **`applyDuotone`** maps image luminance to a mix of `u_colorA` / `u_colorB`. A sine LFO, **`sin(u_time * u_colorCycleSpeed)`**, offsets that mix coordinate (scaled and clamped) so highlights and shadows **shift between the two inks** over time. When **`colorCycleSpeed` is 0**, `u_time * 0` yields no offset—duotone is **static** aside from `duotoneBlend`.
-
-**Textures (halftone / scanlines)**
-
-- **Sliders:** `halftoneIntensity`, `scanlineIntensity`
-- **Uniforms:** `u_halftone`, `u_scanline`
-- **Shader:** **`applyHalftone`** and **`applyScanlines`** run on RGB **after duotone, before grain**, using **`finalUV`** and **`u_resolution.y`** as the resolution scale so the pattern tracks output size.
+- **Current schema:** **`PRESET_SCHEMA_VERSION` = 2** — embeds **`synth`** (`SynthParams` + `textLayers` + selection + `textLayerEffects`), **`layerEffects`**, **`imageResolution`**, **`viewport`**, **`baseTimeSeconds`**, optional **base64 PNG `assets`** (background/decal).
+- **v1 presets** (`LegacySynthParamsV1`) are still **validated and hydrated** (`applySynthPreset` → versioned apply).
+- **Stack panel:** copy JSON to clipboard, download `synth-preset.json`, file import with validation (**`PresetValidationError`** UX), toggle **include embedded images**.
+- **`gatherPresetExportInput`** / **`buildPreset`** / **`hydrate`** — round-trip authoring.
 
 ### Export
 
-- **PNG:** Reads the WebGL `<canvas>`, draws to an offscreen 2D canvas (optional scale; default export uses **1.5×** in `StackPanel`), triggers download (`exportImage.ts`). Depends on **`preserveDrawingBuffer: true`**.
-- **WebM loop (synced):** `exportLoopWebm` uses **`MediaRecorder`** + `captureStream`. Each frame it sets **`window.__SYNTH_EXPORT_TIME__`** to the export timeline; **`SynthMaterial`** drives **`u_time`** from that value (× `timeScale`) while present, so the recorded loop matches the deterministic clock. A **`finally`** block **deletes** the property after capture so live preview returns to the R3F clock.
+- **PNG:** `exportCanvasPng` draws WebGL canvas to 2D (default **1.5×** scale in **`StackPanel`**) → download (`exportImage.ts`). Requires **`preserveDrawingBuffer`**.
+- **WebM:** **`exportLoopWebm`** (`MediaRecorder` + `captureStream`), timeline via **`__SYNTH_EXPORT_TIME__`**, **`finally`** cleanup.
 
 ### Shell UX
 
-- Right **Stack** panel: upload, sliders, export; **GSAP** slide off-screen with **Hide** / floating **Open Stack**.
-- **@react-three/drei** `OrthographicCamera` with `makeDefault` + manual frustum matching the 2×2 plane.
+- Right **Stack** panel: tabs, uploads, sliders, presets, PNG/WebM; **GSAP** slide + **Hide** / floating **Open Stack**.
+- **`App.tsx`:** full-height canvas + fixed-width aside + overlay open button when panel hidden.
 
 ---
 
 ## Constraints & Gotchas (for AI / contributors)
 
-- **Single full-screen effect:** No multi-pass compositor or separate layer stack — localized masking and all color/texture steps still live in **one** fragment program.
-- **Export coupling:** PNG/WebM grab `document.querySelector("canvas")` — assumes **one** prominent canvas (fragile if the DOM gains more canvases).
-- **Debug logging:** `useSynthStore` / `UploadButton` use `DEBUG = true` console noise; tune before production polish.
+- **Single draw pass:** Compositing is **not** a multi-pass framebuffer stack; complexity is **in one fragment shader** with duplicated uniform banks per logical layer.
+- **Export / queries:** PNG, WebM, and preset helpers use **`document.querySelector("canvas")`** — brittle if multiple canvases appear.
+- **Debug logging:** **`useSynthStore`** and **`UploadButton`** ship with **`DEBUG = true`** console noise (`SynthMaterial` debug is **`false`**); tighten before shipping a quiet build.
 
 ---
 
 ## Future direction
 
-Possible next steps (not implemented here): **audio reactivity** (FFT or envelope driving uniforms or additional LFO targets), richer **texture / print models** or multi-input blending, **multi-pass** or layer-style compositing, and export options (codec, duration UI, optional audio sync).
+Same product themes as before: **audio reactivity**, richer blending / multi-pass options, codec and duration UX for capture, optional audio-synced export — not prerequisites for the current single-pass architecture.
 
 ---
 
@@ -133,11 +130,14 @@ npm run lint     # ESLint
 | Area | Primary files |
 |------|----------------|
 | App layout / Canvas | `src/App.tsx` |
-| Global state | `src/store/useSynthStore.ts` |
-| R3F scene | `src/webgl/SynthCanvas.tsx` |
+| Global store | `src/store/useSynthStore.ts` |
+| Per-layer defaults & types | `src/store/layerEffects.ts`, `src/store/textLayers.ts` |
+| R3F scene | `src/webgl/SynthCanvas.tsx` (`SynthScene`) |
 | Shader material + uniforms | `src/webgl/materials/SynthMaterial.tsx` |
 | GLSL | `src/webgl/shaders/vertex.glsl`, `src/webgl/shaders/fragment.glsl` |
-| Upload | `src/components/UploadButton.tsx` |
-| Controls + export triggers | `src/components/controls/StackPanel.tsx`, `SliderControl.tsx` |
+| Upload | `src/components/UploadButton.tsx`, `src/utils/decalTexture.ts` |
+| Controls / preset + export triggers | `src/components/controls/StackPanel.tsx`, `LayerEffectControls.tsx`, `SliderControl.tsx` |
+| Text raster helpers | `src/utils/textUtils.ts` |
+| Presets | `src/lib/preset/*.ts` |
 | PNG export | `src/lib/export/exportImage.ts` |
 | WebM capture | `src/lib/export/exportLoopWebm.ts` |

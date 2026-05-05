@@ -10,14 +10,26 @@ type LayerSliderProps = {
   min: number;
   max: number;
   step?: number;
+  /** When set with `layer="text"`, edits that sublayer's unlinked effect bundle. */
+  textSublayerId?: string;
 };
 
-function LayerSlider({ layer, param, label, min, max, step = 0.01 }: LayerSliderProps) {
-  const value = useSynthStore((s) => s.layerEffects[layer][param]) as number;
+function LayerSlider({ layer, param, label, min, max, step = 0.01, textSublayerId }: LayerSliderProps) {
+  const value = useSynthStore((s) => {
+    if (layer === "text" && textSublayerId) {
+      return (s.textLayerEffects[textSublayerId]?.[param] ?? s.layerEffects.text[param]) as number;
+    }
+    return s.layerEffects[layer][param] as number;
+  });
   const setLayerEffect = useSynthStore((s) => s.setLayerEffect);
+  const setTextLayerEffect = useSynthStore((s) => s.setTextLayerEffect);
 
   const push = (next: number) => {
-    setLayerEffect(layer, param, next as LayerEffectParams[typeof param]);
+    if (layer === "text" && textSublayerId) {
+      setTextLayerEffect(textSublayerId, param, next as LayerEffectParams[typeof param]);
+    } else {
+      setLayerEffect(layer, param, next as LayerEffectParams[typeof param]);
+    }
   };
 
   return (
@@ -42,43 +54,67 @@ function LayerSlider({ layer, param, label, min, max, step = 0.01 }: LayerSlider
 
 type LayerEffectControlsProps = {
   layer: LayerId;
+  /** When `layer` is `text`, targets `textLayerEffects[id]` instead of `layerEffects.text`. */
+  textSublayerId?: string;
 };
 
 /** Full melt / mask / duotone / texture stack for one compositing layer (background, decal, or text). */
-export function LayerEffectControls({ layer }: LayerEffectControlsProps) {
-  const colorA = useSynthStore((s) => s.layerEffects[layer].colorA);
-  const colorB = useSynthStore((s) => s.layerEffects[layer].colorB);
+export function LayerEffectControls({ layer, textSublayerId }: LayerEffectControlsProps) {
+  const colorA = useSynthStore((s) => {
+    if (layer === "text" && textSublayerId) {
+      return s.textLayerEffects[textSublayerId]?.colorA ?? s.layerEffects.text.colorA;
+    }
+    return s.layerEffects[layer].colorA;
+  });
+  const colorB = useSynthStore((s) => {
+    if (layer === "text" && textSublayerId) {
+      return s.textLayerEffects[textSublayerId]?.colorB ?? s.layerEffects.text.colorB;
+    }
+    return s.layerEffects[layer].colorB;
+  });
   const setLayerEffect = useSynthStore((s) => s.setLayerEffect);
+  const setTextLayerEffect = useSynthStore((s) => s.setTextLayerEffect);
+
+  const pushColor = (key: "colorA" | "colorB", v: string) => {
+    if (layer === "text" && textSublayerId) {
+      setTextLayerEffect(textSublayerId, key, v);
+    } else {
+      setLayerEffect(layer, key, v);
+    }
+  };
+
+  const title =
+    layer === "text" && textSublayerId ? "Effects — text (custom)" : `Effects — ${layer}`;
+
+  const sliderProps = { layer, textSublayerId } as const;
 
   return (
     <>
-      <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
-        Effects — {layer}
-      </p>
-      <LayerSlider layer={layer} param="meltIntensity" label="Melt Intensity" min={0} max={1} />
-      <LayerSlider layer={layer} param="colorBleed" label="Color Bleed" min={0} max={1} />
-      <LayerSlider layer={layer} param="noiseLevel" label="Noise Level" min={0} max={0.5} />
+      <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">{title}</p>
+      <LayerSlider {...sliderProps} param="meltIntensity" label="Melt Intensity" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="colorBleed" label="Color Bleed" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="noiseLevel" label="Noise Level" min={0} max={0.5} />
       <LayerSlider
-        layer={layer}
+        {...sliderProps}
         param="posterizeSteps"
         label="Posterize Steps"
         min={2}
         max={24}
         step={1}
       />
-      <LayerSlider layer={layer} param="timeScale" label="Time Scale" min={0} max={3} />
+      <LayerSlider {...sliderProps} param="timeScale" label="Time Scale" min={0} max={3} />
 
       <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
         Mask
       </p>
-      <LayerSlider layer={layer} param="maskCenterX" label="Mask Center X" min={0} max={1} />
-      <LayerSlider layer={layer} param="maskCenterY" label="Mask Center Y" min={0} max={1} />
-      <LayerSlider layer={layer} param="maskRadius" label="Mask Radius" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="maskCenterX" label="Mask Center X" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="maskCenterY" label="Mask Center Y" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="maskRadius" label="Mask Radius" min={0} max={1} />
 
       <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
         Warp
       </p>
-      <LayerSlider layer={layer} param="twirlIntensity" label="Twirl Intensity" min={-20} max={20} />
+      <LayerSlider {...sliderProps} param="twirlIntensity" label="Twirl Intensity" min={-20} max={20} />
 
       <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
         Duotone
@@ -89,7 +125,7 @@ export function LayerEffectControls({ layer }: LayerEffectControlsProps) {
           type="color"
           className="h-9 w-full cursor-pointer border border-zinc-700 bg-zinc-900"
           value={colorA}
-          onChange={(e) => setLayerEffect(layer, "colorA", e.target.value)}
+          onChange={(e) => pushColor("colorA", e.target.value)}
         />
       </label>
       <label className="flex w-full flex-col gap-2 text-xs uppercase tracking-wide">
@@ -98,12 +134,12 @@ export function LayerEffectControls({ layer }: LayerEffectControlsProps) {
           type="color"
           className="h-9 w-full cursor-pointer border border-zinc-700 bg-zinc-900"
           value={colorB}
-          onChange={(e) => setLayerEffect(layer, "colorB", e.target.value)}
+          onChange={(e) => pushColor("colorB", e.target.value)}
         />
       </label>
-      <LayerSlider layer={layer} param="duotoneBlend" label="Duotone Blend" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="duotoneBlend" label="Duotone Blend" min={0} max={1} />
       <LayerSlider
-        layer={layer}
+        {...sliderProps}
         param="colorCycleSpeed"
         label="Color Cycle Speed"
         min={0}
@@ -113,8 +149,8 @@ export function LayerEffectControls({ layer }: LayerEffectControlsProps) {
       <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
         Textures
       </p>
-      <LayerSlider layer={layer} param="halftoneIntensity" label="Halftone Intensity" min={0} max={1} />
-      <LayerSlider layer={layer} param="scanlineIntensity" label="Scanline Intensity" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="halftoneIntensity" label="Halftone Intensity" min={0} max={1} />
+      <LayerSlider {...sliderProps} param="scanlineIntensity" label="Scanline Intensity" min={0} max={1} />
     </>
   );
 }

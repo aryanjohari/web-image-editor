@@ -1,0 +1,76 @@
+import {
+  IDEA_ACID_NOIR,
+  IDEA_ARCHIVE,
+  IDEA_GLITCH,
+} from "@/data/demoIdeasPresets";
+import { applySynthPreset } from "@/lib/preset/hydrate";
+import type { SynthPresetV2 } from "@/lib/preset/types";
+import { validatePreset } from "@/lib/preset/validate";
+import { useSynthStore } from "@/store/useSynthStore";
+
+const DEMOS = [
+  ["Acid Noir", IDEA_ACID_NOIR],
+  ["Glitch Core", IDEA_GLITCH],
+  ["Archive", IDEA_ARCHIVE],
+] as const satisfies ReadonlyArray<readonly [string, SynthPresetV2]>;
+
+export type IdeasGalleryProps = {
+  /** Tighter layout for the top-left Ideas details menu */
+  variant?: "default" | "dropdown";
+};
+
+export function IdeasGallery({ variant = "default" }: IdeasGalleryProps) {
+  const resetSynthLookToDefaults = useSynthStore((s) => s.resetSynthLookToDefaults);
+
+  const apply = async (label: string, raw: SynthPresetV2) => {
+    try {
+      const preset = validatePreset(raw);
+      await applySynthPreset(preset);
+    } catch (e) {
+      console.error("[IdeasGallery]", label, e);
+    }
+  };
+
+  const isDropdown = variant === "dropdown";
+
+  return (
+    <section aria-label="Example looks" className={`flex flex-col ${isDropdown ? "gap-2" : "gap-3"}`}>
+      {!isDropdown ? (
+        <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Ideas</p>
+      ) : null}
+      <div className={isDropdown ? "flex flex-col gap-1.5" : "columns-2 gap-x-3 sm:columns-3"}>
+        {DEMOS.map(([label, preset]) => (
+          <button
+            key={label}
+            type="button"
+            className={`w-full rounded border border-white/25 text-left text-[10px] uppercase tracking-[0.18em] text-zinc-200 transition hover:bg-white hover:text-black ${
+              isDropdown ? "px-2.5 py-2" : "mb-3 break-inside-avoid px-3 py-3.5"
+            }`}
+            onClick={() => void apply(label, preset)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <button
+        type="button"
+        className={`w-full rounded border border-dashed border-white/35 text-[10px] uppercase tracking-[0.18em] text-zinc-400 transition hover:border-white hover:bg-white/5 hover:text-zinc-100 ${
+          isDropdown ? "px-2.5 py-2" : "px-3 py-2.5"
+        }`}
+        onClick={() => resetSynthLookToDefaults()}
+      >
+        Reset look
+      </button>
+      {!isDropdown ? (
+        <p className="text-[10px] leading-relaxed text-zinc-600">
+          One tap applies shader + typography; your background/decal uploads stay intact unless you import a preset with
+          embedded images. Reset look restores default effects and one blank text layer without removing uploads.
+        </p>
+      ) : (
+        <p className="text-[9px] leading-relaxed text-zinc-500">
+          Applies looks; uploads stay unless a preset embeds images. Reset restores defaults, keeps uploads.
+        </p>
+      )}
+    </section>
+  );
+}

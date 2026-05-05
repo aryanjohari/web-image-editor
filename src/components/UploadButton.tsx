@@ -3,7 +3,7 @@ import { LinearFilter, SRGBColorSpace, TextureLoader } from "three";
 import { useSynthStore } from "@/store/useSynthStore";
 import { createProcessedDecalTexture } from "@/utils/decalTexture";
 
-const DEBUG = true;
+const DEBUG = false;
 
 export type UploadButtonProps = {
   /** Background slot (full-frame image) vs sticker-book decal slot. */
@@ -14,7 +14,10 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const setImageTexture = useSynthStore((state) => state.setImageTexture);
   const setDecalTexture = useSynthStore((state) => state.setDecalTexture);
+  const imageTexture = useSynthStore((state) => state.imageTexture);
+  const decalTexture = useSynthStore((state) => state.decalTexture);
   const applyTexture = variant === "decal" ? setDecalTexture : setImageTexture;
+  const hasSlot = variant === "decal" ? decalTexture != null : imageTexture != null;
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -92,22 +95,41 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
     );
   };
 
+  const clearSlot = () => {
+    if (variant === "decal") {
+      setDecalTexture(null);
+    } else {
+      setImageTexture(null);
+    }
+  };
+
   return (
-    <div className="flex w-full gap-2">
-      <input
-        ref={inputRef}
-        type="file"
-        accept={variant === "decal" ? "image/png,image/webp" : "image/png,image/jpeg,image/webp"}
-        className="hidden"
-        onChange={onFileChange}
-      />
-      <button
-        type="button"
-        className="w-full border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => inputRef.current?.click()}
-      >
-        {variant === "decal" ? "Upload Decal" : "Upload Image"}
-      </button>
+    <div className="flex w-full flex-col gap-2">
+      <div className="flex w-full gap-2">
+        <input
+          ref={inputRef}
+          type="file"
+          accept={variant === "decal" ? "image/png,image/webp" : "image/png,image/jpeg,image/webp"}
+          className="hidden"
+          onChange={onFileChange}
+        />
+        <button
+          type="button"
+          className="min-w-0 flex-1 border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
+          onClick={() => inputRef.current?.click()}
+        >
+          {variant === "decal" ? "Upload Decal" : "Upload Image"}
+        </button>
+        {hasSlot ? (
+          <button
+            type="button"
+            className="shrink-0 border border-white/35 px-2 py-2 text-[10px] uppercase tracking-wide text-zinc-400 transition hover:border-white hover:text-white"
+            onClick={clearSlot}
+          >
+            Remove
+          </button>
+        ) : null}
+      </div>
     </div>
   );
 }

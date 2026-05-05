@@ -1,18 +1,17 @@
 import { Canvas } from "@react-three/fiber";
 import { OrthographicCamera } from "@react-three/drei";
-import { StackPanel } from "@/components/controls/StackPanel";
-import { useSynthStore } from "@/store/useSynthStore";
+import { ControlsDrawer } from "@/components/ControlsDrawer";
+import { IdeasGallery } from "@/components/IdeasGallery";
+import { SYNTH_CANVAS_ID } from "@/constants/synthCanvas";
 import { SynthScene } from "@/webgl/SynthCanvas";
 
 export default function App() {
-  const panelOpen = useSynthStore((state) => state.panelOpen);
-  const setPanelOpen = useSynthStore((state) => state.setPanelOpen);
-
   return (
-    <main className="relative flex h-screen w-screen min-h-0 min-w-0 overflow-hidden bg-black text-white">
-      <div className="relative h-full min-h-0 min-w-0 flex-1">
+    <main className="relative h-[100dvh] w-screen min-h-0 min-w-0 overflow-hidden bg-black text-white">
+      <div className="absolute inset-0 z-0">
         <Canvas
-          className="h-full w-full"
+          id={SYNTH_CANVAS_ID}
+          className="block h-full w-full touch-none"
           dpr={[1, 2]}
           gl={{ antialias: true, preserveDrawingBuffer: true }}
         >
@@ -31,19 +30,16 @@ export default function App() {
         </Canvas>
       </div>
 
-      <aside className="flex h-full min-h-0 w-[320px] shrink-0 flex-col overflow-hidden border-l border-white/20 bg-zinc-950/90">
-        <StackPanel />
-      </aside>
+      <details className="fixed left-3 top-3 z-[60] max-w-[min(calc(100vw-1.5rem),220px)] border border-white/35 bg-black/80 backdrop-blur-sm [&_summary::-webkit-details-marker]:hidden">
+        <summary className="cursor-pointer list-none px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white hover:bg-white/10">
+          Ideas
+        </summary>
+        <div className="max-h-[min(70dvh,28rem)] overflow-y-auto overflow-x-hidden border-t border-white/20 p-2">
+          <IdeasGallery variant="dropdown" />
+        </div>
+      </details>
 
-      {!panelOpen && (
-        <button
-          type="button"
-          className="absolute right-[328px] top-2 z-10 border border-white bg-black/70 px-2 py-1 text-[10px] uppercase tracking-[0.2em]"
-          onClick={() => setPanelOpen(true)}
-        >
-          Open Stack
-        </button>
-      )}
+      <ControlsDrawer />
     </main>
   );
 }

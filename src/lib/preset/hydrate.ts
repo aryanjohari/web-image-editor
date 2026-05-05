@@ -1,7 +1,9 @@
 import { LinearFilter, SRGBColorSpace, TextureLoader } from "three";
 import { createProcessedDecalTexture } from "@/utils/decalTexture";
+import { createTextLayer } from "@/store/textLayers";
 import { useSynthStore } from "@/store/useSynthStore";
-import type { SynthPresetV1 } from "./types";
+import type { SynthPresetAny, SynthPresetV1, SynthPresetV2 } from "./types";
+import { PRESET_SCHEMA_VERSION } from "./types";
 import { base64ToBlob } from "./assets";
 
 function loadBackgroundFromBlob(blob: Blob): Promise<void> {
@@ -28,35 +30,46 @@ function loadBackgroundFromBlob(blob: Blob): Promise<void> {
   });
 }
 
-/**
- * Apply a validated v1 preset: JSON params + optional embedded images.
- */
-export async function applySynthPresetV1(preset: SynthPresetV1): Promise<void> {
+function applySynthFieldsFromV2(preset: SynthPresetV2): void {
+  const store = useSynthStore.getState();
+  const { synth } = preset;
+  store.replaceLayerEffects(structuredClone(preset.layerEffects));
+  store.setParam("decalScale", synth.decalScale);
+  store.setParam("decalOffsetX", synth.decalOffsetX);
+  store.setParam("decalOffsetY", synth.decalOffsetY);
+  store.setParam("decalBackgroundLumaMask", synth.decalBackgroundLumaMask ?? 0);
+  store.setParam("linkDecalToMath", synth.linkDecalToMath);
+  store.setParam("linkTextToMath", synth.linkTextToMath);
+  store.setTextLayers(structuredClone(synth.textLayers));
+  const ids = new Set(synth.textLayers.map((l) => l.id));
+  const selected =
+    synth.selectedTextLayerId && ids.has(synth.selectedTextLayerId)
+      ? synth.selectedTextLayerId
+      : (synth.textLayers[0]?.id ?? "");
+  store.setSelectedTextLayerId(selected);
+  store.setTextLayerEffects(structuredClone(synth.textLayerEffects));
+}
+
+function hasPackedImageAssets(preset: SynthPresetV2): boolean {
+  const { assets } = preset;
+  if (!assets) return false;
+  const bg = typeof assets.background?.dataBase64 === "string" && assets.background.dataBase64.length > 0;
+  const dec = typeof assets.decal?.dataBase64 === "string" && assets.decal.dataBase64.length > 0;
+  return bg || dec;
+}
+
+async function loadPresetAssets(preset: SynthPresetV2): Promise<void> {
   const store = useSynthStore.getState();
 
-  store.replaceLayerEffects(structuredClone(preset.layerEffects));
-
-  for (const key of [
-    "overlayText",
-    "textColor",
-    "textSize",
-    "decalScale",
-    "decalOffsetX",
-    "decalOffsetY",
-    "linkDecalToMath",
-    "textOffsetX",
-    "textOffsetY",
-    "textScale",
-    "linkTextToMath",
-  ] as const) {
-    store.setParam(key, preset.synth[key]);
+  if (!hasPackedImageAssets(preset)) {
+    return;
   }
 
   store.setImageTexture(null);
   store.setDecalTexture(null);
   store.setImageResolution(preset.imageResolution);
 
-  const { assets } = preset;
+  const assets = preset.assets;
   if (!assets) return;
 
   if (assets.background) {
@@ -71,5 +84,59 @@ export async function applySynthPresetV1(preset: SynthPresetV1): Promise<void> {
     if (decalTex) {
       store.setDecalTexture(decalTex);
     }
+  }
+}
+
+/**
+ * Apply a validated v1 preset: JSON params + optional embedded images.
+ * Migrates legacy single-string text into one `TextLayer`.
+ */
+export async function applySynthPresetV1(preset: SynthPresetV1): Promise<void> {
+  const s = preset.synth;
+  const layer = createTextLayer({
+    text: s.overlayText,
+    color: s.textColor,
+    fontSize: s.textSize,
+    offsetX: s.textOffsetX,
+    offsetY: s.textOffsetY,
+    scale: s.textScale,
+    effectsLinked: true,
+  });
+
+  const v2: SynthPresetV2 = {
+    presetSchemaVersion: PRESET_SCHEMA_VERSION,
+    engineVersion: preset.engineVersion,
+    synth: {
+      decalScale: s.decalScale,
+      decalOffsetX: s.decalOffsetX,
+      decalOffsetY: s.decalOffsetY,
+      decalBackgroundLumaMask: 0,
+      linkDecalToMath: s.linkDecalToMath,
+      linkTextToMath: s.linkTextToMath,
+      textLayers: [layer],
+      selectedTextLayerId: layer.id,
+      textLayerEffects: {},
+    },
+    layerEffects: preset.layerEffects,
+    imageResolution: preset.imageResolution,
+    viewport: preset.viewport,
+    baseTimeSeconds: preset.baseTimeSeconds,
+    assets: preset.assets,
+  };
+
+  await applySynthPresetV2(v2);
+}
+
+/** Apply a validated v2 preset. */
+export async function applySynthPresetV2(preset: SynthPresetV2): Promise<void> {
+  applySynthFieldsFromV2(preset);
+  await loadPresetAssets(preset);
+}
+
+export async function applySynthPreset(preset: SynthPresetAny): Promise<void> {
+  if (preset.presetSchemaVersion === 1) {
+    await applySynthPresetV1(preset);
+  } else {
+    await applySynthPresetV2(preset);
   }
 }

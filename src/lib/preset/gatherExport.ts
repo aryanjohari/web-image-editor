@@ -23,17 +23,15 @@ export async function gatherPresetExportInput(
 
   return {
     synth: {
-      overlayText: s.overlayText,
-      textColor: s.textColor,
-      textSize: s.textSize,
       decalScale: s.decalScale,
       decalOffsetX: s.decalOffsetX,
       decalOffsetY: s.decalOffsetY,
+      decalBackgroundLumaMask: s.decalBackgroundLumaMask,
       linkDecalToMath: s.linkDecalToMath,
-      textOffsetX: s.textOffsetX,
-      textOffsetY: s.textOffsetY,
-      textScale: s.textScale,
       linkTextToMath: s.linkTextToMath,
+      textLayers: structuredClone(s.textLayers),
+      selectedTextLayerId: s.selectedTextLayerId,
+      textLayerEffects: structuredClone(s.textLayerEffects),
     },
     layerEffects: s.layerEffects,
     imageResolution: { ...s.imageResolution },
