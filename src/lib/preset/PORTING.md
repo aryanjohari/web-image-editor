@@ -37,4 +37,6 @@ applyPresetPatch({ layerEffects: { background: { meltIntensity: 0.5 } } });
 
 Apply style first, then patch. Both preserve uploads.
 
+**Landing mood** — `applyMoodFromText` on `/` runs style + patch from keyword mapping; never reloads the hero texture.
+
 **Note:** Ideas catalog presets are style-only. Stack import may be full (`applySynthPreset`).

@@ -41,7 +41,7 @@ export const PRESET_CATALOG: PresetCatalogEntry[] = [
   {
     id: "archive",
     label: "Archive",
-    keywords: ["archival", "warm", "halftone", "print", "offset", "calm"],
+    keywords: ["archival", "vintage", "warm", "halftone", "print", "offset", "calm"],
     preset: IDEA_ARCHIVE,
     description: "Slow halftone posterization with warm paper tones.",
   },

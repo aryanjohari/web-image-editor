@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { MoodInput } from "@/components/MoodInput";
 import { SynthCanvasView } from "@/components/SynthCanvasView";
 import { useLandingHero } from "@/hooks/useLandingHero";
 
@@ -17,12 +18,15 @@ export function LandingShell() {
         <p className="pointer-events-none text-[9px] uppercase tracking-[0.18em] text-white/40">
           Case study coming
         </p>
-        <Link
-          to="/lab"
-          className="pointer-events-auto border border-white/35 bg-black/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm transition hover:bg-white hover:text-black"
-        >
-          Open Lab
-        </Link>
+        <div className="flex flex-col items-start gap-2">
+          <MoodInput disabled={isLoading} />
+          <Link
+            to="/lab"
+            className="pointer-events-auto border border-white/35 bg-black/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm transition hover:bg-white hover:text-black"
+          >
+            Open Lab
+          </Link>
+        </div>
       </div>
     </main>
   );

@@ -10,7 +10,7 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 | Path | Purpose |
 |------|---------|
-| **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
+| **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). **Mood input** maps typed keywords to Ideas presets (style + optional patch; hero image stays). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
 | **`/lab`** | **Lab** — full editor (Ideas, Stack, uploads, presets, export) |
 | **`/story`** | **Case study** — static explainer (coming in a later phase) |
 
