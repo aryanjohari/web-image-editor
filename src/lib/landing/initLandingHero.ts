@@ -1,7 +1,7 @@
 import { LinearFilter, SRGBColorSpace, TextureLoader } from "three";
 import { LANDING_HOME_PRESET } from "@/data/landingHomePreset";
-import { applySynthPreset } from "@/lib/preset/hydrate";
-import { validatePreset } from "@/lib/preset/validate";
+import { applyStylePreset } from "@/lib/preset";
+import { validatePresetV2 } from "@/lib/preset/validate";
 import { useSynthStore } from "@/store/useSynthStore";
 
 export const HERO_IMAGE_URL = "/demo/hero.jpg";
@@ -26,8 +26,8 @@ function loadHeroTexture(url: string): Promise<void> {
 }
 
 /**
- * Landing-only init: clear decal, load hero background, then apply preset.
- * Texture before preset — preset has no assets so loadPresetAssets is a no-op.
+ * Landing-only init: clear decal, load hero background, then apply style preset.
+ * Texture before preset — style apply never loads embedded assets.
  */
 export async function initLandingHero(): Promise<void> {
   const store = useSynthStore.getState();
@@ -36,6 +36,6 @@ export async function initLandingHero(): Promise<void> {
 
   await loadHeroTexture(HERO_IMAGE_URL);
 
-  const preset = validatePreset(LANDING_HOME_PRESET);
-  await applySynthPreset(preset);
+  const preset = validatePresetV2(LANDING_HOME_PRESET);
+  applyStylePreset(preset);
 }

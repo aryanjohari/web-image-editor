@@ -2,6 +2,7 @@ import { LinearFilter, SRGBColorSpace, TextureLoader } from "three";
 import { createProcessedDecalTexture } from "@/utils/decalTexture";
 import { createTextLayer } from "@/store/textLayers";
 import { useSynthStore } from "@/store/useSynthStore";
+import { applySynthFieldsFromV2 } from "./apply";
 import type { SynthPresetAny, SynthPresetV1, SynthPresetV2 } from "./types";
 import { PRESET_SCHEMA_VERSION } from "./types";
 import { base64ToBlob } from "./assets";
@@ -28,26 +29,6 @@ function loadBackgroundFromBlob(blob: Blob): Promise<void> {
       },
     );
   });
-}
-
-function applySynthFieldsFromV2(preset: SynthPresetV2): void {
-  const store = useSynthStore.getState();
-  const { synth } = preset;
-  store.replaceLayerEffects(structuredClone(preset.layerEffects));
-  store.setParam("decalScale", synth.decalScale);
-  store.setParam("decalOffsetX", synth.decalOffsetX);
-  store.setParam("decalOffsetY", synth.decalOffsetY);
-  store.setParam("decalBackgroundLumaMask", synth.decalBackgroundLumaMask ?? 0);
-  store.setParam("linkDecalToMath", synth.linkDecalToMath);
-  store.setParam("linkTextToMath", synth.linkTextToMath);
-  store.setTextLayers(structuredClone(synth.textLayers));
-  const ids = new Set(synth.textLayers.map((l) => l.id));
-  const selected =
-    synth.selectedTextLayerId && ids.has(synth.selectedTextLayerId)
-      ? synth.selectedTextLayerId
-      : (synth.textLayers[0]?.id ?? "");
-  store.setSelectedTextLayerId(selected);
-  store.setTextLayerEffects(structuredClone(synth.textLayerEffects));
 }
 
 function hasPackedImageAssets(preset: SynthPresetV2): boolean {

@@ -22,5 +22,12 @@ export {
 } from "./validate";
 export { readCanvasViewportSnapshot, getLastBaseTimeSeconds } from "./snapshot";
 export { encodeTextureToPngAsset, base64ToBlob } from "./assets";
+export {
+  applyStylePreset,
+  applyPresetPatch,
+  applySynthFieldsFromV2,
+  mergeLayerEffectsPatch,
+  type PresetPatch,
+} from "./apply";
 export { applySynthPreset, applySynthPresetV1, applySynthPresetV2 } from "./hydrate";
 export { gatherPresetExportInput } from "./gatherExport";

@@ -101,6 +101,7 @@ The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`l
 
 - **Current schema:** **`PRESET_SCHEMA_VERSION` = 2** — embeds **`synth`** (`SynthParams` + `textLayers` + selection + `textLayerEffects`), **`layerEffects`**, **`imageResolution`**, **`viewport`**, **`baseTimeSeconds`**, optional **base64 PNG `assets`** (background/decal).
 - **v1 presets** (`LegacySynthParamsV1`) are still **validated and hydrated** (`applySynthPreset` → versioned apply).
+- **Apply modes:** **`applyStylePreset`** (Ideas, landing — synth fields only, uploads preserved), **`applySynthPreset`** (Stack import — may load embedded images), **`applyPresetPatch`** (runtime partial merge for future mood/AI; see [`apply.ts`](src/lib/preset/apply.ts)).
 - **Stack panel:** copy JSON to clipboard, download `synth-preset.json`, file import with validation (**`PresetValidationError`** UX), toggle **include embedded images**.
 - **Ideas catalog:** [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) — **10 style-only looks** (Acid Noir, Glitch Core, Archive, Soft Bloom, Xerox Punk, Cold Scan, Sunset Melt, Strobe Haze, Tape Worn, Raw Zine). Single registry for the Ideas gallery and future mood mapping; landing hero preset stays separate in [`src/data/landingHomePreset.ts`](src/data/landingHomePreset.ts).
 - **`gatherPresetExportInput`** / **`buildPreset`** / **`hydrate`** — round-trip authoring.

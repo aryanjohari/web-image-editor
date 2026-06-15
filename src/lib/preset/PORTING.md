@@ -13,3 +13,28 @@ The JSON preset is **inputs only**. It does not include shaders, Three.js materi
 5. **Playback** — Apply `viewport` (drawing buffer vs CSS size / DPR), `imageResolution`, and `baseTimeSeconds` the same way as here so letterboxing, 2D text layout, and `u_*_t` (layer time × `timeScale`) match.
 
 6. **Optional assets** — If the preset omits `assets`, upload background and decal images in the UI; `imageResolution` and transforms still apply once images are loaded.
+
+## Preset apply modes
+
+Three explicit apply paths live in [`apply.ts`](apply.ts) and [`hydrate.ts`](hydrate.ts):
+
+| Mode | Function | Touches uploads? | Use case |
+|------|----------|------------------|----------|
+| **Full** | `applySynthPreset` | Yes, if preset has `assets` | Stack JSON import (with embedded images) |
+| **Style** | `applyStylePreset` | **Never** | Ideas gallery, landing hero, mood base preset (Phase 5) |
+| **Patch** | `applyPresetPatch` | **Never** | Partial tweaks, mood nudges, AI output (Phase 5/8) |
+
+- **Full** — `applySynthFieldsFromV2` then `loadPresetAssets`. When embedded images are present, clears and replaces `imageTexture` / `decalTexture`.
+- **Style** — `applySynthFieldsFromV2` only. Ignores `assets` even if present. User uploads stay intact.
+- **Patch** — shallow merge into current store state (`layerEffects`, synth scalars, optional `textLayers` full replace, per-id `textLayerEffects` merge). Never touches textures.
+
+**Phase 5 composition** (style baseline + patch nudge):
+
+```ts
+applyStylePreset(basePresetFromCatalog);
+applyPresetPatch({ layerEffects: { background: { meltIntensity: 0.5 } } });
+```
+
+Apply style first, then patch. Both preserve uploads.
+
+**Note:** Ideas catalog presets are style-only. Stack import may be full (`applySynthPreset`).

@@ -1,7 +1,7 @@
 import { PRESET_CATALOG } from "@/data/presetCatalog";
-import { applySynthPreset } from "@/lib/preset/hydrate";
+import { applyStylePreset } from "@/lib/preset";
 import type { SynthPresetV2 } from "@/lib/preset/types";
-import { validatePreset } from "@/lib/preset/validate";
+import { validatePresetV2 } from "@/lib/preset/validate";
 import { useSynthStore } from "@/store/useSynthStore";
 
 export type IdeasGalleryProps = {
@@ -14,8 +14,8 @@ export function IdeasGallery({ variant = "default" }: IdeasGalleryProps) {
 
   const apply = async (label: string, raw: SynthPresetV2) => {
     try {
-      const preset = validatePreset(raw);
-      await applySynthPreset(preset);
+      const preset = validatePresetV2(raw);
+      applyStylePreset(preset);
     } catch (e) {
       console.error("[IdeasGallery]", label, e);
     }
