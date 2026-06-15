@@ -16,6 +16,8 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 Unknown paths redirect to **`/`**. Product vision and phased plan: [PROJECT.md](PROJECT.md).
 
+**GPU pipeline & formula glossary:** [MATH.md](MATH.md)
+
 ---
 
 ## Overview
