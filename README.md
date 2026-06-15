@@ -10,7 +10,7 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 | Path | Purpose |
 |------|---------|
-| **`/`** | **Landing** — full-screen canvas, minimal chrome, link to the lab |
+| **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
 | **`/lab`** | **Lab** — full editor (Ideas, Stack, uploads, presets, export) |
 | **`/story`** | **Case study** — static explainer (coming in a later phase) |
 
@@ -112,7 +112,7 @@ The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`l
 ### Shell UX
 
 - Right **Stack** panel: tabs, uploads, sliders, presets, PNG/WebM; **GSAP** slide + **Hide** / floating **Open Stack**.
-- **`/`** landing shell: shared canvas only + link to **`/lab`**.
+- **`/`** landing shell: shared canvas + living hero (auto-loads demo image + preset on mount) + link to **`/lab`**. No Stack or Ideas.
 - **`/lab`** shell: Ideas menu + Stack drawer + shared canvas (`LandingShell` / `LabShell` in `src/shells/`).
 
 ---

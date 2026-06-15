@@ -51,7 +51,7 @@ This repo is evolving toward **one deploy, three routes** on the same WebGL engi
 
 | Route | Surface | Status |
 |-------|---------|--------|
-| **`/`** | **Landing** — full-viewport canvas with minimal chrome. Level 1 living hero and Level 2 mood layers are planned; Phase 1 ships canvas + link to the lab only. | Built in Phase 1 |
+| **`/`** | **Landing** — full-viewport living hero (demo image + preset on mount, GPU text, motion). Level 2 mood/AI planned. | Level 1 shipped |
 | **`/lab`** | **Lab** — the full editor today: Ideas menu, Stack drawer, uploads, presets, PNG/WebM export, canvas drag. | Built in Phase 1 |
 | **`/story`** | **Case study** — static explainer page for how the engine works (architecture, math, presets). | Documented now; UI in a later phase |
 
@@ -124,7 +124,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 **Documented behavior of this repo:**
 
 * **Local dev:** `npm run dev`; **production build:** `npm run build`.
-* **Single-page app today** — all editor UI on one URL. **Phase 1** splits **`/`** (landing) and **`/lab`** (full tool); **`/story`** remains documented only until a later phase.
+* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset); **`/lab`** is the full editor; **`/story`** remains documented only until a later phase.
 * **Background + optional decal + text** with drag placement rules described in the README.
 * **Ideas** gallery for one-click looks; **Reset look** for defaults **without** clearing uploads by default.
 * **Remove** on each upload row to clear **only** that slot.
@@ -132,7 +132,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 
 **Known limits (honest)**
 
-* **No client routing yet** — landing and lab routes are planned; see **Routes & product surfaces** above.
+* **Shared store across routes** — visiting **`/`** after **`/lab`** resets the canvas to the landing hero (lab uploads are not preserved when you return home).
 * **One main shader path** — fancy multi-pass pipelines (bloom chains, depth, etc.) are out of scope unless you extend the project.
 * **Browser and GPU dependent** — very old devices or strict WebGL limits may behave differently; export quality depends on the browser’s recorder where relevant.
 * **English-first UI**; no i18n layer.

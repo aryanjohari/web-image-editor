@@ -1,14 +1,21 @@
 import { Link } from "react-router-dom";
 import { SynthCanvasView } from "@/components/SynthCanvasView";
+import { useLandingHero } from "@/hooks/useLandingHero";
 
 export function LandingShell() {
+  const { isLoading } = useLandingHero();
+
   return (
     <main className="relative h-[100dvh] w-screen min-h-0 min-w-0 overflow-hidden bg-black text-white">
       <SynthCanvasView />
 
-      <div className="pointer-events-none fixed inset-0 z-[60] flex flex-col items-start justify-between p-3">
-        <p className="pointer-events-auto text-[10px] uppercase tracking-[0.22em] text-white/80">
-          The Algorithm Engine
+      <div
+        className={`pointer-events-none fixed inset-0 z-[60] flex flex-col items-start justify-between p-3 transition-opacity duration-300 ${
+          isLoading ? "opacity-70" : "opacity-100"
+        }`}
+      >
+        <p className="pointer-events-none text-[9px] uppercase tracking-[0.18em] text-white/40">
+          Case study coming
         </p>
         <Link
           to="/lab"
