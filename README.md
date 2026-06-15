@@ -18,6 +18,8 @@ Unknown paths redirect to **`/`**. Product vision and phased plan: [PROJECT.md](
 
 **GPU pipeline & formula glossary:** [MATH.md](MATH.md)
 
+**Static deploy / SPA:** `public/_redirects` sends all paths to `index.html` (Netlify). `npm run preview` also serves client routes after `npm run build`.
+
 ---
 
 ## Overview
@@ -110,7 +112,8 @@ The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`l
 ### Shell UX
 
 - Right **Stack** panel: tabs, uploads, sliders, presets, PNG/WebM; **GSAP** slide + **Hide** / floating **Open Stack**.
-- **`App.tsx`:** full-height canvas + fixed-width aside + overlay open button when panel hidden.
+- **`/`** landing shell: shared canvas only + link to **`/lab`**.
+- **`/lab`** shell: Ideas menu + Stack drawer + shared canvas (`LandingShell` / `LabShell` in `src/shells/`).
 
 ---
 
@@ -143,7 +146,8 @@ npm run lint     # ESLint
 
 | Area | Primary files |
 |------|----------------|
-| App layout / Canvas | `src/App.tsx` |
+| App routing | `src/App.tsx`, `src/main.tsx`, `src/shells/LandingShell.tsx`, `src/shells/LabShell.tsx` |
+| Shared canvas | `src/components/SynthCanvasView.tsx` |
 | Global store | `src/store/useSynthStore.ts` |
 | Per-layer defaults & types | `src/store/layerEffects.ts`, `src/store/textLayers.ts` |
 | R3F scene | `src/webgl/SynthCanvas.tsx` (`SynthScene`) |

@@ -127,7 +127,8 @@ export const useSynthStore = create<SynthState>((set) => ({
   removeTextLayer: (id) =>
     set((state) => {
       const textLayers = state.textLayers.filter((l) => l.id !== id);
-      const { [id]: _, ...restEffects } = state.textLayerEffects;
+      const restEffects = { ...state.textLayerEffects };
+      delete restEffects[id];
       let selectedTextLayerId = state.selectedTextLayerId;
       if (selectedTextLayerId === id) {
         selectedTextLayerId = textLayers[0]?.id ?? "";
@@ -147,7 +148,8 @@ export const useSynthStore = create<SynthState>((set) => ({
       );
       let nextEffects = { ...state.textLayerEffects };
       if (linked) {
-        const { [id]: _, ...rest } = nextEffects;
+        const rest = { ...nextEffects };
+        delete rest[id];
         nextEffects = rest;
       } else {
         nextEffects = {

@@ -3,16 +3,20 @@ import { type ThreeEvent, useThree } from "@react-three/fiber";
 import { SynthMaterial } from "@/webgl/materials/SynthMaterial";
 import { useSynthStore } from "@/store/useSynthStore";
 
+function setCanvasCursor(el: HTMLElement, cursor: string) {
+  el.style.cursor = cursor;
+}
+
 export function SynthScene() {
   const imageTexture = useSynthStore((state) => state.imageTexture);
-  const { gl } = useThree();
+  const domElement = useThree((state) => state.gl.domElement);
   const isDragging = useRef(false);
   const prevCanvas = useRef({ x: 0, y: 0 });
   const activePointerId = useRef<number | null>(null);
   const detachDragListenersRef = useRef<(() => void) | null>(null);
 
   useEffect(() => {
-    const el = gl.domElement;
+    const el = domElement;
     return () => {
       detachDragListenersRef.current?.();
       detachDragListenersRef.current = null;
@@ -22,21 +26,21 @@ export function SynthScene() {
       } catch {
         /* already released */
       }
-      el.style.cursor = "";
+      setCanvasCursor(el, "");
     };
-  }, [gl]);
+  }, [domElement]);
 
   const onPointerDown = (e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     detachDragListenersRef.current?.();
 
-    const el = gl.domElement;
+    const el = domElement;
     const rect = el.getBoundingClientRect();
     isDragging.current = true;
     activePointerId.current = e.pointerId;
     prevCanvas.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
     el.setPointerCapture(e.pointerId);
-    el.style.cursor = "grabbing";
+    setCanvasCursor(el, "grabbing");
 
     const onMove = (ev: PointerEvent) => {
       if (!isDragging.current || ev.pointerId !== activePointerId.current) return;
@@ -69,7 +73,7 @@ export function SynthScene() {
       isDragging.current = false;
       activePointerId.current = null;
       detach();
-      el.style.cursor = "";
+      setCanvasCursor(el, "");
       try {
         el.releasePointerCapture(ev.pointerId);
       } catch {
@@ -84,11 +88,11 @@ export function SynthScene() {
   };
 
   const onPointerEnter = () => {
-    if (!isDragging.current) gl.domElement.style.cursor = "grab";
+    if (!isDragging.current) setCanvasCursor(domElement, "grab");
   };
 
   const onPointerLeave = () => {
-    if (!isDragging.current) gl.domElement.style.cursor = "";
+    if (!isDragging.current) setCanvasCursor(domElement, "");
   };
 
   return (
