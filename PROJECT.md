@@ -99,7 +99,8 @@ There is **no hosted “API product”** here; it’s a front-end experience you
 
 ## Tests
 
-* **No automated test suite** ships in this repo today—quality is **manual try-it** (upload, preset, export) plus **`npm run lint`** and **`npm run build`** before you rely on a build.
+* **Vitest** (`npm test`) covers the preset contract: catalog validation (`validatePresetV2`), patch merge/apply (`mergeLayerEffectsPatch`, `applyPresetPatch`), mood keyword map (`mapMoodToPreset`), and semantic slider → patch mapping (`semanticSlidersToPatch`).
+* Also run **`npm run lint`** and **`npm run build`** before you rely on a build.
 
 ---
 

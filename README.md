@@ -140,7 +140,11 @@ npm run dev      # Vite dev server
 npm run build    # Typecheck + production bundle
 npm run preview  # Preview production build
 npm run lint     # ESLint
+npm test         # Vitest — preset contract (run once)
+npm run test:watch # Vitest watch mode
 ```
+
+Run `npm test` alongside `lint` and `build` before release.
 
 ---
 
