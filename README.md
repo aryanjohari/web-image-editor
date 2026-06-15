@@ -6,6 +6,18 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 ---
 
+## Routes
+
+| Path | Purpose |
+|------|---------|
+| **`/`** | **Landing** — full-screen canvas, minimal chrome, link to the lab |
+| **`/lab`** | **Lab** — full editor (Ideas, Stack, uploads, presets, export) |
+| **`/story`** | **Case study** — static explainer (coming in a later phase) |
+
+Unknown paths redirect to **`/`**. Product vision and phased plan: [PROJECT.md](PROJECT.md).
+
+---
+
 ## Overview
 
 **The Algorithm Engine** is a **WebGL-first image lab**: users upload raster images, compose overlay content, tune continuous parameters per stack tab, and see the result in real time via a GPU fragment shader. The draw path stays minimal—one plane, one `ShaderMaterial`, one fragment program—while the shader **composites** tinted, warped samples in order: **background texture → decal alpha-over (+ optional luminance-mask blend) → text slots bottom-to-top**.

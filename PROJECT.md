@@ -45,6 +45,20 @@ flowchart LR
 
 ---
 
+## Routes & product surfaces
+
+This repo is evolving toward **one deploy, three routes** on the same WebGL engine. A separate personal portfolio website is **deferred** — **The Algorithm Engine** is the public project you run and ship from this repository.
+
+| Route | Surface | Status |
+|-------|---------|--------|
+| **`/`** | **Landing** — full-viewport canvas with minimal chrome. Level 1 living hero and Level 2 mood layers are planned; Phase 1 ships canvas + link to the lab only. | Built in Phase 1 |
+| **`/lab`** | **Lab** — the full editor today: Ideas menu, Stack drawer, uploads, presets, PNG/WebM export, canvas drag. | Built in Phase 1 |
+| **`/story`** | **Case study** — static explainer page for how the engine works (architecture, math, presets). | Documented now; UI in a later phase |
+
+All routes share **one shader**, **one Zustand store**, and **one canvas component** — no duplicated GPU logic.
+
+---
+
 ## Architecture at a glance
 
 | Part | Role in plain terms |
@@ -110,6 +124,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 **Documented behavior of this repo:**
 
 * **Local dev:** `npm run dev`; **production build:** `npm run build`.
+* **Single-page app today** — all editor UI on one URL. **Phase 1** splits **`/`** (landing) and **`/lab`** (full tool); **`/story`** remains documented only until a later phase.
 * **Background + optional decal + text** with drag placement rules described in the README.
 * **Ideas** gallery for one-click looks; **Reset look** for defaults **without** clearing uploads by default.
 * **Remove** on each upload row to clear **only** that slot.
@@ -117,6 +132,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 
 **Known limits (honest)**
 
+* **No client routing yet** — landing and lab routes are planned; see **Routes & product surfaces** above.
 * **One main shader path** — fancy multi-pass pipelines (bloom chains, depth, etc.) are out of scope unless you extend the project.
 * **Browser and GPU dependent** — very old devices or strict WebGL limits may behave differently; export quality depends on the browser’s recorder where relevant.
 * **English-first UI**; no i18n layer.
@@ -133,12 +149,13 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 
 ## Future roadmap
 
-Directional ideas—not commitments.
+Directional phases—not commitments. See [README.md](README.md) for technical detail.
 
-* **Sound-reactive** parameters.
-* **Longer or richer** export options (codec choice, duration UX).
+* **Landing polish** — hero preset on `/`, Level 2 mood/AI, richer minimal chrome.
+* **`/story` case study** — static explainer for interviews and portfolio visitors.
+* **Preset library expansion** — more bundled looks and gallery UX.
+* **Sound-reactive** parameters and richer export options (codec choice, duration UX).
 * **Automated tests** for preset validation or snapshot checks.
-* **More preset slots** or a small gallery fed from static JSON.
 
 ---
 
