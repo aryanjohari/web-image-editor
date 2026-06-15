@@ -1,18 +1,8 @@
-import {
-  IDEA_ACID_NOIR,
-  IDEA_ARCHIVE,
-  IDEA_GLITCH,
-} from "@/data/demoIdeasPresets";
+import { PRESET_CATALOG } from "@/data/presetCatalog";
 import { applySynthPreset } from "@/lib/preset/hydrate";
 import type { SynthPresetV2 } from "@/lib/preset/types";
 import { validatePreset } from "@/lib/preset/validate";
 import { useSynthStore } from "@/store/useSynthStore";
-
-const DEMOS = [
-  ["Acid Noir", IDEA_ACID_NOIR],
-  ["Glitch Core", IDEA_GLITCH],
-  ["Archive", IDEA_ARCHIVE],
-] as const satisfies ReadonlyArray<readonly [string, SynthPresetV2]>;
 
 export type IdeasGalleryProps = {
   /** Tighter layout for the top-left Ideas details menu */
@@ -39,16 +29,16 @@ export function IdeasGallery({ variant = "default" }: IdeasGalleryProps) {
         <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Ideas</p>
       ) : null}
       <div className={isDropdown ? "flex flex-col gap-1.5" : "columns-2 gap-x-3 sm:columns-3"}>
-        {DEMOS.map(([label, preset]) => (
+        {PRESET_CATALOG.map((entry) => (
           <button
-            key={label}
+            key={entry.id}
             type="button"
             className={`w-full rounded border border-white/25 text-left text-[10px] uppercase tracking-[0.18em] text-zinc-200 transition hover:bg-white hover:text-black ${
               isDropdown ? "px-2.5 py-2" : "mb-3 break-inside-avoid px-3 py-3.5"
             }`}
-            onClick={() => void apply(label, preset)}
+            onClick={() => void apply(entry.label, entry.preset)}
           >
-            {label}
+            {entry.label}
           </button>
         ))}
       </div>

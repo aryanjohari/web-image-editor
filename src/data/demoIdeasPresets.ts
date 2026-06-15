@@ -1,54 +1,5 @@
-import pkg from "../../package.json";
-import { PRESET_SCHEMA_VERSION } from "@/lib/preset/types";
-import type { SynthPresetViewport, SynthPresetV2 } from "@/lib/preset/types";
-import {
-  createDefaultLayerEffectsMap,
-  type LayerEffectParams,
-  type LayerEffectsMap,
-  type LayerId,
-} from "@/store/layerEffects";
 import { createTextLayer } from "@/store/textLayers";
-
-const DEMO_VIEWPORT: SynthPresetViewport = {
-  drawBufferWidth: 1920,
-  drawBufferHeight: 1080,
-  cssWidth: 960,
-  cssHeight: 540,
-  dpr: 2,
-};
-
-function mergeLayerEffects(patch: Partial<Record<LayerId, Partial<LayerEffectParams>>>): LayerEffectsMap {
-  const defaults = createDefaultLayerEffectsMap();
-  return {
-    background: {
-      ...defaults.background,
-      ...(patch.background ?? {}),
-    },
-    decal: {
-      ...defaults.decal,
-      ...(patch.decal ?? {}),
-    },
-    text: {
-      ...defaults.text,
-      ...(patch.text ?? {}),
-    },
-  };
-}
-
-function makeIdeaPreset(
-  synthPatch: SynthPresetV2["synth"],
-  layerPatches: Partial<Record<LayerId, Partial<LayerEffectParams>>>,
-): SynthPresetV2 {
-  return {
-    presetSchemaVersion: PRESET_SCHEMA_VERSION,
-    engineVersion: pkg.version,
-    synth: structuredClone(synthPatch),
-    layerEffects: mergeLayerEffects(layerPatches),
-    imageResolution: { width: 1920, height: 1080 },
-    viewport: { ...DEMO_VIEWPORT },
-    baseTimeSeconds: 0,
-  };
-}
+import { makeIdeaPreset } from "@/data/presetBuilders";
 
 /** High-contrast duotone bleed, linked motion — noir / acid flyer look. */
 export const IDEA_ACID_NOIR = makeIdeaPreset(
@@ -217,6 +168,404 @@ export const IDEA_ARCHIVE = makeIdeaPreset(
       colorBleed: 0.08,
       timeScale: 0.55,
       scanlineIntensity: 0,
+    },
+  },
+);
+
+/** Lavender/pink duotone, very slow melt, soft bleed. */
+export const IDEA_SOFT_BLOOM = makeIdeaPreset(
+  {
+    decalScale: 0.98,
+    decalOffsetX: 0.03,
+    decalOffsetY: 0.01,
+    decalBackgroundLumaMask: 0.08,
+    linkDecalToMath: true,
+    linkTextToMath: true,
+    textLayers: [
+      createTextLayer({
+        id: "preset-idea-soft-bloom",
+        text: "SOFT BLOOM",
+        color: "#f4d4ff",
+        fontSize: 96,
+        offsetX: 0.04,
+        offsetY: 0.02,
+        scale: 1.08,
+        effectsLinked: true,
+      }),
+    ],
+    selectedTextLayerId: "preset-idea-soft-bloom",
+    textLayerEffects: {},
+  },
+  {
+    background: {
+      meltIntensity: 0.18,
+      colorBleed: 0.42,
+      noiseLevel: 0.01,
+      posterizeSteps: 14,
+      timeScale: 0.28,
+      twirlIntensity: 0.06,
+      colorA: "#2a1848",
+      colorB: "#ffc8e8",
+      duotoneBlend: 0.78,
+      colorCycleSpeed: 0.08,
+      scanlineIntensity: 0,
+      halftoneIntensity: 0,
+    },
+    decal: {
+      meltIntensity: 0.1,
+      colorBleed: 0.28,
+      timeScale: 0.32,
+      twirlIntensity: 0.04,
+      duotoneBlend: 0.35,
+    },
+    text: {
+      meltIntensity: 0.05,
+      colorBleed: 0.35,
+      duotoneBlend: 0.2,
+      timeScale: 0.25,
+      posterizeSteps: 12,
+    },
+  },
+);
+
+/** Harsh B&W halftone, heavy posterize, photocopy grain. */
+export const IDEA_XEROX_PUNK = makeIdeaPreset(
+  {
+    decalScale: 1.12,
+    decalOffsetX: -0.03,
+    decalOffsetY: 0.05,
+    decalBackgroundLumaMask: 0,
+    linkDecalToMath: false,
+    linkTextToMath: false,
+    textLayers: [
+      createTextLayer({
+        id: "preset-idea-xerox-punk",
+        text: "XEROX\nPUNK",
+        color: "#f0f0f0",
+        fontSize: 102,
+        offsetX: -0.05,
+        offsetY: -0.03,
+        scale: 1.15,
+        effectsLinked: true,
+      }),
+    ],
+    selectedTextLayerId: "preset-idea-xerox-punk",
+    textLayerEffects: {},
+  },
+  {
+    background: {
+      meltIntensity: 0.14,
+      colorBleed: 0.22,
+      noiseLevel: 0.28,
+      posterizeSteps: 3,
+      timeScale: 1.65,
+      halftoneIntensity: 0.72,
+      duotoneBlend: 0.88,
+      colorA: "#0a0a0a",
+      colorB: "#e8e8e8",
+      scanlineIntensity: 0.08,
+      colorCycleSpeed: 0,
+    },
+    decal: {
+      meltIntensity: 0.08,
+      colorBleed: 0.18,
+      noiseLevel: 0.32,
+      halftoneIntensity: 0.58,
+      posterizeSteps: 4,
+      timeScale: 1.8,
+    },
+    text: {
+      meltIntensity: 0.04,
+      colorBleed: 0.15,
+      halftoneIntensity: 0.45,
+      posterizeSteps: 3,
+      noiseLevel: 0.2,
+      timeScale: 1.5,
+    },
+  },
+);
+
+/** Ice-blue/white duotone, crisp scanlines, minimal melt. */
+export const IDEA_COLD_SCAN = makeIdeaPreset(
+  {
+    decalScale: 1,
+    decalOffsetX: 0.01,
+    decalOffsetY: -0.02,
+    decalBackgroundLumaMask: 0.2,
+    linkDecalToMath: true,
+    linkTextToMath: false,
+    textLayers: [
+      createTextLayer({
+        id: "preset-idea-cold-scan",
+        text: "COLD SCAN",
+        color: "#d8f4ff",
+        fontSize: 92,
+        offsetX: 0,
+        offsetY: 0.05,
+        scale: 1,
+        effectsLinked: true,
+      }),
+    ],
+    selectedTextLayerId: "preset-idea-cold-scan",
+    textLayerEffects: {},
+  },
+  {
+    background: {
+      meltIntensity: 0.04,
+      colorBleed: 0.12,
+      noiseLevel: 0.03,
+      posterizeSteps: 10,
+      timeScale: 0.38,
+      scanlineIntensity: 0.42,
+      colorA: "#0a1828",
+      colorB: "#c8e8ff",
+      duotoneBlend: 0.55,
+      colorCycleSpeed: 0,
+      halftoneIntensity: 0,
+      twirlIntensity: 0,
+    },
+    decal: {
+      meltIntensity: 0.02,
+      colorBleed: 0.1,
+      scanlineIntensity: 0.35,
+      timeScale: 0.45,
+      posterizeSteps: 9,
+    },
+    text: {
+      meltIntensity: 0,
+      colorBleed: 0.18,
+      scanlineIntensity: 0.28,
+      timeScale: 0.4,
+      duotoneBlend: 0.15,
+    },
+  },
+);
+
+/** Deep orange/magenta duotone, high melt, slow drift. */
+export const IDEA_SUNSET_MELT = makeIdeaPreset(
+  {
+    decalScale: 0.96,
+    decalOffsetX: -0.02,
+    decalOffsetY: 0.03,
+    decalBackgroundLumaMask: 0.12,
+    linkDecalToMath: true,
+    linkTextToMath: true,
+    textLayers: [
+      createTextLayer({
+        id: "preset-idea-sunset-melt",
+        text: "SUNSET\nMELT",
+        color: "#ffd4a8",
+        fontSize: 100,
+        offsetX: 0.03,
+        offsetY: -0.05,
+        scale: 1.1,
+        effectsLinked: true,
+      }),
+    ],
+    selectedTextLayerId: "preset-idea-sunset-melt",
+    textLayerEffects: {},
+  },
+  {
+    background: {
+      meltIntensity: 0.58,
+      colorBleed: 0.62,
+      noiseLevel: 0.04,
+      posterizeSteps: 9,
+      timeScale: 0.48,
+      colorA: "#2a0818",
+      colorB: "#ff6a28",
+      duotoneBlend: 0.68,
+      colorCycleSpeed: 0.15,
+      twirlIntensity: 0.08,
+      scanlineIntensity: 0,
+      halftoneIntensity: 0.08,
+    },
+    decal: {
+      meltIntensity: 0.35,
+      colorBleed: 0.45,
+      timeScale: 0.52,
+      twirlIntensity: 0.1,
+    },
+    text: {
+      meltIntensity: 0.15,
+      colorBleed: 0.48,
+      duotoneBlend: 0.25,
+      timeScale: 0.44,
+      posterizeSteps: 8,
+    },
+  },
+);
+
+/** Fast color cycling, heavy bleed, low posterize — club strobe feel. */
+export const IDEA_STROBE_HAZE = makeIdeaPreset(
+  {
+    decalScale: 1.05,
+    decalOffsetX: 0.04,
+    decalOffsetY: -0.04,
+    decalBackgroundLumaMask: 0,
+    linkDecalToMath: true,
+    linkTextToMath: true,
+    textLayers: [
+      createTextLayer({
+        id: "preset-idea-strobe-haze",
+        text: "STROBE HAZE",
+        color: "#ff00ff",
+        fontSize: 118,
+        offsetX: -0.04,
+        offsetY: 0,
+        scale: 1.18,
+        effectsLinked: true,
+      }),
+    ],
+    selectedTextLayerId: "preset-idea-strobe-haze",
+    textLayerEffects: {},
+  },
+  {
+    background: {
+      meltIntensity: 0.55,
+      colorBleed: 0.92,
+      noiseLevel: 0.12,
+      posterizeSteps: 4,
+      timeScale: 3.2,
+      scanlineIntensity: 0.65,
+      colorCycleSpeed: 4.5,
+      colorA: "#180028",
+      colorB: "#00ff88",
+      duotoneBlend: 0.48,
+      halftoneIntensity: 0.1,
+      twirlIntensity: 0.05,
+    },
+    decal: {
+      meltIntensity: 0.38,
+      colorBleed: 0.68,
+      timeScale: 3.6,
+      scanlineIntensity: 0.48,
+      colorCycleSpeed: 3.8,
+      posterizeSteps: 3,
+    },
+    text: {
+      meltIntensity: 0.2,
+      colorBleed: 0.82,
+      scanlineIntensity: 0.35,
+      timeScale: 2.8,
+      colorCycleSpeed: 4.2,
+      posterizeSteps: 4,
+    },
+  },
+);
+
+/** Heavy scanlines + analog noise, faded warm grade, slow drift. */
+export const IDEA_TAPE_WORN = makeIdeaPreset(
+  {
+    decalScale: 0.94,
+    decalOffsetX: 0.02,
+    decalOffsetY: 0.04,
+    decalBackgroundLumaMask: 0.18,
+    linkDecalToMath: false,
+    linkTextToMath: false,
+    textLayers: [
+      createTextLayer({
+        id: "preset-idea-tape-worn",
+        text: "TAPE WORN",
+        color: "#e8c898",
+        fontSize: 94,
+        offsetX: 0.02,
+        offsetY: 0.03,
+        scale: 0.98,
+        effectsLinked: true,
+      }),
+    ],
+    selectedTextLayerId: "preset-idea-tape-worn",
+    textLayerEffects: {},
+  },
+  {
+    background: {
+      meltIntensity: 0.22,
+      colorBleed: 0.32,
+      noiseLevel: 0.14,
+      posterizeSteps: 7,
+      timeScale: 0.55,
+      scanlineIntensity: 0.48,
+      colorA: "#281810",
+      colorB: "#d8b888",
+      duotoneBlend: 0.42,
+      colorCycleSpeed: 0.05,
+      halftoneIntensity: 0.12,
+      twirlIntensity: 0.02,
+    },
+    decal: {
+      meltIntensity: 0.12,
+      colorBleed: 0.25,
+      noiseLevel: 0.16,
+      scanlineIntensity: 0.4,
+      timeScale: 0.62,
+      posterizeSteps: 6,
+    },
+    text: {
+      meltIntensity: 0.08,
+      colorBleed: 0.28,
+      scanlineIntensity: 0.32,
+      noiseLevel: 0.08,
+      timeScale: 0.58,
+    },
+  },
+);
+
+/** Saturated offset duotone, halftone, unlinked decal/text motion. */
+export const IDEA_RAW_ZINE = makeIdeaPreset(
+  {
+    decalScale: 1.06,
+    decalOffsetX: -0.06,
+    decalOffsetY: 0.06,
+    decalBackgroundLumaMask: 0.05,
+    linkDecalToMath: false,
+    linkTextToMath: false,
+    textLayers: [
+      createTextLayer({
+        id: "preset-idea-raw-zine",
+        text: "RAW ZINE",
+        color: "#ff4400",
+        fontSize: 108,
+        offsetX: 0.05,
+        offsetY: -0.06,
+        scale: 1.12,
+        effectsLinked: true,
+      }),
+    ],
+    selectedTextLayerId: "preset-idea-raw-zine",
+    textLayerEffects: {},
+  },
+  {
+    background: {
+      meltIntensity: 0.28,
+      colorBleed: 0.55,
+      noiseLevel: 0.08,
+      posterizeSteps: 5,
+      timeScale: 1.2,
+      halftoneIntensity: 0.48,
+      colorA: "#fff8e0",
+      colorB: "#e02060",
+      duotoneBlend: 0.72,
+      colorCycleSpeed: 0.6,
+      scanlineIntensity: 0.05,
+      maskCenterX: 0.45,
+      maskCenterY: 0.55,
+    },
+    decal: {
+      meltIntensity: 0.18,
+      colorBleed: 0.48,
+      halftoneIntensity: 0.42,
+      posterizeSteps: 5,
+      timeScale: 0.95,
+      twirlIntensity: 0.08,
+    },
+    text: {
+      meltIntensity: 0.1,
+      colorBleed: 0.62,
+      halftoneIntensity: 0.32,
+      posterizeSteps: 4,
+      timeScale: 1.35,
+      duotoneBlend: 0.1,
     },
   },
 );

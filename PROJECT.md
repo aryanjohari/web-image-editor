@@ -126,7 +126,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 * **Local dev:** `npm run dev`; **production build:** `npm run build`.
 * **Client routing** — **`/`** auto-loads the landing hero (demo image + preset); **`/lab`** is the full editor; **`/story`** remains documented only until a later phase.
 * **Background + optional decal + text** with drag placement rules described in the README.
-* **Ideas** gallery for one-click looks; **Reset look** for defaults **without** clearing uploads by default.
+* **Ideas** gallery with **10 bundled looks**; **Reset look** for defaults **without** clearing uploads by default.
 * **Remove** on each upload row to clear **only** that slot.
 * **Preset** copy / download / import; exports **PNG** and **loop WebM** from the stack footer.
 
@@ -153,7 +153,7 @@ Directional phases—not commitments. See [README.md](README.md) for technical d
 
 * **Landing polish** — hero preset on `/`, Level 2 mood/AI, richer minimal chrome.
 * **`/story` case study** — static explainer for interviews and portfolio visitors.
-* **Preset library expansion** — more bundled looks and gallery UX.
+* **Preset library expansion** — more bundled looks and gallery UX. **Shipped (Phase 3):** 10 Ideas in [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) (registry for Ideas + future mood mapper).
 * **Sound-reactive** parameters and richer export options (codec choice, duration UX).
 * **Automated tests** for preset validation or snapshot checks.
 
