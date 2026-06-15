@@ -52,7 +52,7 @@ This repo is evolving toward **one deploy, three routes** on the same WebGL engi
 | Route | Surface | Status |
 |-------|---------|--------|
 | **`/`** | **Landing** — full-viewport living hero (demo image + preset on mount, GPU text, motion). Level 2 keyword mood input shipped. | Level 2 shipped |
-| **`/lab`** | **Lab** — the full editor today: Ideas menu, Stack drawer, uploads, presets, PNG/WebM export, canvas drag. | Built in Phase 1 |
+| **`/lab`** | **Lab** — Simple mode (default): upload, mood, semantic sliders, exports. Stack mode: full editor (Ideas in panel, tabs, all sliders). Ideas menu top-left unchanged. | Simple mode shipped (Phase 6) |
 | **`/story`** | **Case study** — static explainer page for how the engine works (architecture, math, presets). | Documented now; UI in a later phase |
 
 All routes share **one shader**, **one Zustand store**, and **one canvas component** — no duplicated GPU logic.
@@ -124,7 +124,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 **Documented behavior of this repo:**
 
 * **Local dev:** `npm run dev`; **production build:** `npm run build`.
-* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts a **keyword mood** input (catalog preset + optional patch; hero image unchanged); **`/lab`** is the full editor; **`/story`** remains documented only until a later phase.
+* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts a **keyword mood** input (catalog preset + optional patch; hero image unchanged); **`/lab`** opens in **Simple mode** (upload, mood, Intensity/Motion/Grit sliders, exports) with a **Stack** toggle for the full tabbed editor; **`/story`** remains documented only until a later phase.
 * **Background + optional decal + text** with drag placement rules described in the README.
 * **Ideas** gallery with **10 bundled looks**; **Reset look** for defaults **without** clearing uploads by default.
 * **Remove** on each upload row to clear **only** that slot.

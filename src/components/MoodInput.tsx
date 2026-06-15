@@ -3,9 +3,12 @@ import { applyMoodFromText } from "@/lib/mood/applyMood";
 
 export type MoodInputProps = {
   disabled?: boolean;
+  /** landing: default feedback copy; lab: can say "Applied to your upload" */
+  variant?: "landing" | "lab";
+  onMoodApplied?: () => void;
 };
 
-export function MoodInput({ disabled = false }: MoodInputProps) {
+export function MoodInput({ disabled = false, variant = "landing", onMoodApplied }: MoodInputProps) {
   const [value, setValue] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -13,19 +16,30 @@ export function MoodInput({ disabled = false }: MoodInputProps) {
   const submit = () => {
     const trimmed = value.trim();
     if (!trimmed) {
-      setHint("Type a mood…");
-      setFeedback(null);
+      if (variant === "landing") {
+        setHint("Type a mood…");
+        setFeedback(null);
+      }
       return;
     }
 
     setHint(null);
     try {
       const result = applyMoodFromText(trimmed);
-      setFeedback(
-        result.fallback
-          ? `Applied: ${result.label} (try glitch, neon, vhs…)`
-          : `Applied: ${result.label}`,
-      );
+      if (variant === "lab") {
+        setFeedback(
+          result.fallback
+            ? `Applied: ${result.label} — your upload unchanged (try glitch, neon, vhs…)`
+            : `Applied: ${result.label} — your upload unchanged`,
+        );
+      } else {
+        setFeedback(
+          result.fallback
+            ? `Applied: ${result.label} (try glitch, neon, vhs…)`
+            : `Applied: ${result.label}`,
+        );
+      }
+      onMoodApplied?.();
     } catch (err) {
       console.error("[MoodInput]", err);
       setFeedback(null);
