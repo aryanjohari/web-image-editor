@@ -1,5 +1,6 @@
 import { getPresetById } from "@/data/presetCatalog";
 import { applyPresetPatch, applyStylePreset, type PresetPatch } from "@/lib/preset";
+import { getPreserveTextOnApply } from "@/lib/preset/presetApplyPreference";
 import { validatePresetV2 } from "@/lib/preset/validate";
 import { useSynthStore } from "@/store/useSynthStore";
 import { fetchAiMood } from "./fetchAiMood";
@@ -35,7 +36,7 @@ function applyMoodMapping(presetId: string, patch?: PresetPatch): { presetId: st
   }
 
   useSynthStore.getState().setDecalTexture(null);
-  applyStylePreset(validatePresetV2(entry.preset));
+  applyStylePreset(validatePresetV2(entry.preset), { preserveText: getPreserveTextOnApply() });
 
   if (patch) {
     applyPresetPatch(patch);

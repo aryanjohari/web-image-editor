@@ -24,10 +24,12 @@ export { readCanvasViewportSnapshot, getLastBaseTimeSeconds } from "./snapshot";
 export { encodeTextureToPngAsset, base64ToBlob } from "./assets";
 export {
   applyStylePreset,
+  applyEffectsOnlyFromPreset,
   applyPresetPatch,
   applySynthFieldsFromV2,
   mergeLayerEffectsPatch,
   validatePresetPatch,
+  type ApplyPresetOptions,
   type PresetPatch,
 } from "./apply";
 export { applySynthPreset, applySynthPresetV1, applySynthPresetV2 } from "./hydrate";

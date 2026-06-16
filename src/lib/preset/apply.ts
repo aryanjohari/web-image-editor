@@ -158,7 +158,7 @@ export function mergeLayerEffectsPatch(
   return next;
 }
 
-export function applySynthFieldsFromV2(preset: SynthPresetV2): void {
+function applyEffectsFieldsFromV2(preset: SynthPresetV2): void {
   const store = useSynthStore.getState();
   const { synth } = preset;
   store.replaceLayerEffects(structuredClone(preset.layerEffects));
@@ -168,6 +168,18 @@ export function applySynthFieldsFromV2(preset: SynthPresetV2): void {
   store.setParam("decalBackgroundLumaMask", synth.decalBackgroundLumaMask ?? 0);
   store.setParam("linkDecalToMath", synth.linkDecalToMath);
   store.setParam("linkTextToMath", synth.linkTextToMath);
+  store.setTextLayerEffects(structuredClone(synth.textLayerEffects));
+}
+
+/** Apply look coefficients only — never loads assets or replaces text layers. */
+export function applyEffectsOnlyFromPreset(preset: SynthPresetV2): void {
+  applyEffectsFieldsFromV2(preset);
+}
+
+export function applySynthFieldsFromV2(preset: SynthPresetV2): void {
+  applyEffectsFieldsFromV2(preset);
+  const store = useSynthStore.getState();
+  const { synth } = preset;
   store.setTextLayers(structuredClone(synth.textLayers));
   const ids = new Set(synth.textLayers.map((l) => l.id));
   const selected =
@@ -175,11 +187,19 @@ export function applySynthFieldsFromV2(preset: SynthPresetV2): void {
       ? synth.selectedTextLayerId
       : (synth.textLayers[0]?.id ?? "");
   store.setSelectedTextLayerId(selected);
-  store.setTextLayerEffects(structuredClone(synth.textLayerEffects));
 }
 
+export type ApplyPresetOptions = {
+  /** When true, keep current textLayers + selectedTextLayerId; only apply look coefficients. */
+  preserveText?: boolean;
+};
+
 /** Apply synth fields only — never loads assets or clears uploads. */
-export function applyStylePreset(preset: SynthPresetV2): void {
+export function applyStylePreset(preset: SynthPresetV2, options?: ApplyPresetOptions): void {
+  if (options?.preserveText) {
+    applyEffectsOnlyFromPreset(preset);
+    return;
+  }
   applySynthFieldsFromV2(preset);
 }
 

@@ -1,7 +1,9 @@
 import { PRESET_CATALOG } from "@/data/presetCatalog";
 import { applyStylePreset } from "@/lib/preset";
+import { getPreserveTextOnApply } from "@/lib/preset/presetApplyPreference";
 import type { SynthPresetV2 } from "@/lib/preset/types";
 import { validatePresetV2 } from "@/lib/preset/validate";
+import { PreserveTextToggle } from "@/components/PreserveTextToggle";
 import { useSynthStore } from "@/store/useSynthStore";
 
 export type IdeasGalleryProps = {
@@ -15,7 +17,7 @@ export function IdeasGallery({ variant = "default" }: IdeasGalleryProps) {
   const apply = async (label: string, raw: SynthPresetV2) => {
     try {
       const preset = validatePresetV2(raw);
-      applyStylePreset(preset);
+      applyStylePreset(preset, { preserveText: getPreserveTextOnApply() });
     } catch (e) {
       console.error("[IdeasGallery]", label, e);
     }
@@ -28,6 +30,7 @@ export function IdeasGallery({ variant = "default" }: IdeasGalleryProps) {
       {!isDropdown ? (
         <p className="text-[10px] uppercase tracking-[0.22em] text-zinc-500">Ideas</p>
       ) : null}
+      <PreserveTextToggle compact={isDropdown} />
       <div className={isDropdown ? "flex flex-col gap-1.5" : "columns-2 gap-x-3 sm:columns-3"}>
         {PRESET_CATALOG.map((entry) => (
           <button
@@ -53,12 +56,13 @@ export function IdeasGallery({ variant = "default" }: IdeasGalleryProps) {
       </button>
       {!isDropdown ? (
         <p className="text-[10px] leading-relaxed text-zinc-600">
-          One tap applies shader + typography; your background/decal uploads stay intact unless you import a preset with
-          embedded images. Reset look restores default effects and one blank text layer without removing uploads.
+          One tap applies the look; your background/decal uploads stay intact unless you import a preset with
+          embedded images. Turn off &quot;Keep my text&quot; to also apply preset demo typography. Reset look
+          restores default effects and one blank text layer without removing uploads.
         </p>
       ) : (
         <p className="text-[9px] leading-relaxed text-zinc-500">
-          Applies looks; uploads stay unless a preset embeds images. Reset restores defaults, keeps uploads.
+          Applies looks; uploads stay unless a preset embeds images. Toggle off to apply preset text.
         </p>
       )}
     </section>

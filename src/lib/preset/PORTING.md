@@ -18,14 +18,16 @@ The JSON preset is **inputs only**. It does not include shaders, Three.js materi
 
 Three explicit apply paths live in [`apply.ts`](apply.ts) and [`hydrate.ts`](hydrate.ts):
 
-| Mode | Function | Touches uploads? | Use case |
-|------|----------|------------------|----------|
-| **Full** | `applySynthPreset` | Yes, if preset has `assets` | Stack JSON import (with embedded images) |
-| **Style** | `applyStylePreset` | **Never** | Ideas gallery, landing hero, mood base preset (Phase 5) |
-| **Patch** | `applyPresetPatch` | **Never** | Partial tweaks, mood nudges, AI output (Phase 5/8) |
+| Mode | Function | Touches uploads? | Touches text layers? | Use case |
+|------|----------|------------------|----------------------|----------|
+| **Full** | `applySynthPreset` | Yes, if preset has `assets` | Yes | Stack JSON import (with embedded images) |
+| **Style** | `applyStylePreset` | **Never** | Yes | Landing hero, full look when "Keep my text" is off |
+| **Effects** | `applyEffectsOnlyFromPreset` | **Never** | **No** | Ideas, mood, URL preset when "Keep my text" is on |
+| **Patch** | `applyPresetPatch` | **Never** | Only if patch includes `synth.textLayers` | Partial tweaks, mood nudges, AI output (Phase 5/8) |
 
 - **Full** — `applySynthFieldsFromV2` then `loadPresetAssets`. When embedded images are present, clears and replaces `imageTexture` / `decalTexture`.
-- **Style** — `applySynthFieldsFromV2` only. Ignores `assets` even if present. User uploads stay intact.
+- **Style** — `applySynthFieldsFromV2` only. Ignores `assets` even if present. User uploads stay intact. Replaces text layers.
+- **Effects** — `applyEffectsFieldsFromV2` only (layer effects, decal placement scalars, link flags, `textLayerEffects`). Never touches `textLayers`, `selectedTextLayerId`, or textures.
 - **Patch** — shallow merge into current store state (`layerEffects`, synth scalars, optional `textLayers` full replace, per-id `textLayerEffects` merge). Never touches textures.
 
 **Phase 5 composition** (style baseline + patch nudge):

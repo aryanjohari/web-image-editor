@@ -16,6 +16,7 @@ import { useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { getPresetById } from "@/data/presetCatalog";
 import { applyStylePreset } from "@/lib/preset";
+import { getPreserveTextOnApply } from "@/lib/preset/presetApplyPreference";
 import {
   isValidCatalogPresetId,
   parsePresetIdFromSearchParams,
@@ -58,7 +59,7 @@ export function usePresetFromUrl(options?: {
     }
 
     try {
-      applyStylePreset(validatePresetV2(entry.preset));
+      applyStylePreset(validatePresetV2(entry.preset), { preserveText: getPreserveTextOnApply() });
       lastAppliedRef.current = presetId;
     } catch (err) {
       if (import.meta.env.DEV) {

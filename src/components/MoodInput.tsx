@@ -1,4 +1,5 @@
 import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { PreserveTextToggle } from "@/components/PreserveTextToggle";
 import { applyMoodFromText } from "@/lib/mood/applyMood";
 
 export type MoodInputProps = {
@@ -86,6 +87,7 @@ export function MoodInput({ disabled = false, variant = "landing", onMoodApplied
 
   return (
     <div className="pointer-events-auto flex flex-col gap-1.5">
+      <PreserveTextToggle compact={variant === "lab"} />
       <form onSubmit={onSubmit} className="flex items-stretch gap-1.5">
         <input
           type="text"

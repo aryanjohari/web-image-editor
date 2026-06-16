@@ -242,7 +242,15 @@ export function StoryShell() {
                     <code className="text-xs">applyStylePreset</code>
                   </td>
                   <td className="py-2 pr-4">Never</td>
-                  <td className="py-2">Ideas gallery, landing hero, mood base</td>
+                  <td className="py-2">Landing hero, full look when Keep my text is off</td>
+                </tr>
+                <tr className="border-b border-white/10">
+                  <td className="py-2 pr-4 font-medium text-white">Effects</td>
+                  <td className="py-2 pr-4">
+                    <code className="text-xs">applyEffectsOnlyFromPreset</code>
+                  </td>
+                  <td className="py-2 pr-4">Never</td>
+                  <td className="py-2">Ideas, mood, URL preset when Keep my text is on</td>
                 </tr>
                 <tr>
                   <td className="py-2 pr-4 font-medium text-white">Patch</td>
