@@ -176,7 +176,11 @@ export function StoryShell() {
           <p className="text-sm leading-relaxed text-zinc-300 md:text-base">
             The per-pixel path is warp → sample → shade → composite. For the
             formula glossary (warp vs matrix vs composite), see{" "}
-            <code className="text-zinc-200">MATH.md</code> in the repo.
+            <code className="text-zinc-200">MATH.md</code> in the repo. Lab{" "}
+            <strong className="font-medium text-white">Formula</strong> mode (
+            <code className="text-zinc-200">/lab</code> → Stack → Formula) exposes
+            the same coefficients with live sliders via{" "}
+            <code className="text-zinc-200">src/data/formulaCatalog.ts</code>.
           </p>
         </section>
 

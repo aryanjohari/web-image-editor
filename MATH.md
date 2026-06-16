@@ -114,3 +114,14 @@ Hydration writes into Zustand; the next `useFrame` pushes values into uniforms. 
 7. **What does a preset save?** Coefficients + transforms + viewport/time snapshot (+ optional images)—see `buildPreset` / `gatherPresetExportInput`.
 
 8. **Convolution vs melt?** Melt warps UVs; no blur kernel. Halftone/scanlines are procedural screen-space modifiers on RGB after sample.
+
+---
+
+## 8. Formula mode (Lab)
+
+**Formula mode** in the Lab Stack panel (`/lab` → open Stack → **Formula** tab) exposes a Tier-1 catalog of shader coefficients with plain-English descriptions and teaching equations. Source of truth for entries: [`src/data/formulaCatalog.ts`](src/data/formulaCatalog.ts), derived from §3 above.
+
+- Pick **Background**, **Decal**, or **Text** to filter formulas for that layer.
+- Select a formula to read its equation and adjust one live slider; changes flow Zustand → `SynthMaterial` → uniforms immediately.
+- For text, Tier 1 edits the master `layerEffects.text` bundle only (not per-sublayer unlinked copies).
+- Full glossary and pipeline context remain in this file; the UI links here from Formula mode.

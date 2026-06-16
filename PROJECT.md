@@ -125,7 +125,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 **Documented behavior of this repo:**
 
 * **Local dev:** `npm run dev`; **production build:** `npm run build`.
-* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts **mood** input (optional AI director with keyword fallback; catalog preset + optional patch; hero image unchanged); **`/?preset=<id>`** applies a catalog look after hero init (style only; hero image stays). **`/lab`** opens in **Simple mode** (upload, mood, Intensity/Motion/Grit sliders, exports) with a **Stack** toggle for the full tabbed editor; **`/lab?preset=<id>`** applies a catalog look on mount. **`/story`** is a scrollable case study (engine, presets, exports) with links back to **`/`** and **`/lab`**. Phased plan complete through **Phase 10** (share URLs, SEO meta, launch checklist). **Phase 11a:** effects-only preset apply with **Keep my text** toggle (default on) for Ideas, mood, and URL presets.
+* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts **mood** input (optional AI director with keyword fallback; catalog preset + optional patch; hero image unchanged); **`/?preset=<id>`** applies a catalog look after hero init (style only; hero image stays). **`/lab`** opens in **Simple mode** (upload, mood, Intensity/Motion/Grit sliders, exports) with **Stack** and **Formula** modes in the panel drawer; **`/lab?preset=<id>`** applies a catalog look on mount. **`/story`** is a scrollable case study (engine, presets, exports) with links back to **`/`** and **`/lab`**. Phased plan complete through **Phase 10** (share URLs, SEO meta, launch checklist). **Phase 11a:** effects-only preset apply with **Keep my text** toggle (default on) for Ideas, mood, and URL presets. **Phase 6b:** **Formula mode** in Lab teaches shader math via [`formulaCatalog.ts`](src/data/formulaCatalog.ts).
 * **Background + optional decal + text** with drag placement rules described in the README.
 * **Ideas** gallery with **10 bundled looks**; **Keep my text** toggle (default on) applies grade without replacing your copy; **Reset look** for defaults **without** clearing uploads by default.
 * **Remove** on each upload row to clear **only** that slot.
@@ -152,7 +152,6 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 
 Post-launch ideas — not commitments. See [README.md](README.md) for technical detail.
 
-* **Formula mode** — expose shader coefficients as editable formulas (deferred).
 * **Sound-reactive** parameters and richer export options (codec choice, duration UX).
 * **Preset library expansion** — more bundled looks and gallery UX beyond the current 10 Ideas.
 * **Portfolio embed** — separate personal site linking to this deploy (deferred).

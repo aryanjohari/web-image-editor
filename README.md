@@ -11,7 +11,7 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 | Path | Purpose |
 |------|---------|
 | **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). **Mood input** maps natural language to Ideas presets (optional AI director + keyword fallback; style + optional patch; hero image stays). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
-| **`/lab`** | **Lab** — **Simple mode** (default): upload, mood, semantic sliders (Intensity / Motion / Grit), exports. Toggle **Stack** for the full tabbed editor (Ideas in panel, decals, text, all sliders). Ideas dropdown top-left unchanged. |
+| **`/lab`** | **Lab** — **Simple mode** (default): upload, mood, semantic sliders (Intensity / Motion / Grit), exports. Toggle **Stack** for the full tabbed editor (Ideas in panel, decals, text, all sliders) or **Formula** for shader math glossary + live coefficients. Ideas dropdown top-left unchanged. |
 | **`/story`** | **Case study** — static explainer for the engine, preset v2 format, apply modes, and exports (live) |
 
 Unknown paths redirect to **`/`**. Product vision and phased plan: [PROJECT.md](PROJECT.md).
@@ -150,7 +150,7 @@ The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`l
 - **Apply modes:** **`applyEffectsOnlyFromPreset`** (grade/motion only — preserves text; default when **Keep my text** is on), **`applyStylePreset`** (full look including typography; landing hero always uses this), **`applySynthPreset`** (Stack import — may load embedded images), **`applyPresetPatch`** (runtime partial merge for mood/AI; see [`apply.ts`](src/lib/preset/apply.ts)).
 - **Keep my text:** Persisted toggle (`synth-preserve-text-on-apply`, default on) on Ideas gallery and mood input. When on, catalog/mood/URL presets re-grade your photo without replacing text layers; turn off for the full bundled look.
 - **Mood:** Keyword map ([`mapMoodToPreset`](src/lib/mood/mapMoodToPreset.ts)) always available; optional AI director ([`applyMoodFromText`](src/lib/mood/applyMood.ts)) when `VITE_MOOD_AI_ENABLED=true` and `/api/mood` is reachable.
-- **Stack panel:** **Simple** / **Stack** toggle at top — Simple = upload + mood + semantic sliders + shared export footer; Stack = full tabs and **`LayerEffectControls`**. Copy JSON to clipboard, download `synth-preset.json`, file import with validation (**`PresetValidationError`** UX), toggle **include embedded images**.
+- **Stack panel:** **Simple** / **Stack** / **Formula** mode toggle at top — Simple = upload + mood + semantic sliders + shared export footer; Stack = full tabs and **`LayerEffectControls`**; Formula = shader math glossary with live coefficient sliders ([`formulaCatalog.ts`](src/data/formulaCatalog.ts), see [`MATH.md`](MATH.md)). Copy JSON to clipboard, download `synth-preset.json`, file import with validation (**`PresetValidationError`** UX), toggle **include embedded images**.
 - **Ideas catalog:** [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) — **10 style-only looks** (Acid Noir, Glitch Core, Archive, Soft Bloom, Xerox Punk, Cold Scan, Sunset Melt, Strobe Haze, Tape Worn, Raw Zine). Single registry for the Ideas gallery and future mood mapping; landing hero preset stays separate in [`src/data/landingHomePreset.ts`](src/data/landingHomePreset.ts).
 - **`gatherPresetExportInput`** / **`buildPreset`** / **`hydrate`** — round-trip authoring.
 

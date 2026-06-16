@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { ExportActions } from "@/components/controls/ExportActions";
+import { FormulaPanel } from "@/components/controls/FormulaPanel";
 import { LayerEffectControls } from "@/components/controls/LayerEffectControls";
 import { SemanticSliderControls, type SemanticSliderControlsHandle } from "@/components/controls/SemanticSliderControls";
 import { SliderControl } from "@/components/controls/SliderControl";
@@ -9,7 +10,7 @@ import { UploadButton } from "@/components/UploadButton";
 import { MAX_TEXT_LAYERS } from "@/store/textLayers";
 import { useSynthStore } from "@/store/useSynthStore";
 
-type PanelMode = "simple" | "stack";
+type PanelMode = "simple" | "stack" | "formula";
 
 export function StackPanel() {
   const [panelMode, setPanelMode] = useState<PanelMode>("simple");
@@ -349,10 +350,12 @@ export function StackPanel() {
       <MoodInput variant="lab" onMoodApplied={resetSemanticSliders} />
       <SemanticSliderControls resetRef={semanticRef} />
       <p className="text-[10px] leading-relaxed text-zinc-500">
-        Open Stack mode for decals, text layers, and full sliders.
+        Open Stack mode for decals, text layers, and full sliders. Formula mode teaches shader math.
       </p>
     </>
   );
+
+  const formulaBody = <FormulaPanel />;
 
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-panel">
@@ -371,11 +374,12 @@ export function StackPanel() {
         <div className="flex w-full border border-white/25">
           {modeBtn("simple", "Simple")}
           {modeBtn("stack", "Stack")}
+          {modeBtn("formula", "Formula")}
         </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-5">
-        {panelMode === "simple" ? simpleBody : stackBody}
+        {panelMode === "simple" ? simpleBody : panelMode === "formula" ? formulaBody : stackBody}
       </div>
 
       <ExportActions />
