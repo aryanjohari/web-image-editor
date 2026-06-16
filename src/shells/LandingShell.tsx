@@ -2,9 +2,11 @@ import { Link } from "react-router-dom";
 import { MoodInput } from "@/components/MoodInput";
 import { SynthCanvasView } from "@/components/SynthCanvasView";
 import { useLandingHero } from "@/hooks/useLandingHero";
+import { usePresetFromUrl } from "@/hooks/usePresetFromUrl";
 
 export function LandingShell() {
   const { isLoading } = useLandingHero();
+  usePresetFromUrl({ enabled: !isLoading });
 
   return (
     <main className="relative h-[100dvh] w-screen min-h-0 min-w-0 overflow-hidden bg-black text-white">

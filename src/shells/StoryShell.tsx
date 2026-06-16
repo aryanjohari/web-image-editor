@@ -201,6 +201,10 @@ export function StoryShell() {
           </p>
           <CodeBlock>{PRESET_EXAMPLE}</CodeBlock>
           <p className="mt-4 text-sm leading-relaxed text-zinc-300 md:text-base">
+            Share a catalog look via{" "}
+            <code className="text-zinc-200">/lab?preset=glitch-core</code> (ids
+            in{" "}
+            <code className="text-zinc-200">src/data/presetCatalog.ts</code>).
             Key fields: <code className="text-zinc-200">layerEffects</code> per
             layer, <code className="text-zinc-200">synth.textLayers</code> for
             GPU text. To embed this preset format elsewhere, see{" "}

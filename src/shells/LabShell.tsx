@@ -1,8 +1,10 @@
 import { ControlsDrawer } from "@/components/ControlsDrawer";
 import { IdeasGallery } from "@/components/IdeasGallery";
 import { SynthCanvasView } from "@/components/SynthCanvasView";
+import { usePresetFromUrl } from "@/hooks/usePresetFromUrl";
 
 export function LabShell() {
+  usePresetFromUrl();
   return (
     <main className="relative h-[100dvh] w-screen min-h-0 min-w-0 overflow-hidden bg-black text-white">
       <SynthCanvasView />

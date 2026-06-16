@@ -125,7 +125,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 **Documented behavior of this repo:**
 
 * **Local dev:** `npm run dev`; **production build:** `npm run build`.
-* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts **mood** input (optional AI director with keyword fallback; catalog preset + optional patch; hero image unchanged); **`/lab`** opens in **Simple mode** (upload, mood, Intensity/Motion/Grit sliders, exports) with a **Stack** toggle for the full tabbed editor; **`/story`** is a scrollable case study (engine, presets, exports) with links back to **`/`** and **`/lab`**.
+* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts **mood** input (optional AI director with keyword fallback; catalog preset + optional patch; hero image unchanged); **`/?preset=<id>`** applies a catalog look after hero init (style only; hero image stays). **`/lab`** opens in **Simple mode** (upload, mood, Intensity/Motion/Grit sliders, exports) with a **Stack** toggle for the full tabbed editor; **`/lab?preset=<id>`** applies a catalog look on mount. **`/story`** is a scrollable case study (engine, presets, exports) with links back to **`/`** and **`/lab`**. Phased plan complete through **Phase 10** (share URLs, SEO meta, launch checklist).
 * **Background + optional decal + text** with drag placement rules described in the README.
 * **Ideas** gallery with **10 bundled looks**; **Reset look** for defaults **without** clearing uploads by default.
 * **Remove** on each upload row to clear **only** that slot.
@@ -150,13 +150,12 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 
 ## Future roadmap
 
-Directional phases—not commitments. See [README.md](README.md) for technical detail.
+Post-launch ideas — not commitments. See [README.md](README.md) for technical detail.
 
-* **Landing polish** — hero preset on `/`, Level 2 mood (keywords + optional AI patch director) shipped.
-* **`/story` case study** — shipped; static explainer for interviews and portfolio visitors.
-* **Preset library expansion** — more bundled looks and gallery UX. **Shipped (Phase 3):** 10 Ideas in [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) (registry for Ideas + future mood mapper).
+* **Formula mode** — expose shader coefficients as editable formulas (deferred).
 * **Sound-reactive** parameters and richer export options (codec choice, duration UX).
-* **Automated tests** for preset validation or snapshot checks.
+* **Preset library expansion** — more bundled looks and gallery UX beyond the current 10 Ideas.
+* **Portfolio embed** — separate personal site linking to this deploy (deferred).
 
 ---
 

@@ -22,6 +22,34 @@ Send recruiters to **`/story`** for architecture context and **`/lab`** to try u
 
 **Static deploy / SPA:** `public/_redirects` sends all paths to `index.html` (Netlify). `vercel.json` adds the same SPA fallback plus `/api/mood` when deployed on **Vercel**. `npm run preview` also serves client routes after `npm run build`.
 
+### Share links
+
+Replace `your-deploy.com` with your Vercel or Netlify URL. Query param is **`preset` only** (kebab-case catalog id from [`presetCatalog.ts`](src/data/presetCatalog.ts)) — not `look` or `id`.
+
+| URL | Purpose |
+|-----|---------|
+| `https://your-deploy.com/` | Landing hero + mood |
+| `https://your-deploy.com/?preset=glitch-core` | Hero image + Glitch Core look |
+| `https://your-deploy.com/lab?preset=archive` | Lab with Archive look applied |
+| `https://your-deploy.com/story` | Case study |
+
+Social previews use [`public/og-image.png`](public/og-image.png) (1200×630). Regenerate after swapping `public/demo/hero.jpg`:
+
+```bash
+sips -Z 1200 public/demo/hero.jpg --out /tmp/og-resized.jpg && sips -c 630 1200 /tmp/og-resized.jpg --out public/og-image.png
+```
+
+### Launch smoke checklist (manual)
+
+- [ ] **`/`** — hero loads; mood input applies a look
+- [ ] **`/lab?preset=archive`** — Archive look on canvas
+- [ ] **Lab upload** — PNG, WebM, and preset JSON export from Stack panel
+- [ ] **`/story`** — case study readable; nav links work
+- [ ] **`npm test && npm run lint && npm run build`** — all pass
+- [ ] **`/og-image.png`** — loads in dev/preview/build for social cards
+
+Optional: record a ~3s WebM from Lab for a README demo GIF — no file required in repo.
+
 ---
 
 ## AI mood director (optional)
@@ -142,7 +170,7 @@ The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`l
 
 - **Single draw pass:** Compositing is **not** a multi-pass framebuffer stack; complexity is **in one fragment shader** with duplicated uniform banks per logical layer.
 - **Export / queries:** PNG, WebM, and preset helpers use **`document.querySelector("canvas")`** — brittle if multiple canvases appear.
-- **Debug logging:** **`useSynthStore`** and **`UploadButton`** ship with **`DEBUG = true`** console noise (`SynthMaterial` debug is **`false`**); tighten before shipping a quiet build.
+- **Debug logging:** **`DEBUG = false`** in `useSynthStore`, `UploadButton`, and `SynthMaterial` — quiet production build.
 
 ---
 
