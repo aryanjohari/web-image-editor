@@ -1,5 +1,6 @@
 import {
   createDefaultLayerEffects,
+  createDefaultLayerEffectsMap,
   LAYER_IDS,
   type LayerEffectParams,
   type LayerEffectsMap,
@@ -94,6 +95,49 @@ function validateTextLayers(layers: TextLayer[]): void {
     expectPatchNum(tl.offsetY, `synth.textLayers[${i}].offsetY`);
     expectPatchNum(tl.scale, `synth.textLayers[${i}].scale`);
     expectPatchBool(tl.effectsLinked, `synth.textLayers[${i}].effectsLinked`);
+  }
+}
+
+/** Dry-run patch validation without touching store state. */
+export function validatePresetPatch(patch: PresetPatch): void {
+  if (patch.layerEffects) {
+    mergeLayerEffectsPatch(createDefaultLayerEffectsMap(), patch.layerEffects);
+  }
+
+  const synthPatch = patch.synth;
+  if (!synthPatch) return;
+
+  const scalarKeys = [
+    "decalScale",
+    "decalOffsetX",
+    "decalOffsetY",
+    "decalBackgroundLumaMask",
+    "linkDecalToMath",
+    "linkTextToMath",
+  ] as const;
+
+  for (const key of scalarKeys) {
+    const value = synthPatch[key];
+    if (value === undefined) continue;
+    if (key === "linkDecalToMath" || key === "linkTextToMath") {
+      expectPatchBool(value, `synth.${key}`);
+    } else {
+      expectPatchNum(value, `synth.${key}`);
+    }
+  }
+
+  if (synthPatch.textLayers !== undefined) {
+    validateTextLayers(synthPatch.textLayers);
+  }
+
+  if (synthPatch.selectedTextLayerId !== undefined) {
+    expectPatchStr(synthPatch.selectedTextLayerId, "synth.selectedTextLayerId");
+  }
+
+  if (synthPatch.textLayerEffects !== undefined) {
+    for (const [id, partial] of Object.entries(synthPatch.textLayerEffects)) {
+      validateLayerEffectPartial(partial, `synth.textLayerEffects.${id}`);
+    }
   }
 }
 

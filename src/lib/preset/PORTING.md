@@ -37,6 +37,8 @@ applyPresetPatch({ layerEffects: { background: { meltIntensity: 0.5 } } });
 
 Apply style first, then patch. Both preserve uploads.
 
-**Landing mood** — `applyMoodFromText` on `/` runs style + patch from keyword mapping; never reloads the hero texture.
+**Landing mood** — `applyMoodFromText` on `/` runs style + patch from keyword mapping or optional AI (`{ basePresetId, patch? }` → validate → same apply modes); never reloads the hero texture.
+
+**AI mood (Phase 8)** — When enabled, a serverless `/api/mood` route asks an LLM for `{ basePresetId, patch? }`. The response is validated (`parseAiMoodResponse`, `validatePresetPatch`) then applied with **`applyStylePreset`** + **`applyPresetPatch`** — identical to keyword mood composition. AI never outputs images or full preset files; keyword mapper remains the fallback.
 
 **Note:** Ideas catalog presets are style-only. Stack import may be full (`applySynthPreset`).

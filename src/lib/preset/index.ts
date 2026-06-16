@@ -27,6 +27,7 @@ export {
   applyPresetPatch,
   applySynthFieldsFromV2,
   mergeLayerEffectsPatch,
+  validatePresetPatch,
   type PresetPatch,
 } from "./apply";
 export { applySynthPreset, applySynthPresetV1, applySynthPresetV2 } from "./hydrate";

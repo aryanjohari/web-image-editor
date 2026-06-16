@@ -1,5 +1,13 @@
 /// <reference types="vite/client" />
 
+interface ImportMetaEnv {
+  readonly VITE_MOOD_AI_ENABLED?: string;
+}
+
+interface ImportMeta {
+  readonly env: ImportMetaEnv;
+}
+
 interface Window {
   /** Set during WebM export loop; overrides scene clock for deterministic frames. */
   __SYNTH_EXPORT_TIME__?: number;

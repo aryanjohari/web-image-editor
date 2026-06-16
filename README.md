@@ -10,7 +10,7 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 | Path | Purpose |
 |------|---------|
-| **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). **Mood input** maps typed keywords to Ideas presets (style + optional patch; hero image stays). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
+| **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). **Mood input** maps natural language to Ideas presets (optional AI director + keyword fallback; style + optional patch; hero image stays). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
 | **`/lab`** | **Lab** — **Simple mode** (default): upload, mood, semantic sliders (Intensity / Motion / Grit), exports. Toggle **Stack** for the full tabbed editor (Ideas in panel, decals, text, all sliders). Ideas dropdown top-left unchanged. |
 | **`/story`** | **Case study** — static explainer (coming in a later phase) |
 
@@ -18,7 +18,23 @@ Unknown paths redirect to **`/`**. Product vision and phased plan: [PROJECT.md](
 
 **GPU pipeline & formula glossary:** [MATH.md](MATH.md)
 
-**Static deploy / SPA:** `public/_redirects` sends all paths to `index.html` (Netlify). `npm run preview` also serves client routes after `npm run build`.
+**Static deploy / SPA:** `public/_redirects` sends all paths to `index.html` (Netlify). `vercel.json` adds the same SPA fallback plus `/api/mood` when deployed on **Vercel**. `npm run preview` also serves client routes after `npm run build`.
+
+---
+
+## AI mood director (optional)
+
+When **`VITE_MOOD_AI_ENABLED=true`**, mood input POSTs to **`/api/mood`** (Vercel serverless). The model returns `{ basePresetId, patch? }` — validated server-side, then applied via the same **style + patch** pipeline as keyword mood. On missing key, network error, or invalid JSON, the client **falls back** to [`mapMoodToPreset`](src/lib/mood/mapMoodToPreset.ts) (Phase 5 behavior).
+
+| Deploy | AI mood |
+|--------|---------|
+| **Vercel** | Set `OPENAI_API_KEY` in project env; enable `VITE_MOOD_AI_ENABLED=true` at build time |
+| **Netlify static** | Keyword mood only (`/api/mood` unavailable) |
+| **Local dev** | Terminal 1: `vercel dev --listen 3000` · Terminal 2: `npm run dev` (Vite proxies `/api/mood` → port 3000) |
+
+Copy [`.env.example`](.env.example) to `.env.local` for local flags. **Never** put `OPENAI_API_KEY` in a `VITE_` variable — server-only.
+
+Key files: [`api/mood.ts`](api/mood.ts), [`src/lib/mood/applyMood.ts`](src/lib/mood/applyMood.ts), [`src/lib/mood/buildAiMoodSystemPrompt.ts`](src/lib/mood/buildAiMoodSystemPrompt.ts), [`src/lib/mood/parseAiMoodResponse.ts`](src/lib/mood/parseAiMoodResponse.ts).
 
 ---
 
@@ -101,7 +117,8 @@ The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`l
 
 - **Current schema:** **`PRESET_SCHEMA_VERSION` = 2** — embeds **`synth`** (`SynthParams` + `textLayers` + selection + `textLayerEffects`), **`layerEffects`**, **`imageResolution`**, **`viewport`**, **`baseTimeSeconds`**, optional **base64 PNG `assets`** (background/decal).
 - **v1 presets** (`LegacySynthParamsV1`) are still **validated and hydrated** (`applySynthPreset` → versioned apply).
-- **Apply modes:** **`applyStylePreset`** (Ideas, landing — synth fields only, uploads preserved), **`applySynthPreset`** (Stack import — may load embedded images), **`applyPresetPatch`** (runtime partial merge for future mood/AI; see [`apply.ts`](src/lib/preset/apply.ts)).
+- **Apply modes:** **`applyStylePreset`** (Ideas, landing — synth fields only, uploads preserved), **`applySynthPreset`** (Stack import — may load embedded images), **`applyPresetPatch`** (runtime partial merge for mood/AI; see [`apply.ts`](src/lib/preset/apply.ts)).
+- **Mood:** Keyword map ([`mapMoodToPreset`](src/lib/mood/mapMoodToPreset.ts)) always available; optional AI director ([`applyMoodFromText`](src/lib/mood/applyMood.ts)) when `VITE_MOOD_AI_ENABLED=true` and `/api/mood` is reachable.
 - **Stack panel:** **Simple** / **Stack** toggle at top — Simple = upload + mood + semantic sliders + shared export footer; Stack = full tabs and **`LayerEffectControls`**. Copy JSON to clipboard, download `synth-preset.json`, file import with validation (**`PresetValidationError`** UX), toggle **include embedded images**.
 - **Ideas catalog:** [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) — **10 style-only looks** (Acid Noir, Glitch Core, Archive, Soft Bloom, Xerox Punk, Cold Scan, Sunset Melt, Strobe Haze, Tape Worn, Raw Zine). Single registry for the Ideas gallery and future mood mapping; landing hero preset stays separate in [`src/data/landingHomePreset.ts`](src/data/landingHomePreset.ts).
 - **`gatherPresetExportInput`** / **`buildPreset`** / **`hydrate`** — round-trip authoring.
@@ -163,5 +180,6 @@ Run `npm test` alongside `lint` and `build` before release.
 | Controls / preset + export triggers | `src/components/controls/StackPanel.tsx`, `LayerEffectControls.tsx`, `SliderControl.tsx` |
 | Text raster helpers | `src/utils/textUtils.ts` |
 | Presets | `src/lib/preset/*.ts` |
+| Mood (keyword + AI) | `src/lib/mood/*.ts`, `api/mood.ts` |
 | PNG export | `src/lib/export/exportImage.ts` |
 | WebM capture | `src/lib/export/exportLoopWebm.ts` |

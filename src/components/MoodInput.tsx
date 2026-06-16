@@ -8,12 +8,43 @@ export type MoodInputProps = {
   onMoodApplied?: () => void;
 };
 
+function buildFeedback(
+  variant: "landing" | "lab",
+  label: string,
+  fallback: boolean,
+  source: "ai" | "keyword",
+  aiFailed?: boolean,
+): string {
+  if (source === "ai") {
+    if (variant === "lab") {
+      return `Applied: ${label} (AI) — your upload unchanged`;
+    }
+    return `Applied: ${label} (AI)`;
+  }
+
+  if (aiFailed) {
+    if (variant === "lab") {
+      return `Couldn't reach AI — applied via keywords: ${label} — your upload unchanged`;
+    }
+    return `Couldn't reach AI — applied via keywords: ${label}`;
+  }
+
+  if (variant === "lab") {
+    return fallback
+      ? `Applied: ${label} — your upload unchanged (try glitch, neon, vhs…)`
+      : `Applied: ${label} — your upload unchanged`;
+  }
+
+  return fallback ? `Applied: ${label} (try glitch, neon, vhs…)` : `Applied: ${label}`;
+}
+
 export function MoodInput({ disabled = false, variant = "landing", onMoodApplied }: MoodInputProps) {
   const [value, setValue] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  const [isApplying, setIsApplying] = useState(false);
 
-  const submit = () => {
+  const submit = async () => {
     const trimmed = value.trim();
     if (!trimmed) {
       if (variant === "landing") {
@@ -24,39 +55,34 @@ export function MoodInput({ disabled = false, variant = "landing", onMoodApplied
     }
 
     setHint(null);
+    setIsApplying(true);
     try {
-      const result = applyMoodFromText(trimmed);
-      if (variant === "lab") {
-        setFeedback(
-          result.fallback
-            ? `Applied: ${result.label} — your upload unchanged (try glitch, neon, vhs…)`
-            : `Applied: ${result.label} — your upload unchanged`,
-        );
-      } else {
-        setFeedback(
-          result.fallback
-            ? `Applied: ${result.label} (try glitch, neon, vhs…)`
-            : `Applied: ${result.label}`,
-        );
-      }
+      const result = await applyMoodFromText(trimmed);
+      setFeedback(
+        buildFeedback(variant, result.label, result.fallback, result.source, result.aiFailed),
+      );
       onMoodApplied?.();
     } catch (err) {
       console.error("[MoodInput]", err);
       setFeedback(null);
+    } finally {
+      setIsApplying(false);
     }
   };
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    submit();
+    void submit();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      submit();
+      void submit();
     }
   };
+
+  const inputDisabled = disabled || isApplying;
 
   return (
     <div className="pointer-events-auto flex flex-col gap-1.5">
@@ -69,17 +95,17 @@ export function MoodInput({ disabled = false, variant = "landing", onMoodApplied
             if (hint) setHint(null);
           }}
           onKeyDown={onKeyDown}
-          disabled={disabled}
+          disabled={inputDisabled}
           placeholder="glitch, sunset, cold scan…"
           aria-label="Describe a mood"
           className="min-w-[12rem] border border-white/35 bg-black/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-white/50 disabled:opacity-50"
         />
         <button
           type="submit"
-          disabled={disabled}
+          disabled={inputDisabled}
           className="border border-white/35 bg-black/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm transition hover:bg-white hover:text-black disabled:opacity-50 disabled:hover:bg-black/80 disabled:hover:text-white"
         >
-          Apply
+          {isApplying ? "Applying…" : "Apply"}
         </button>
       </form>
       {feedback ? (
