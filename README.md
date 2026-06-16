@@ -12,9 +12,11 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 |------|---------|
 | **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). **Mood input** maps natural language to Ideas presets (optional AI director + keyword fallback; style + optional patch; hero image stays). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
 | **`/lab`** | **Lab** — **Simple mode** (default): upload, mood, semantic sliders (Intensity / Motion / Grit), exports. Toggle **Stack** for the full tabbed editor (Ideas in panel, decals, text, all sliders). Ideas dropdown top-left unchanged. |
-| **`/story`** | **Case study** — static explainer (coming in a later phase) |
+| **`/story`** | **Case study** — static explainer for the engine, preset v2 format, apply modes, and exports (live) |
 
 Unknown paths redirect to **`/`**. Product vision and phased plan: [PROJECT.md](PROJECT.md).
+
+Send recruiters to **`/story`** for architecture context and **`/lab`** to try uploads.
 
 **GPU pipeline & formula glossary:** [MATH.md](MATH.md)
 

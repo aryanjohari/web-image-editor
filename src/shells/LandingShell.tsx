@@ -15,9 +15,12 @@ export function LandingShell() {
           isLoading ? "opacity-70" : "opacity-100"
         }`}
       >
-        <p className="pointer-events-none text-[9px] uppercase tracking-[0.18em] text-white/40">
-          Case study coming
-        </p>
+        <Link
+          to="/story"
+          className="pointer-events-auto text-[9px] uppercase tracking-[0.18em] text-white/40 transition hover:text-white"
+        >
+          Case study
+        </Link>
         <div className="flex flex-col items-start gap-2">
           <MoodInput disabled={isLoading} />
           <Link

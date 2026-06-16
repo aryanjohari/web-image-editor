@@ -53,7 +53,7 @@ This repo is evolving toward **one deploy, three routes** on the same WebGL engi
 |-------|---------|--------|
 | **`/`** | **Landing** — full-viewport living hero (demo image + preset on mount, GPU text, motion). Level 2 mood: keywords + optional AI patch director. | Level 2 shipped |
 | **`/lab`** | **Lab** — Simple mode (default): upload, mood, semantic sliders, exports. Stack mode: full editor (Ideas in panel, tabs, all sliders). Ideas menu top-left unchanged. | Simple mode shipped (Phase 6) |
-| **`/story`** | **Case study** — static explainer page for how the engine works (architecture, math, presets). | Documented now; UI in a later phase |
+| **`/story`** | **Case study** — static explainer page for how the engine works (architecture, math, presets). | Shipped |
 
 All routes share **one shader**, **one Zustand store**, and **one canvas component** — no duplicated GPU logic.
 
@@ -125,7 +125,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 **Documented behavior of this repo:**
 
 * **Local dev:** `npm run dev`; **production build:** `npm run build`.
-* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts **mood** input (optional AI director with keyword fallback; catalog preset + optional patch; hero image unchanged); **`/lab`** opens in **Simple mode** (upload, mood, Intensity/Motion/Grit sliders, exports) with a **Stack** toggle for the full tabbed editor; **`/story`** remains documented only until a later phase.
+* **Client routing** — **`/`** auto-loads the landing hero (demo image + preset) and accepts **mood** input (optional AI director with keyword fallback; catalog preset + optional patch; hero image unchanged); **`/lab`** opens in **Simple mode** (upload, mood, Intensity/Motion/Grit sliders, exports) with a **Stack** toggle for the full tabbed editor; **`/story`** is a scrollable case study (engine, presets, exports) with links back to **`/`** and **`/lab`**.
 * **Background + optional decal + text** with drag placement rules described in the README.
 * **Ideas** gallery with **10 bundled looks**; **Reset look** for defaults **without** clearing uploads by default.
 * **Remove** on each upload row to clear **only** that slot.
@@ -153,7 +153,7 @@ I wanted a **single, eye-catching demo** that shows I can **think in layers**, *
 Directional phases—not commitments. See [README.md](README.md) for technical detail.
 
 * **Landing polish** — hero preset on `/`, Level 2 mood (keywords + optional AI patch director) shipped.
-* **`/story` case study** — static explainer for interviews and portfolio visitors.
+* **`/story` case study** — shipped; static explainer for interviews and portfolio visitors.
 * **Preset library expansion** — more bundled looks and gallery UX. **Shipped (Phase 3):** 10 Ideas in [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) (registry for Ideas + future mood mapper).
 * **Sound-reactive** parameters and richer export options (codec choice, duration UX).
 * **Automated tests** for preset validation or snapshot checks.
