@@ -6,14 +6,9 @@ import {
   type FormulaEntry,
   type FormulaLayerTarget,
 } from "@/data/formulaCatalog";
+import { STUDIO_LAYER_TAB_LABELS } from "@/constants/studioLabels";
 import type { LayerEffectParams } from "@/store/layerEffects";
 import { useSynthStore } from "@/store/useSynthStore";
-
-const LAYER_LABELS: Record<FormulaLayerTarget, string> = {
-  background: "Background",
-  decal: "Decal",
-  text: "Text",
-};
 
 function FormulaSlider({ entry, layer }: { entry: FormulaEntry; layer: FormulaLayerTarget }) {
   const value = useSynthStore((s) => s.layerEffects[layer][entry.param] as number);
@@ -77,9 +72,9 @@ export function FormulaPanel() {
       </p>
 
       <div className="flex w-full border border-white/25">
-        {layerBtn("background", LAYER_LABELS.background, false)}
-        {layerBtn("decal", LAYER_LABELS.decal, true)}
-        {layerBtn("text", LAYER_LABELS.text, true)}
+        {layerBtn("background", STUDIO_LAYER_TAB_LABELS.background, false)}
+        {layerBtn("decal", STUDIO_LAYER_TAB_LABELS.decal, true)}
+        {layerBtn("text", STUDIO_LAYER_TAB_LABELS.text, true)}
       </div>
 
       {formulas.length === 0 ? (

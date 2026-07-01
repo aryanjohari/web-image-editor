@@ -1,8 +1,21 @@
-# The Algorithm Engine
+# Background Studio
 
-Master architectural document for **web-image-editor**: a browser-based, math-driven visual synthesizer. The product uploads a **background image** plus an optional **decal** sticker and stacks up to **four text overlays**, all rendered on a **single full-screen quad** with **custom GLSL**. Warp, color, and texture math still live in **one fragment program**, but **each logical layer gets its own effect bundle** (uniforms keyed `L0` / `L1` / `T0–T3`) so background, decal, and text can diverge creatively.
+*The Algorithm Engine* — browser-based live background creator for the web (npm: `web-image-editor`).
+
+Master architectural document for **web-image-editor**: a math-driven **full-viewport animated hero background** designer. Users optionally upload a **hero texture** plus an optional **overlay** (decal) and up to **four preview text slots**, all rendered on a **single full-screen quad** with **custom GLSL**. Warp, color, and texture math live in **one fragment program**, but **each logical layer gets its own effect bundle** (uniforms keyed `L0` / `L1` / `T0–T3`) so hero texture, overlay, and preview text can diverge creatively.
 
 This README is written so an AI assistant (or a new contributor) can quickly grasp **context**, **capabilities**, **data flow**, and **constraints** without spelunking the tree.
+
+---
+
+## Product model
+
+- Design **ambient, site-safe animated hero backgrounds** for portfolios, landing pages, and section backgrounds.
+- **Primary deliverable:** preset JSON — embeddable look coefficients for real sites (see [`src/lib/preset/PORTING.md`](src/lib/preset/PORTING.md)).
+- **Secondary deliverables:** WebM loop (hero demo / social), PNG poster (fallback / thumbnail frame).
+- **Production sites** render HTML content above the canvas; GPU text in the lab is **preview only**.
+
+UI labels: Background Studio panel uses Source / Look / Tune / Export / Advanced sections (Phase C).
 
 ---
 
@@ -10,13 +23,13 @@ This README is written so an AI assistant (or a new contributor) can quickly gra
 
 | Path | Purpose |
 |------|---------|
-| **`/`** | **Landing** — living hero: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, GPU text). **Mood input** maps natural language to Ideas presets (optional AI director + keyword fallback; style + optional patch; hero image stays). Minimal chrome; link to the lab. Replace `public/demo/hero.jpg` with your own image to customize the hero. |
-| **`/lab`** | **Lab** — **Simple mode** (default): upload, mood, semantic sliders (Intensity / Motion / Grit), exports. Toggle **Stack** for the full tabbed editor (Ideas in panel, decals, text, all sliders) or **Formula** for shader math glossary + live coefficients. Ideas dropdown top-left unchanged. |
-| **`/story`** | **Case study** — static explainer for the engine, preset v2 format, apply modes, and exports (live) |
+| **`/`** | **Living demo** — animated hero background showcase: auto-loads `public/demo/hero.jpg` + bundled preset (motion, grade, preview text). **Mood input** maps natural language to Ideas presets (optional AI director + keyword fallback; style + optional patch; hero texture stays). Minimal chrome; link to Background Studio. Replace `public/demo/hero.jpg` with your own image to customize the demo. |
+| **`/lab`** | **Background Studio** (route `/lab`) — scrollable panel: **Source** (hero upload), **Look** (background looks, mood), **Tune** (Intensity / Motion / Grit + formula glossary), **Export** (sticky footer), **Advanced** (layer tabs, full sliders). Studio panel opens by default; click **Close** or **Hide** to dismiss. |
+| **`/story`** | **Case study** — Background Studio embed narrative: HTML above canvas, preset v2 format, apply modes, JSON-first exports. See also [`PORTING.md`](src/lib/preset/PORTING.md) embed guide. |
 
 Unknown paths redirect to **`/`**. Product vision and phased plan: [PROJECT.md](PROJECT.md).
 
-Send recruiters to **`/story`** for architecture context and **`/lab`** to try uploads.
+Send recruiters to **`/story`** for architecture context and **`/lab`** (Background Studio) to try uploads.
 
 **GPU pipeline & formula glossary:** [MATH.md](MATH.md)
 
@@ -29,8 +42,9 @@ Replace `your-deploy.com` with your Vercel or Netlify URL. Query param is **`pre
 | URL | Purpose |
 |-----|---------|
 | `https://your-deploy.com/` | Landing hero + mood |
-| `https://your-deploy.com/?preset=glitch-core` | Hero image + Glitch Core look |
-| `https://your-deploy.com/lab?preset=archive` | Lab with Archive look applied |
+| `https://your-deploy.com/?preset=soft-drift` | Hero texture + Soft Drift ambient look |
+| `https://your-deploy.com/?preset=glitch-core` | Hero texture + Glitch Core look (legacy) |
+| `https://your-deploy.com/lab?preset=archive` | Background Studio with Archive look applied |
 | `https://your-deploy.com/story` | Case study |
 
 Social previews use [`public/og-image.png`](public/og-image.png) (1200×630). Regenerate after swapping `public/demo/hero.jpg`:
@@ -43,12 +57,13 @@ sips -Z 1200 public/demo/hero.jpg --out /tmp/og-resized.jpg && sips -c 630 1200 
 
 - [ ] **`/`** — hero loads; mood input applies a look
 - [ ] **`/lab?preset=archive`** — Archive look on canvas
-- [ ] **Lab upload** — PNG, WebM, and preset JSON export from Stack panel
+- [ ] **Background Studio** — studio panel visible on load; preset JSON, WebM loop, and PNG poster export from panel footer
+- [ ] **Export upload rule** — JSON export works without upload; PNG/WebM require hero texture
 - [ ] **`/story`** — case study readable; nav links work
 - [ ] **`npm test && npm run lint && npm run build`** — all pass
 - [ ] **`/og-image.png`** — loads in dev/preview/build for social cards
 
-Optional: record a ~3s WebM from Lab for a README demo GIF — no file required in repo.
+Optional: record a ~3s WebM from Background Studio for a README demo GIF — no file required in repo.
 
 ---
 
@@ -70,7 +85,7 @@ Key files: [`api/mood.ts`](api/mood.ts), [`src/lib/mood/applyMood.ts`](src/lib/m
 
 ## Overview
 
-**The Algorithm Engine** is a **WebGL-first image lab**: users upload raster images, compose overlay content, tune continuous parameters per stack tab, and see the result in real time via a GPU fragment shader. The draw path stays minimal—one plane, one `ShaderMaterial`, one fragment program—while the shader **composites** tinted, warped samples in order: **background texture → decal alpha-over (+ optional luminance-mask blend) → text slots bottom-to-top**.
+**Background Studio** (*The Algorithm Engine*) is a **WebGL-first live background studio**: users optionally upload hero textures, compose overlay and preview text content, tune continuous parameters per stack tab, and see the result in real time via a GPU fragment shader. The draw path stays minimal—one plane, one `ShaderMaterial`, one fragment program—while the shader **composites** tinted, warped samples in order: **hero texture → overlay alpha-over (+ optional luminance-mask blend) → preview text slots bottom-to-top**. Primary output is **preset JSON** for embed on production sites ([`PORTING.md`](src/lib/preset/PORTING.md)).
 
 ---
 
@@ -94,24 +109,24 @@ Key files: [`api/mood.ts`](api/mood.ts), [`src/lib/mood/applyMood.ts`](src/lib/m
 
 ### High-level data flow
 
-1. **File upload** — **Background**: PNG/JPEG/WebP → `TextureLoader` → **`setImageTexture`** stores `Texture` plus **bitmap dimensions**. **Decal**: same formats through **`createProcessedDecalTexture`** (`decalTexture` utils) → **`setDecalTexture`** for the sticker atlas.
+1. **File upload** — **Hero texture** (Source / hero texture): PNG/JPEG/WebP → `TextureLoader` → **`setImageTexture`** stores `Texture` plus **bitmap dimensions**. **Overlay** (Advanced overlay tab): same formats through **`createProcessedDecalTexture`** (`decalTexture` utils) → **`setDecalTexture`** for the sticker atlas.
 2. **Zustand (`useSynthStore`)** holds:
-   - **`imageTexture` / `imageResolution`** — background sampling and letterbox math
+   - **`imageTexture` / `imageResolution`** — hero texture sampling and letterbox math
    - **`decalTexture`** — optional overlay texture
    - **`SynthParams`** (global synth fields): `decalScale`, `decalOffsetX` / `decalOffsetY`, `decalBackgroundLumaMask`, `linkDecalToMath`, `linkTextToMath`
    - **`layerEffects`** — `Record<"background" | "decal" | "text", LayerEffectParams>`: full effect bundle (**melt, bleed, noise, posterize, timeScale, radial mask + twirl, duotone colors + cycle speed, halftone, scanlines**) per logical layer master
-   - **`textLayers`** — up to **`MAX_TEXT_LAYERS` (4)** entries (`TextLayer`: id, text, color, `fontSize`, offsets, scale, **`effectsLinked`**)
+   - **`textLayers`** — up to **`MAX_TEXT_LAYERS` (4)** preview text entries (`TextLayer`: id, text, color, `fontSize`, offsets, scale, **`effectsLinked`**)
    - **`textLayerEffects`** — when a text layer unlinks from the master `layerEffects.text`, its private `LayerEffectParams` live keyed by layer id
-   - **UI**: `stackTab` (`background` | `decal` | `text`), `selectedTextLayerId`, `panelOpen`
+   - **UI**: `stackTab` (`background` | `decal` | `text`), `selectedTextLayerId`, `panelOpen` (defaults **`false`**)
 3. **React Three Fiber** — `<Canvas>` with **`gl={{ preserveDrawingBuffer: true }}`** (PNG export), **`dpr={[1, 2]}`**, Drei **`OrthographicCamera`** (`manual`: ±1 frustum, plane at \(z=0\)).
 4. **Scene graph** — **`SynthScene`** (`SynthCanvas.tsx`): one **`mesh`**, **`planeGeometry(2, 2)`**, **`SynthMaterial`**. **`SynthMaterial`** is **`key`**ed by `imageTexture?.uuid` so swaps get a predictable material lifecycle.
 5. **`SynthMaterial`** — Seeds and updates uniforms. **Per-layer time:** each `LayerEffectParams.timeScale` multiplies the shared **`baseTime`** (R3F clock **`elapsedTime`** or **`window.__SYNTH_EXPORT_TIME__`** during WebM capture) into separate uniforms (`u_L0_t`, `u_L1_t`, `u_T0_t`, …).
-6. **Text rasterization** — `createTextTexture` (`textUtils`) builds **`CanvasTexture`**s per populated slot when `textLayers` or viewport size changes; slots map to **`u_textSlot0`…`u_textSlot3`** and transforms **`u_textTransform0…3`** `(offsetX, offsetY, scale)`.
-7. **Fragment shader** — Shared **contain** UVs for the background; **warp + shade pipeline** (`layerWarp` → sample → `layerShade` with bleed, posterize, duotone + LFO, halftone, scanlines, grain) runs per layer prefix. Decal sampling uses **`u_decalTransform`** and optional **`u_linkDecalToMath`** to share background warp grid. Text uses **`u_linkTextToMath`** (semantics coupled to whether a decal is present—see **`SynthMaterial` `useFrame`**). Outputs alpha-composite text slots in slot order (**first list item = drawn first / underneath**).
+6. **Preview text rasterization** — `createTextTexture` (`textUtils`) builds **`CanvasTexture`**s per populated slot when `textLayers` or viewport size changes; slots map to **`u_textSlot0`…`u_textSlot3`** and transforms **`u_textTransform0…3`** `(offsetX, offsetY, scale)`. Lab preview only — production sites use HTML above the canvas.
+7. **Fragment shader** — Shared **contain** UVs for the hero texture; **warp + shade pipeline** (`layerWarp` → sample → `layerShade` with bleed, posterize, duotone + LFO, halftone, scanlines, grain) runs per layer prefix. Overlay sampling uses **`u_decalTransform`** and optional **`u_linkDecalToMath`** to share background warp grid. Preview text uses **`u_linkTextToMath`** (semantics coupled to whether an overlay is present—see **`SynthMaterial` `useFrame`**). Outputs alpha-composite text slots in slot order (**first list item = drawn first / underneath**).
 
 ### Interaction
 
-- **Pointer drag on the canvas** (`SynthScene`): with **Decal or Background** tab active, dragging updates **`decalOffsetX` / `decalOffsetY`**. With **Text** tab active and both a decal and selection, dragging updates **the selected text layer’s** **`offsetX` / `offsetY`** (`updateSelectedTextLayerOffset`). Cursor switches to grab/grabbing during drag.
+- **Pointer drag on the canvas** (`SynthScene`): with **Overlay or Hero texture** tab active, dragging updates **`decalOffsetX` / `decalOffsetY`**. With **Preview text** tab active and both an overlay and selection, dragging updates **the selected preview text layer’s** **`offsetX` / `offsetY`** (`updateSelectedTextLayerOffset`). Cursor switches to grab/grabbing during drag.
 
 ### Key implementation details (for maintainers & AI)
 
@@ -125,45 +140,47 @@ Key files: [`api/mood.ts`](api/mood.ts), [`src/lib/mood/applyMood.ts`](src/lib/m
 
 ## Current Capabilities
 
-### Image upload pipeline
+### Hero texture upload
 
 - **Formats:** PNG, JPEG, WebP on file inputs.
-- **Background:** `SRGBColorSpace`, NPOT-safe **`LinearFilter`**, mipmaps off (same rationale as legacy README).
+- **Hero texture:** `SRGBColorSpace`, NPOT-safe **`LinearFilter`**, mipmaps off (same rationale as legacy README).
 - **Object-fit contain (shader):** Fragment shader maps quad space to bitmap space using **`u_resolution`** × **`u_imageResolution`** so content is letterboxed centered (black margins outside).
 
 ### Layer tabs & effect bundles
 
-The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`layerEffects[layer]`** for **`background`** and **`decal`**. On the **Text** tab, **`effectsLinked`** can pin a layer to **`layerEffects.text`** or carve out **`textLayerEffects[id]`**.
+The **Advanced** section uses three tabs (hero texture / overlay / preview text); **`LayerEffectControls`** reads/writes **`layerEffects[layer]`** for **`background`** and **`decal`**. On the **Text** tab, **`effectsLinked`** can pin a layer to **`layerEffects.text`** or carve out **`textLayerEffects[id]`**.
 
 | Area | Store / keys | Shader |
 |------|----------------|--------|
-| Background | `layerEffects.background` | Prefix **`L0`** |
-| Decal | `layerEffects.decal`, `decal*` params, `linkDecalToMath`, `decalBackgroundLumaMask` | Prefix **`L1`**, decal sample + tint stack |
-| Text (≤4) | `textLayers`, `textLayerEffects`, `linkTextToMath`, placement | Prefixes **`T0`–`T3`**, rasterized canvas textures |
+| Hero texture | `layerEffects.background` | Prefix **`L0`** |
+| Overlay | `layerEffects.decal`, `decal*` params, `linkDecalToMath`, `decalBackgroundLumaMask` | Prefix **`L1`**, overlay sample + tint stack |
+| Preview text (≤4) | `textLayers`, `textLayerEffects`, `linkTextToMath`, placement | Prefixes **`T0`–`T3`**, rasterized canvas textures |
 
-**Decal extras:** **`decalBackgroundLumaMask`** blends from normal alpha-over toward **multiplying the shaded background by raw decal luminance** (shader uses decal RGB before L1 shading for that branch).
+**Overlay extras:** **`decalBackgroundLumaMask`** blends from normal alpha-over toward **multiplying the shaded background by raw overlay luminance** (shader uses overlay RGB before L1 shading for that branch).
 
 ### Presets (`src/lib/preset/`)
 
+- **Primary export:** preset JSON is the embeddable look contract for production sites — see [`PORTING.md`](src/lib/preset/PORTING.md).
 - **Current schema:** **`PRESET_SCHEMA_VERSION` = 2** — embeds **`synth`** (`SynthParams` + `textLayers` + selection + `textLayerEffects`), **`layerEffects`**, **`imageResolution`**, **`viewport`**, **`baseTimeSeconds`**, optional **base64 PNG `assets`** (background/decal).
 - **v1 presets** (`LegacySynthParamsV1`) are still **validated and hydrated** (`applySynthPreset` → versioned apply).
-- **Apply modes:** **`applyEffectsOnlyFromPreset`** (grade/motion only — preserves text; default when **Keep my text** is on), **`applyStylePreset`** (full look including typography; landing hero always uses this), **`applySynthPreset`** (Stack import — may load embedded images), **`applyPresetPatch`** (runtime partial merge for mood/AI; see [`apply.ts`](src/lib/preset/apply.ts)).
-- **Keep my text:** Persisted toggle (`synth-preserve-text-on-apply`, default on) on Ideas gallery and mood input. When on, catalog/mood/URL presets re-grade your photo without replacing text layers; turn off for the full bundled look.
+- **Apply modes:** **`applyEffectsOnlyFromPreset`** (grade/motion only — preserves preview text; default when **Keep preview text** is on), **`applyStylePreset`** (full look including preview typography; landing hero always uses this), **`applySynthPreset`** (Stack import — may load embedded images), **`applyPresetPatch`** (runtime partial merge for mood/AI; see [`apply.ts`](src/lib/preset/apply.ts)).
+- **Keep preview text:** Persisted toggle (`synth-preserve-text-on-apply`, default on) in the Look section. When on, catalog/mood/URL presets re-grade your hero texture without replacing preview text layers; turn off for the full bundled look.
 - **Mood:** Keyword map ([`mapMoodToPreset`](src/lib/mood/mapMoodToPreset.ts)) always available; optional AI director ([`applyMoodFromText`](src/lib/mood/applyMood.ts)) when `VITE_MOOD_AI_ENABLED=true` and `/api/mood` is reachable.
-- **Stack panel:** **Simple** / **Stack** / **Formula** mode toggle at top — Simple = upload + mood + semantic sliders + shared export footer; Stack = full tabs and **`LayerEffectControls`**; Formula = shader math glossary with live coefficient sliders ([`formulaCatalog.ts`](src/data/formulaCatalog.ts), see [`MATH.md`](MATH.md)). Copy JSON to clipboard, download `synth-preset.json`, file import with validation (**`PresetValidationError`** UX), toggle **include embedded images**.
-- **Ideas catalog:** [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) — **10 style-only looks** (Acid Noir, Glitch Core, Archive, Soft Bloom, Xerox Punk, Cold Scan, Sunset Melt, Strobe Haze, Tape Worn, Raw Zine). Single registry for the Ideas gallery and future mood mapping; landing hero preset stays separate in [`src/data/landingHomePreset.ts`](src/data/landingHomePreset.ts).
+- **Background Studio panel:** **Source** → **Look** → **Tune** → **Export** → **Advanced** (collapsed) — upload, background looks, mood, semantic sliders, formula glossary ([`formulaCatalog.ts`](src/data/formulaCatalog.ts), see [`MATH.md`](MATH.md)), sticky export footer with **`LayerEffectControls`** in Advanced. Copy JSON to clipboard, download `synth-preset.json`, file import with validation (**`PresetValidationError`** UX), toggle **include embedded images**.
+- **Background looks catalog:** [`src/data/presetCatalog.ts`](src/data/presetCatalog.ts) — **14 style-only background looks**: **7 featured** ambient presets (Soft Drift, Film Grain, Night Gradient, Archive, Soft Bloom, Sunset Melt, Clean Loop) plus **7 legacy** expressive looks (Acid Noir, Glitch Core, Xerox Punk, Cold Scan, Strobe Haze, Tape Worn, Raw Zine) under **More looks** in the Look gallery. `category` is catalog metadata only — not exported in preset JSON. Single registry for mood mapping and `?preset=` share URLs; landing hero preset stays separate in [`src/data/landingHomePreset.ts`](src/data/landingHomePreset.ts).
 - **`gatherPresetExportInput`** / **`buildPreset`** / **`hydrate`** — round-trip authoring.
 
 ### Export
 
-- **PNG:** `exportCanvasPng` draws WebGL canvas to 2D (default **1.5×** scale in **`StackPanel`**) → download (`exportImage.ts`). Requires **`preserveDrawingBuffer`**.
-- **WebM:** **`exportLoopWebm`** (`MediaRecorder` + `captureStream`), timeline via **`__SYNTH_EXPORT_TIME__`**, **`finally`** cleanup.
+- **Preset JSON (primary):** copy to clipboard, download `synth-preset.json`, or import with validation. Coefficients + optional embedded assets; no hero texture upload required for coefficient-only export. Embed on real sites via [`PORTING.md`](src/lib/preset/PORTING.md).
+- **WebM loop (demo):** **`exportLoopWebm`** (`MediaRecorder` + `captureStream`), timeline via **`__SYNTH_EXPORT_TIME__`**, **`finally`** cleanup. Requires hero texture upload.
+- **PNG poster (fallback):** `exportCanvasPng` draws WebGL canvas to 2D (default **1.5×** scale in **`StackPanel`**) → download (`exportImage.ts`). Requires **`preserveDrawingBuffer`** and hero texture upload.
 
 ### Shell UX
 
-- Right **Stack** panel: tabs, uploads, sliders, presets, PNG/WebM; **GSAP** slide + **Hide** / floating **Open Stack**.
-- **`/`** landing shell: shared canvas + living hero (auto-loads demo image + preset on mount) + link to **`/lab`**. No Stack or Ideas.
-- **`/lab`** shell: Ideas menu + Stack drawer + shared canvas (`LandingShell` / `LabShell` in `src/shells/`).
+- Right **Studio** panel (open by default on `/lab`): tabs, uploads, sliders, presets, export footer; slide transition + **Hide** / floating **Studio** button.
+- **`/`** landing shell: shared canvas + living demo (auto-loads demo hero texture + preset on mount) + link to **`/lab`**. No studio panel. Landing CTA: **Open Studio**.
+- **`/lab`** Background Studio shell: Studio drawer + shared canvas (`LandingShell` / `LabShell` in `src/shells/`).
 
 ---
 
@@ -177,7 +194,7 @@ The **Stack** panel uses three tabs; **`LayerEffectControls`** reads/writes **`l
 
 ## Future direction
 
-Same product themes as before: **audio reactivity**, richer blending / multi-pass options, codec and duration UX for capture, optional audio-synced export — not prerequisites for the current single-pass architecture.
+Same product themes as before: **audio reactivity**, richer blending / multi-pass options, codec and duration UX for capture, optional audio-synced export — not prerequisites for the current single-pass architecture. **Phase G** — safe zone UI and reduced-motion export helpers (deferred).
 
 ---
 

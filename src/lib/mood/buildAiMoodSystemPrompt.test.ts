@@ -15,5 +15,6 @@ describe("buildAiMoodSystemPrompt", () => {
     expect(prompt.toLowerCase()).toContain("never include image urls");
     expect(prompt.toLowerCase()).toContain("base64");
     expect(prompt.toLowerCase()).toContain("json only");
+    expect(prompt.toLowerCase()).toContain("prefer featured presets");
   });
 });

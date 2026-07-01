@@ -3,7 +3,7 @@ import { useSynthStore } from "@/store/useSynthStore";
 
 /**
  * Full-width canvas shell: stack lives in a fixed overlay. Hover the right edge (md+)
- * or use the Stack button to open; close from the button or the panel header.
+ * or use the Studio button to open; close from the button or the panel header.
  */
 export function ControlsDrawer() {
   const panelOpen = useSynthStore((s) => s.panelOpen);
@@ -16,8 +16,9 @@ export function ControlsDrawer() {
         className="fixed right-3 top-3 z-[60] border border-white/35 bg-black/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm transition hover:bg-white hover:text-black"
         onClick={() => setPanelOpen(!panelOpen)}
         aria-expanded={panelOpen}
+        aria-label={panelOpen ? "Close Background Studio panel" : "Open Background Studio panel"}
       >
-        {panelOpen ? "Close" : "Stack"}
+        {panelOpen ? "Close" : "Studio"}
       </button>
 
       {!panelOpen ? (

@@ -6,6 +6,7 @@ export type MoodInputProps = {
   disabled?: boolean;
   /** landing: default feedback copy; lab: can say "Applied to your upload" */
   variant?: "landing" | "lab";
+  showPreserveToggle?: boolean;
   onMoodApplied?: () => void;
 };
 
@@ -32,14 +33,19 @@ function buildFeedback(
 
   if (variant === "lab") {
     return fallback
-      ? `Applied: ${label} — your upload unchanged (try glitch, neon, vhs…)`
+      ? `Applied: ${label} — your upload unchanged (try calm, cinematic, warm, minimal…)`
       : `Applied: ${label} — your upload unchanged`;
   }
 
-  return fallback ? `Applied: ${label} (try glitch, neon, vhs…)` : `Applied: ${label}`;
+  return fallback ? `Applied: ${label} (try calm, warm, minimal…)` : `Applied: ${label}`;
 }
 
-export function MoodInput({ disabled = false, variant = "landing", onMoodApplied }: MoodInputProps) {
+export function MoodInput({
+  disabled = false,
+  variant = "landing",
+  showPreserveToggle = true,
+  onMoodApplied,
+}: MoodInputProps) {
   const [value, setValue] = useState("");
   const [feedback, setFeedback] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
@@ -87,7 +93,7 @@ export function MoodInput({ disabled = false, variant = "landing", onMoodApplied
 
   return (
     <div className="pointer-events-auto flex flex-col gap-1.5">
-      <PreserveTextToggle compact={variant === "lab"} />
+      {showPreserveToggle ? <PreserveTextToggle compact={variant === "lab"} /> : null}
       <form onSubmit={onSubmit} className="flex items-stretch gap-1.5">
         <input
           type="text"
@@ -98,7 +104,7 @@ export function MoodInput({ disabled = false, variant = "landing", onMoodApplied
           }}
           onKeyDown={onKeyDown}
           disabled={inputDisabled}
-          placeholder="glitch, sunset, cold scan…"
+          placeholder="calm, cinematic, warm, minimal…"
           aria-label="Describe a mood"
           className="min-w-[12rem] border border-white/35 bg-black/80 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm placeholder:text-white/35 focus:outline-none focus:ring-1 focus:ring-white/50 disabled:opacity-50"
         />

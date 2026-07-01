@@ -367,8 +367,8 @@ export const IDEA_SUNSET_MELT = makeIdeaPreset(
   },
   {
     background: {
-      meltIntensity: 0.58,
-      colorBleed: 0.62,
+      meltIntensity: 0.24,
+      colorBleed: 0.55,
       noiseLevel: 0.04,
       posterizeSteps: 9,
       timeScale: 0.48,

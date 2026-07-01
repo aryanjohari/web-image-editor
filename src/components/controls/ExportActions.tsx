@@ -20,16 +20,16 @@ export function ExportActions() {
 
   const exportPng = () => {
     if (!imageTexture) {
-      window.alert("Upload a background image first.");
+      window.alert("Upload a hero texture first.");
       return;
     }
     const canvas = getSynthCanvas();
-    if (canvas) exportCanvasPng(canvas, "image-editor.png", 1.5);
+    if (canvas) exportCanvasPng(canvas, "background-poster.png", 1.5);
   };
 
   const exportWebm = async () => {
     if (!imageTexture) {
-      window.alert("Upload a background image first.");
+      window.alert("Upload a hero texture first.");
       return;
     }
     const canvas = getSynthCanvas();
@@ -93,20 +93,11 @@ export function ExportActions() {
 
   return (
     <div className="flex shrink-0 flex-col gap-2 border-t border-white/20 p-4 pt-4">
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={exportPng}
-      >
-        Export PNG
-      </button>
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => void exportWebm()}
-      >
-        Export Loop WebM
-      </button>
+      <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Export</p>
+      <p className="text-[10px] leading-relaxed text-zinc-500">
+        Preset JSON is the primary deliverable for embedding on your site. WebM and PNG are optional demo
+        or fallback exports.
+      </p>
 
       <label className="flex cursor-pointer items-center gap-2 border border-white/20 px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-300">
         <input
@@ -122,15 +113,34 @@ export function ExportActions() {
         type="button"
         className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
         onClick={() => void copyPreset()}
+        title="Copy embeddable preset JSON to clipboard"
       >
-        Copy preset
+        Copy preset JSON
       </button>
       <button
         type="button"
         className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
         onClick={() => void downloadPreset()}
+        title="Download synth-preset.json for version control or handoff"
       >
-        Download preset.json
+        Download preset JSON
+      </button>
+
+      <button
+        type="button"
+        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
+        onClick={() => void exportWebm()}
+        title="Record a short looping WebM for demos or social"
+      >
+        Export loop WebM
+      </button>
+      <button
+        type="button"
+        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
+        onClick={exportPng}
+        title="Save a still frame as fallback or thumbnail (requires hero texture)"
+      >
+        Export PNG poster
       </button>
 
       <input

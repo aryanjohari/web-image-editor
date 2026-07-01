@@ -1,4 +1,5 @@
 import type { LayerEffectParams, LayerId } from "@/store/layerEffects";
+import { STUDIO_LAYER_TAB_LABELS } from "@/constants/studioLabels";
 import { useSynthStore } from "@/store/useSynthStore";
 
 type LayerEffectKey = keyof LayerEffectParams;
@@ -84,7 +85,9 @@ export function LayerEffectControls({ layer, textSublayerId }: LayerEffectContro
   };
 
   const title =
-    layer === "text" && textSublayerId ? "Effects — text (custom)" : `Effects — ${layer}`;
+    layer === "text" && textSublayerId
+      ? `Effects — ${STUDIO_LAYER_TAB_LABELS.text} (custom)`
+      : `Effects — ${STUDIO_LAYER_TAB_LABELS[layer]}`;
 
   const sliderProps = { layer, textSublayerId } as const;
 

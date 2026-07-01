@@ -20,13 +20,13 @@ export function PreserveTextToggle({ compact = false }: PreserveTextToggleProps)
             compact ? "text-[9px] tracking-[0.14em]" : "text-xs"
           }`}
         >
-          Keep my text
+          Keep preview text
         </span>
         <button
           type="button"
           role="switch"
           aria-checked={preserveText}
-          aria-label="Keep my text when applying presets"
+          aria-label="Keep preview text when applying background looks"
           onClick={() => setPreserveText(!preserveText)}
           className={`relative h-7 w-11 shrink-0 border border-white/35 transition-colors ${
             preserveText ? "bg-white" : "bg-zinc-900"
@@ -42,11 +42,12 @@ export function PreserveTextToggle({ compact = false }: PreserveTextToggleProps)
       </div>
       {!compact ? (
         <p className="text-[10px] leading-relaxed text-zinc-600">
-          When on, Ideas and mood change the grade on your photo without replacing your text layers.
+          When on, background looks and mood re-grade your hero texture only; preview text stays. On your live site,
+          use HTML above the canvas instead of GPU text.
         </p>
       ) : (
         <p className="text-[9px] leading-relaxed text-zinc-500">
-          Grade only — your text layers stay.
+          Grade only — preview text stays.
         </p>
       )}
     </div>

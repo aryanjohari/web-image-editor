@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { ExportActions } from "@/components/controls/ExportActions";
 import { FormulaPanel } from "@/components/controls/FormulaPanel";
 import { LayerEffectControls } from "@/components/controls/LayerEffectControls";
@@ -6,14 +6,22 @@ import { SemanticSliderControls, type SemanticSliderControlsHandle } from "@/com
 import { SliderControl } from "@/components/controls/SliderControl";
 import { IdeasGallery } from "@/components/IdeasGallery";
 import { MoodInput } from "@/components/MoodInput";
+import { PreserveTextToggle } from "@/components/PreserveTextToggle";
 import { UploadButton } from "@/components/UploadButton";
+import { STUDIO_LAYER_TAB_LABELS } from "@/constants/studioLabels";
 import { MAX_TEXT_LAYERS } from "@/store/textLayers";
 import { useSynthStore } from "@/store/useSynthStore";
 
-type PanelMode = "simple" | "stack" | "formula";
+const SECTION_HEADING =
+  "text-[10px] uppercase tracking-[0.2em] text-zinc-400";
+
+const DETAILS_SUMMARY =
+  "cursor-pointer list-none px-3 py-2.5 text-[10px] uppercase tracking-[0.18em] text-zinc-300 hover:bg-white/5 [&::-webkit-details-marker]:hidden";
+
+const EXPORT_INTRO =
+  "Preset JSON is the primary deliverable for embedding on your site. WebM and PNG are optional demo or fallback exports.";
 
 export function StackPanel() {
-  const [panelMode, setPanelMode] = useState<PanelMode>("simple");
   const semanticRef = useRef<SemanticSliderControlsHandle | null>(null);
 
   const {
@@ -42,18 +50,6 @@ export function StackPanel() {
     semanticRef.current?.resetToDefaults();
   };
 
-  const modeBtn = (id: PanelMode, label: string) => (
-    <button
-      type="button"
-      className={`flex-1 py-2.5 text-[9px] uppercase tracking-[0.12em] transition-colors sm:text-[10px] sm:tracking-[0.16em] ${
-        panelMode === id ? "bg-white text-black" : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
-      }`}
-      onClick={() => setPanelMode(id)}
-    >
-      {label}
-    </button>
-  );
-
   const tabBtn = (id: typeof stackTab, label: string, showLeftBorder: boolean) => (
     <button
       type="button"
@@ -70,18 +66,17 @@ export function StackPanel() {
 
   const hasDecalImage = decalTexture != null;
 
-  const stackBody = (
+  const advancedBody = (
     <>
-      <IdeasGallery />
       <div className="flex w-full border border-white/25">
-        {tabBtn("background", "Background", false)}
-        {tabBtn("decal", "Decal", true)}
-        {tabBtn("text", "Text", true)}
+        {tabBtn("background", STUDIO_LAYER_TAB_LABELS.background, false)}
+        {tabBtn("decal", STUDIO_LAYER_TAB_LABELS.decal, true)}
+        {tabBtn("text", STUDIO_LAYER_TAB_LABELS.text, true)}
       </div>
 
       {stackTab === "background" ? (
         <>
-          <UploadButton variant="background" />
+          <p className="text-[10px] leading-relaxed text-zinc-500">Upload in Source above.</p>
           <LayerEffectControls layer="background" />
         </>
       ) : stackTab === "decal" ? (
@@ -91,22 +86,31 @@ export function StackPanel() {
           <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
             Placement
           </p>
-          <SliderControl label="Decal Scale" min={0.1} max={4} value={decalScale} synthParam="decalScale" />
           <SliderControl
-            label="Background × decal luminance"
+            label="Overlay scale"
+            min={0.1}
+            max={4}
+            value={decalScale}
+            synthParam="decalScale"
+          />
+          <SliderControl
+            label="Hero × overlay luminance"
             min={0}
             max={1}
             value={decalBackgroundLumaMask}
             synthParam="decalBackgroundLumaMask"
           />
           <p className="text-[10px] leading-relaxed text-zinc-500">
-            Blends from normal decal alpha-over (0) toward multiplying the background by the decal texture&apos;s
-            luminance (1). Uses raw decal RGB before layer effects.
+            At 0, normal overlay blend. At 1, multiply hero brightness by overlay luminance (raw overlay RGB, before
+            effects).
           </p>
 
           <div className="flex items-center justify-between gap-3 border border-white/20 px-3 py-3">
-            <span className="min-w-0 flex-1 text-xs uppercase tracking-wide text-zinc-200">
-              Link Decal to Distortion Math
+            <span
+              className="min-w-0 flex-1 text-xs uppercase tracking-wide text-zinc-200"
+              title="Overlay warps with the same UV distortion as the hero texture."
+            >
+              Link overlay to warp math
             </span>
             <button
               type="button"
@@ -127,17 +131,18 @@ export function StackPanel() {
           </div>
 
           <p className="text-[10px] leading-relaxed text-zinc-500">
-            Drag on the canvas to move the decal (Background and Decal tabs). With a sticker and text, open the Text
-            tab to drag the selected text layer separately.
+            Drag on the canvas to move the overlay (Hero texture or Overlay tab). With preview text, open the Preview
+            text tab to drag the selected layer separately.
           </p>
 
           <LayerEffectControls layer="decal" />
         </>
       ) : (
         <>
-          <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Text layers</p>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">{STUDIO_LAYER_TAB_LABELS.text}</p>
           <p className="text-[10px] leading-relaxed text-zinc-500">
-            Stack order: first in the list is drawn below; last is on top. Multi-line and word wrap are supported.
+            Lab-only headline for layout preview — use HTML above the canvas on your site. Layer order: first in the
+            list is drawn below; last is on top. Multi-line and word wrap are supported.
           </p>
 
           <div className="flex flex-wrap gap-2">
@@ -176,7 +181,7 @@ export function StackPanel() {
           {selectedLayer ? (
             <>
               <label className="flex w-full flex-col gap-2 text-xs uppercase tracking-wide">
-                <span className="text-zinc-300">Overlay text</span>
+                <span className="text-zinc-300">Preview copy</span>
                 <textarea
                   rows={5}
                   className="min-h-[5rem] w-full resize-y border border-zinc-700 bg-zinc-900 px-2 py-2 text-sm normal-case tracking-normal text-white"
@@ -219,7 +224,7 @@ export function StackPanel() {
                 <>
                   <label className="flex w-full flex-col gap-2 text-xs uppercase tracking-wide">
                     <div className="flex items-center justify-between text-zinc-300">
-                      <span>Text Layer Scale</span>
+                      <span>Preview text scale</span>
                       <span>{selectedLayer.scale.toFixed(2)}</span>
                     </div>
                     <input
@@ -235,8 +240,11 @@ export function StackPanel() {
                     />
                   </label>
                   <div className="flex items-center justify-between gap-3 border border-white/20 px-3 py-3">
-                    <span className="min-w-0 flex-1 text-xs uppercase tracking-wide text-zinc-200">
-                      Link Text to Distortion Math
+                    <span
+                      className="min-w-0 flex-1 text-xs uppercase tracking-wide text-zinc-200"
+                      title="Preview text warps with the same UV distortion as the hero texture."
+                    >
+                      Link preview text to warp math
                     </span>
                     <button
                       type="button"
@@ -259,15 +267,18 @@ export function StackPanel() {
               ) : (
                 <>
                   <SliderControl
-                    label="Layer Scale"
+                    label="Preview text scale"
                     min={0.1}
                     max={4}
                     value={decalScale}
                     synthParam="decalScale"
                   />
                   <div className="flex items-center justify-between gap-3 border border-white/20 px-3 py-3">
-                    <span className="min-w-0 flex-1 text-xs uppercase tracking-wide text-zinc-200">
-                      Link to Distortion Math
+                    <span
+                      className="min-w-0 flex-1 text-xs uppercase tracking-wide text-zinc-200"
+                      title="Preview text warps with the same UV distortion as the hero texture."
+                    >
+                      Link preview text to warp math
                     </span>
                     <button
                       type="button"
@@ -287,8 +298,8 @@ export function StackPanel() {
                     </button>
                   </div>
                   <p className="text-[10px] leading-relaxed text-zinc-500">
-                    Without a decal image, all text layers share the same position and scale as the decal slot.
-                    Upload a decal to unlock independent transforms per layer.
+                    Without an overlay, all preview text layers share one position and scale. Upload an overlay to unlock
+                    per-layer placement.
                   </p>
                 </>
               )}
@@ -317,14 +328,14 @@ export function StackPanel() {
                 </button>
               </div>
               <p className="text-[10px] leading-relaxed text-zinc-500">
-                When linked, this layer uses the shared &quot;text&quot; effect preset below. Unlink to edit a
-                separate copy.
+                When linked, this layer uses the shared preview text effect preset below. Unlink to edit a separate
+                copy.
               </p>
 
               <p className="text-[10px] leading-relaxed text-zinc-500">
                 {hasDecalImage
-                  ? "With this tab selected, drag on the canvas to move the selected text layer."
-                  : "With this tab selected, drag on the canvas to move text (shared decal slot offset)."}
+                  ? "With this tab selected, drag on the canvas to move the selected preview text layer."
+                  : "With this tab selected, drag on the canvas to move preview text (shared overlay placement)."}
               </p>
 
               {selectedLayer.effectsLinked ? (
@@ -334,33 +345,17 @@ export function StackPanel() {
               )}
             </>
           ) : (
-            <p className="text-[10px] text-zinc-500">Add a text layer to begin.</p>
+            <p className="text-[10px] text-zinc-500">Add preview text to begin.</p>
           )}
         </>
       )}
     </>
   );
 
-  const simpleBody = (
-    <>
-      <p className="text-[10px] leading-relaxed text-zinc-400">
-        Upload a photo, describe a mood, export.
-      </p>
-      <UploadButton variant="background" />
-      <MoodInput variant="lab" onMoodApplied={resetSemanticSliders} />
-      <SemanticSliderControls resetRef={semanticRef} />
-      <p className="text-[10px] leading-relaxed text-zinc-500">
-        Open Stack mode for decals, text layers, and full sliders. Formula mode teaches shader math.
-      </p>
-    </>
-  );
-
-  const formulaBody = <FormulaPanel />;
-
   return (
     <div className="flex h-full min-h-0 min-w-0 flex-1 flex-col bg-panel">
       <div className="flex shrink-0 items-center justify-between border-b border-white/20 p-4 pb-4">
-        <h2 className="text-sm uppercase tracking-[0.25em]">The Stack</h2>
+        <h2 className="text-sm uppercase tracking-[0.25em]">Background Studio</h2>
         <button
           type="button"
           className="border border-white px-2 py-1 text-[10px] uppercase tracking-widest"
@@ -370,16 +365,51 @@ export function StackPanel() {
         </button>
       </div>
 
-      <div className="shrink-0 border-b border-white/20 px-4 pb-4">
-        <div className="flex w-full border border-white/25">
-          {modeBtn("simple", "Simple")}
-          {modeBtn("stack", "Stack")}
-          {modeBtn("formula", "Formula")}
-        </div>
-      </div>
-
       <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden p-4 flex flex-col gap-5">
-        {panelMode === "simple" ? simpleBody : panelMode === "formula" ? formulaBody : stackBody}
+        <section aria-labelledby="studio-source-heading" className="flex flex-col gap-3">
+          <h3 id="studio-source-heading" className={SECTION_HEADING}>
+            Source
+          </h3>
+          <UploadButton variant="background" />
+        </section>
+
+        <section aria-labelledby="studio-look-heading" className="flex flex-col gap-3">
+          <h3 id="studio-look-heading" className={SECTION_HEADING}>
+            Look
+          </h3>
+          <IdeasGallery hidePreserveToggle sectionLabel="Background looks" />
+          <PreserveTextToggle />
+          <MoodInput
+            variant="lab"
+            showPreserveToggle={false}
+            onMoodApplied={resetSemanticSliders}
+          />
+        </section>
+
+        <section aria-labelledby="studio-tune-heading" className="flex flex-col gap-3">
+          <h3 id="studio-tune-heading" className={SECTION_HEADING}>
+            Tune
+          </h3>
+          <SemanticSliderControls resetRef={semanticRef} />
+          <details className="border border-white/20">
+            <summary className={DETAILS_SUMMARY}>Formula glossary</summary>
+            <div className="border-t border-white/20 p-3">
+              <FormulaPanel />
+            </div>
+          </details>
+        </section>
+
+        <section aria-labelledby="studio-export-heading" className="flex flex-col gap-2">
+          <h3 id="studio-export-heading" className={SECTION_HEADING}>
+            Export
+          </h3>
+          <p className="text-[10px] leading-relaxed text-zinc-500">{EXPORT_INTRO}</p>
+        </section>
+
+        <details className="border border-white/20">
+          <summary className={DETAILS_SUMMARY}>Advanced controls</summary>
+          <div className="flex flex-col gap-5 border-t border-white/20 p-3 pt-4">{advancedBody}</div>
+        </details>
       </div>
 
       <ExportActions />

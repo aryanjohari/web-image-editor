@@ -40,7 +40,7 @@ function mergeLayerEffects(patch: Partial<Record<LayerId, Partial<LayerEffectPar
 
 const titleLayer = createTextLayer({
   id: "landing-hero-title",
-  text: "THE ALGORITHM\nENGINE",
+  text: "BACKGROUND\nSTUDIO",
   color: "#e8f4ff",
   fontSize: 118,
   offsetX: -0.28,
@@ -51,7 +51,7 @@ const titleLayer = createTextLayer({
 
 const taglineLayer = createTextLayer({
   id: "landing-hero-tagline",
-  text: "GPU LOOK ENGINE",
+  text: "PRESET JSON FOR THE WEB",
   color: "#6ec8ff",
   fontSize: 52,
   offsetX: -0.28,
@@ -77,11 +77,11 @@ export const LANDING_HOME_PRESET: SynthPresetV2 = {
   },
   layerEffects: mergeLayerEffects({
     background: {
-      meltIntensity: 0.28,
-      colorBleed: 0.62,
+      meltIntensity: 0.16,
+      colorBleed: 0.48,
       noiseLevel: 0.05,
       posterizeSteps: 10,
-      timeScale: 1.05,
+      timeScale: 0.72,
       maskCenterX: 0.42,
       maskCenterY: 0.55,
       maskRadius: 0.62,
@@ -89,9 +89,9 @@ export const LANDING_HOME_PRESET: SynthPresetV2 = {
       colorA: "#050a14",
       colorB: "#1a6bff",
       duotoneBlend: 0.48,
-      colorCycleSpeed: 0.18,
+      colorCycleSpeed: 0.08,
       halftoneIntensity: 0.08,
-      scanlineIntensity: 0.14,
+      scanlineIntensity: 0.05,
     },
     text: {
       meltIntensity: 0.1,

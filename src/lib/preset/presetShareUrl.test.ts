@@ -22,6 +22,7 @@ describe("isValidCatalogPresetId", () => {
   it("accepts known catalog ids", () => {
     expect(isValidCatalogPresetId("glitch-core")).toBe(true);
     expect(isValidCatalogPresetId("archive")).toBe(true);
+    expect(isValidCatalogPresetId("soft-drift")).toBe(true);
   });
 
   it("rejects unknown ids", () => {

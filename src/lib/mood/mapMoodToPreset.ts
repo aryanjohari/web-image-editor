@@ -1,4 +1,4 @@
-import { PRESET_CATALOG } from "@/data/presetCatalog";
+import { PRESET_CATALOG, type PresetCatalogEntry } from "@/data/presetCatalog";
 import type { PresetPatch } from "@/lib/preset/apply";
 
 export const MOOD_FALLBACK_PRESET_ID = "archive";
@@ -13,6 +13,26 @@ export type MoodMapResult = {
   /** Human hint when fallback used */
   fallback?: boolean;
 };
+
+/** Legacy-only mood terms — win ties against featured partial matches (e.g. neon vs vintage). */
+const EXPRESSIVE_KEYWORDS = new Set([
+  "acid",
+  "neon",
+  "glitch",
+  "club",
+  "rave",
+  "strobe",
+  "punk",
+  "zine",
+  "flyer",
+  "harsh",
+  "digital",
+  "decay",
+  "tear",
+  "xerox",
+  "photocopy",
+  "rave",
+]);
 
 function normalize(input: string): string {
   return input.toLowerCase().trim().replace(/\s+/g, " ");
@@ -35,6 +55,34 @@ function scoreEntry(tokens: string[], keywords: string[]): number {
     }
   }
   return score;
+}
+
+function entryMatchesExpressiveKeyword(entry: PresetCatalogEntry, tokens: string[]): boolean {
+  return tokens.some((token) =>
+    entry.keywords.some(
+      (kw) => EXPRESSIVE_KEYWORDS.has(kw) && tokenMatchesKeyword(token, kw),
+    ),
+  );
+}
+
+/** Resolve ties: expressive legacy beats featured; else featured beats legacy; else catalog order. */
+function pickWinnerAmongTied(
+  tied: PresetCatalogEntry[],
+  tokens: string[],
+): PresetCatalogEntry {
+  const legacyExpressive = tied.filter(
+    (entry) => entry.category === "legacy" && entryMatchesExpressiveKeyword(entry, tokens),
+  );
+  if (legacyExpressive.length > 0) {
+    return legacyExpressive[0]!;
+  }
+
+  const featured = tied.filter((entry) => entry.category === "featured");
+  if (featured.length > 0) {
+    return featured[0]!;
+  }
+
+  return tied[0]!;
 }
 
 function buildModifierPatch(normalized: string): PresetPatch | undefined {
@@ -63,6 +111,19 @@ function buildModifierPatch(normalized: string): PresetPatch | undefined {
     background.colorB = "#4a9eff";
     hasPatch = true;
   }
+  if (/\b(warmer|warmth)\b/.test(normalized)) {
+    background.colorB = "#e8a060";
+    hasPatch = true;
+  }
+  if (/\b(darker|deep)\b/.test(normalized)) {
+    background.colorA = "#080810";
+    hasPatch = true;
+  }
+  if (/\b(more\s+grain|grainier)\b/.test(normalized)) {
+    background.noiseLevel = 0.18;
+    background.scanlineIntensity = 0.08;
+    hasPatch = true;
+  }
 
   if (!hasPatch) return undefined;
   return { layerEffects: { background } };
@@ -76,19 +137,21 @@ export function mapMoodToPreset(input: string): MoodMapResult {
     return { presetId: MOOD_FALLBACK_PRESET_ID, score: 0, fallback: true };
   }
 
-  let bestId = MOOD_FALLBACK_PRESET_ID;
-  let bestScore = 0;
+  const scored = PRESET_CATALOG.map((entry) => ({
+    entry,
+    score: scoreEntry(tokens, entry.keywords),
+  }));
 
-  for (const entry of PRESET_CATALOG) {
-    const score = scoreEntry(tokens, entry.keywords);
-    if (score > bestScore) {
-      bestScore = score;
-      bestId = entry.id;
-    }
+  const bestScore = Math.max(...scored.map((s) => s.score), 0);
+  const fallback = bestScore < 1;
+
+  let presetId = MOOD_FALLBACK_PRESET_ID;
+  if (!fallback) {
+    const tied = scored.filter((s) => s.score === bestScore).map((s) => s.entry);
+    presetId =
+      tied.length === 1 ? tied[0]!.id : pickWinnerAmongTied(tied, tokens).id;
   }
 
-  const fallback = bestScore < 1;
-  const presetId = fallback ? MOOD_FALLBACK_PRESET_ID : bestId;
   const confidence = fallback ? 0 : bestScore / tokens.length;
   const patch = buildModifierPatch(normalized);
 

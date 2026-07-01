@@ -42,8 +42,7 @@ export function SemanticSliderControls({ resetRef }: SemanticSliderControlsProps
   return (
     <div className="flex flex-col gap-4">
       <p className="text-[10px] leading-relaxed text-zinc-500">
-        Sliders set absolute background values and override mood or Idea tweaks until you apply a
-        new mood.
+        Sliders set absolute background values and override mood or background look tweaks until you apply a new mood.
       </p>
       {SLIDERS.map(({ key, label, hint }) => (
         <div key={key} className="flex flex-col gap-1">

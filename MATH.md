@@ -1,6 +1,6 @@
-# GPU math in The Algorithm Engine
+# GPU math in Background Studio
 
-Teaching notes tied to the **actual** shader and store code in this repo—not generic WebGL theory. Primary sources: [`src/webgl/shaders/fragment.glsl`](src/webgl/shaders/fragment.glsl), [`src/store/layerEffects.ts`](src/store/layerEffects.ts), [`src/webgl/materials/SynthMaterial.tsx`](src/webgl/materials/SynthMaterial.tsx).
+*The Algorithm Engine* — technical reference for the live background shader. Teaching notes tied to the **actual** shader and store code in this repo—not generic WebGL theory. Primary sources: [`src/webgl/shaders/fragment.glsl`](src/webgl/shaders/fragment.glsl), [`src/store/layerEffects.ts`](src/store/layerEffects.ts), [`src/webgl/materials/SynthMaterial.tsx`](src/webgl/materials/SynthMaterial.tsx).
 
 ---
 
@@ -44,7 +44,7 @@ Uniforms are seeded and updated each frame in `SynthMaterial.tsx` (`applyLayerUn
 
 ## 3. Formula glossary
 
-Each Stack knob maps to a function in `fragment.glsl`. Store field names live in `LayerEffectParams` (`layerEffects.ts`).
+Each **Background Studio** knob (UI label; Phase D may rename layer tabs) maps to a function in `fragment.glsl`. Store field names live in `LayerEffectParams` (`layerEffects.ts`).
 
 | UI / store field | Shader function | Math (short) |
 |------------------|-----------------|--------------|
@@ -76,7 +76,7 @@ The fragment shader duplicates one effect bank per logical layer:
 
 | Prefix | Layer | Store key |
 |--------|-------|-----------|
-| `L0` | Background | `layerEffects.background` |
+| `L0` | Background (hero texture) | `layerEffects.background` |
 | `L1` | Decal | `layerEffects.decal` |
 | `T0`–`T3` | Text slots 0–3 | Master `layerEffects.text` or per-id `textLayerEffects` |
 
@@ -88,7 +88,7 @@ Global compositing uniforms (`u_decalTransform`, `u_linkDecalToMath`, `u_linkTex
 
 ## 6. Presets as coefficients
 
-Preset JSON stores **numbers and metadata**, not rendered pixels. A preset is input to the same shader—not a baked image.
+Preset JSON stores **numbers and metadata**, not rendered pixels. A preset is input to the same shader—not a baked image. This is what you embed on production sites.
 
 - Schema: [`src/lib/preset/types.ts`](src/lib/preset/types.ts) (`SynthPresetV2`: `synth`, `layerEffects`, `viewport`, `baseTimeSeconds`, optional base64 `assets`).
 - Porting checklist: [`src/lib/preset/PORTING.md`](src/lib/preset/PORTING.md).
@@ -109,7 +109,7 @@ Hydration writes into Zustand; the next `useFrame` pushes values into uniforms. 
 
 5. **Decal vs background effects?** Independent `L0` and `L1` uniforms; optional `u_linkDecalToMath` mixes decal UV grid toward the warped background grid.
 
-6. **How is text drawn?** CPU rasterizes to `CanvasTexture` (`textUtils.ts`); GPU treats each slot like a small atlas with its own warp/shade bank (`T0`–`T3`).
+6. **How is text drawn?** CPU rasterizes to `CanvasTexture` (`textUtils.ts`); GPU treats each slot like a small atlas with its own warp/shade bank (`T0`–`T3`). Lab preview only — production sites use DOM text above the canvas.
 
 7. **What does a preset save?** Coefficients + transforms + viewport/time snapshot (+ optional images)—see `buildPreset` / `gatherPresetExportInput`.
 
@@ -117,11 +117,11 @@ Hydration writes into Zustand; the next `useFrame` pushes values into uniforms. 
 
 ---
 
-## 8. Formula mode (Lab)
+## 8. Formula glossary (Lab)
 
-**Formula mode** in the Lab Stack panel (`/lab` → open Stack → **Formula** tab) exposes a Tier-1 catalog of shader coefficients with plain-English descriptions and teaching equations. Source of truth for entries: [`src/data/formulaCatalog.ts`](src/data/formulaCatalog.ts), derived from §3 above.
+**Formula glossary** in Background Studio (`/lab` → open panel → **Tune** → expand **Formula glossary**) exposes a Tier-1 catalog of shader coefficients with plain-English descriptions and teaching equations. Source of truth for entries: [`src/data/formulaCatalog.ts`](src/data/formulaCatalog.ts), derived from §3 above.
 
-- Pick **Background**, **Decal**, or **Text** to filter formulas for that layer.
+- Pick **Hero texture**, **Overlay**, or **Preview text** to filter formulas for that layer.
 - Select a formula to read its equation and adjust one live slider; changes flow Zustand → `SynthMaterial` → uniforms immediately.
 - For text, Tier 1 edits the master `layerEffects.text` bundle only (not per-sublayer unlinked copies).
-- Full glossary and pipeline context remain in this file; the UI links here from Formula mode.
+- Full glossary and pipeline context remain in this file; the UI links here from the formula glossary.

@@ -117,8 +117,13 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
           type="button"
           className="min-w-0 flex-1 border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
           onClick={() => inputRef.current?.click()}
+          title={
+            variant === "decal"
+              ? "Optional logo, shape, or light-leak plate above the hero texture."
+              : "Optional brand photo or grain plate sampled full-viewport."
+          }
         >
-          {variant === "decal" ? "Upload Decal" : "Upload Image"}
+          {variant === "decal" ? "Upload overlay" : "Upload hero texture"}
         </button>
         {hasSlot ? (
           <button
