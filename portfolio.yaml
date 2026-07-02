@@ -1,0 +1,23 @@
+title: Background Studio
+slug: background-studio
+summary: A browser tool for creating animated full-screen hero backgrounds and exporting looks as JSON for your own site.
+description: >
+  Upload a hero image and adjust motion, color, and texture effects while the background animates live in the browser.
+  Choose from 14 preset looks or describe a mood to restyle the scene.
+  Export preset JSON to reuse the same look on a portfolio or landing page, or save a WebM loop or PNG still for sharing.
+  Everything renders on one WebGL canvas that composites the hero image, optional overlay, and preview text in a single pass.
+stack:
+  - TypeScript
+  - React
+  - Vite
+  - Three.js
+  - React Three Fiber
+  - GLSL
+  - Zustand
+  - Tailwind CSS
+  - GSAP
+status: active
+links:
+  github: https://github.com/aryanjohari/web-image-editor
+  docs: https://github.com/aryanjohari/web-image-editor/blob/main/src/lib/preset/PORTING.md
+  demo: https://image.arkhives.nz

@@ -2,6 +2,8 @@
 
 *The Algorithm Engine* — browser-based live background creator for the web (npm: `web-image-editor`).
 
+Visitor overview: see portfolio.yaml.
+
 Master architectural document for **web-image-editor**: a math-driven **full-viewport animated hero background** designer. Users optionally upload a **hero texture** plus an optional **overlay** (decal) and up to **four preview text slots**, all rendered on a **single full-screen quad** with **custom GLSL**. Warp, color, and texture math live in **one fragment program**, but **each logical layer gets its own effect bundle** (uniforms keyed `L0` / `L1` / `T0–T3`) so hero texture, overlay, and preview text can diverge creatively.
 
 This README is written so an AI assistant (or a new contributor) can quickly grasp **context**, **capabilities**, **data flow**, and **constraints** without spelunking the tree.
