@@ -1,0 +1,30 @@
+flowchart TB
+  subgraph inputs [Inputs]
+    Upload[Hero and overlay upload]
+    Looks[14 looks + mood text]
+    Tune[Intensity / Motion / Grit]
+  end
+
+  Store[Zustand scene state]
+  Material[SynthMaterial uniforms]
+  Shader[One GLSL fragment program]
+
+  subgraph pass [Single GPU pass]
+    L0[Hero layer L0]
+    L1[Overlay layer L1]
+    Text[Preview text T0–T3]
+  end
+
+  JSON[Preset JSON]
+  Media[WebM loop / PNG still]
+  Site[Embed behind HTML on your site]
+
+  Upload --> Store
+  Looks --> Store
+  Tune --> Store
+  Store --> Material
+  Material --> Shader
+  Shader --> L0 --> L1 --> Text
+  Text --> JSON
+  Text --> Media
+  JSON --> Site
