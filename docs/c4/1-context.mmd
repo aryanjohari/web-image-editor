@@ -1,0 +1,10 @@
+C4Context
+  title System Context — Background Studio
+  Person(designer, "Designer", "Tunes hero looks in the browser and exports presets")
+  System(studio, "Background Studio", "Live WebGL hero-background designer and preset exporter")
+  System_Ext(openai, "OpenAI API", "Optional chat completions for AI mood")
+  System_Ext(embedSite, "Your production site", "Embeds exported preset JSON behind HTML")
+
+  Rel(designer, studio, "Uploads textures, picks looks, exports JSON / WebM / PNG")
+  Rel(studio, openai, "Optional AI mood (when enabled)", "HTTPS")
+  Rel(studio, embedSite, "Exports reusable preset coefficients")

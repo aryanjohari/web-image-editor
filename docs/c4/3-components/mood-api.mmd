@@ -1,0 +1,13 @@
+flowchart LR
+  post[POST /api/mood]
+  handler[Vercel handler]
+  prompt[System prompt builder]
+  openai[OpenAI Chat Completions]
+  parse[Parse and validate response]
+  json["JSON basePresetId + optional patch"]
+
+  post --> handler
+  handler --> prompt
+  handler --> openai
+  openai --> parse
+  parse --> json

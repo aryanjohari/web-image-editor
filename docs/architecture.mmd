@@ -1,30 +1,29 @@
 flowchart TB
   subgraph inputs [Inputs]
-    Upload[Hero and overlay upload]
-    Looks[14 looks + mood text]
+    Upload[Hero / overlay upload]
+    Looks[Catalog looks + mood]
     Tune[Intensity / Motion / Grit]
   end
 
-  Store[Zustand scene state]
-  Material[SynthMaterial uniforms]
-  Shader[One GLSL fragment program]
-
-  subgraph pass [Single GPU pass]
-    L0[Hero layer L0]
-    L1[Overlay layer L1]
-    Text[Preview text T0–T3]
+  subgraph core [Core]
+    Spa[Studio SPA + Zustand]
+    Shader[Single-pass GLSL compositor]
+    MoodApi[Mood API optional]
+    OpenAI[OpenAI optional]
   end
 
-  JSON[Preset JSON]
-  Media[WebM loop / PNG still]
-  Site[Embed behind HTML on your site]
+  subgraph outputs [Outputs]
+    JSON[Preset JSON]
+    Media[WebM / PNG]
+    Embed[Your site embed]
+  end
 
-  Upload --> Store
-  Looks --> Store
-  Tune --> Store
-  Store --> Material
-  Material --> Shader
-  Shader --> L0 --> L1 --> Text
-  Text --> JSON
-  Text --> Media
-  JSON --> Site
+  Upload --> Spa
+  Looks --> Spa
+  Tune --> Spa
+  Spa --> Shader
+  Spa -.->|POST /api/mood| MoodApi
+  MoodApi -.-> OpenAI
+  Shader --> JSON
+  Shader --> Media
+  JSON --> Embed

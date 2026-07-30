@@ -29,42 +29,23 @@
 - **Mood as catalog + optional patch.** Keywords always map to a catalog look; optional AI returns `{ basePresetId, patch? }` validated server-side, with keyword fallback on any failure.
 - **Export clock hijack.** WebM capture writes `window.__SYNTH_EXPORT_TIME__` so each layer’s `u_*_t` follows a deterministic timeline, then clears it so live preview returns to the R3F clock.
 
+## C4 overview
+
+| Level | Link |
+|-------|------|
+| Index | [`docs/c4/README.md`](c4/README.md) |
+| C1 Context | [`docs/c4/1-context.md`](c4/1-context.md) |
+| C2 Containers | [`docs/c4/2-containers.md`](c4/2-containers.md) |
+| C3 `studio-spa` | [`docs/c4/3-components/studio-spa.md`](c4/3-components/studio-spa.md) |
+| C3 `mood-api` | [`docs/c4/3-components/mood-api.md`](c4/3-components/mood-api.md) |
+
+Portfolio fetch artifacts (aligned with C2): [`architecture.mmd`](architecture.mmd), [`architecture.graph.json`](architecture.graph.json). Declared in root [`portfolio.yaml`](../portfolio.yaml).
+
 ## System overview
 
-Diagram source (portfolio + GitHub): [`docs/architecture.mmd`](architecture.mmd).
+Two deployable pieces: the **SPA** in the browser and an optional **Mood API** on Vercel. No database. Keyword mood stays client-side; AI mood is dashed/optional.
 
-```mermaid
-flowchart TB
-  subgraph inputs [Inputs]
-    Upload[Hero and overlay upload]
-    Looks[14 looks + mood text]
-    Tune[Intensity / Motion / Grit]
-  end
-
-  Store[Zustand scene state]
-  Material[SynthMaterial uniforms]
-  Shader[One GLSL fragment program]
-
-  subgraph pass [Single GPU pass]
-    L0[Hero layer L0]
-    L1[Overlay layer L1]
-    Text[Preview text T0–T3]
-  end
-
-  JSON[Preset JSON]
-  Media[WebM loop / PNG still]
-  Site[Embed behind HTML on your site]
-
-  Upload --> Store
-  Looks --> Store
-  Tune --> Store
-  Store --> Material
-  Material --> Shader
-  Shader --> L0 --> L1 --> Text
-  Text --> JSON
-  Text --> Media
-  JSON --> Site
-```
+Visitor flowchart: [`architecture.mmd`](architecture.mmd). Container detail: [`c4/2-containers.mmd`](c4/2-containers.mmd).
 
 **Routes (one deploy, shared engine):** `/` living demo, `/lab` Background Studio panel, `/story` embed case study. Unknown paths redirect home.
 

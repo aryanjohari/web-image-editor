@@ -1,0 +1,25 @@
+flowchart TB
+  subgraph shells [Route shells]
+    landing[LandingShell /]
+    lab[LabShell /lab]
+    story[StoryShell /story]
+  end
+
+  store[Zustand scene store]
+  preset[Preset lib apply / build / validate]
+  moodClient[Mood client keywords + optional AI]
+  semantic[Semantic sliders Intensity Motion Grit]
+  material[SynthMaterial uniforms]
+  shader[GLSL fragment compositor L0 L1 T0-T3]
+  exportLib[Export JSON WebM PNG]
+
+  landing --> store
+  lab --> store
+  story --> store
+  moodClient --> preset
+  semantic --> preset
+  preset --> store
+  store --> material
+  material --> shader
+  store --> exportLib
+  shader --> exportLib

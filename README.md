@@ -64,7 +64,9 @@ Manual smoke: `/` mood + hero; `/lab?preset=archive` exports; `/story` nav; JSON
 
 Design case study and tradeoffs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
 
-Portfolio / “How it works” diagram: [`docs/architecture.mmd`](docs/architecture.mmd)
+C4 model (context → containers → components): [`docs/c4/README.md`](docs/c4/README.md)
+
+Portfolio / “How it works” diagram: [`docs/architecture.mmd`](docs/architecture.mmd) · graph IR: [`docs/architecture.graph.json`](docs/architecture.graph.json)
 
 GPU formula glossary: [`MATH.md`](MATH.md)
 
