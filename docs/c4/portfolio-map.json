@@ -1,8 +1,46 @@
 {
   "version": 1,
-  "c4": {
-    "level": "containers",
-    "componentsPath": "docs/c4/3-components/"
-  },
-  "containersWithComponents": ["studio-spa", "mood-api"]
+  "defaultLevel": "context",
+  "context": { "path": "docs/c4/1-context.mmd" },
+  "containers": { "path": "docs/c4/2-containers.mmd" },
+  "zoom": [
+    {
+      "id": "background-studio",
+      "label": "Background Studio",
+      "fromLevel": "context",
+      "toLevel": "containers",
+      "matchLabels": ["Background Studio"],
+      "componentsPath": "docs/c4/2-containers.mmd"
+    },
+    {
+      "id": "studio-spa",
+      "label": "Background Studio SPA",
+      "fromLevel": "containers",
+      "toLevel": "components",
+      "matchLabels": ["Background Studio SPA", "studio-spa"],
+      "componentsPath": "docs/c4/3-components/studio-spa.mmd"
+    },
+    {
+      "id": "mood-api",
+      "label": "Mood API",
+      "fromLevel": "containers",
+      "toLevel": "components",
+      "matchLabels": ["Mood API", "mood-api"],
+      "componentsPath": "docs/c4/3-components/mood-api.mmd"
+    }
+  ],
+  "componentZooms": [
+    {
+      "id": "studio-spa",
+      "label": "Background Studio SPA",
+      "path": "docs/c4/3-components/studio-spa.mmd",
+      "markdownPath": "docs/c4/3-components/studio-spa.md"
+    },
+    {
+      "id": "mood-api",
+      "label": "Mood API",
+      "path": "docs/c4/3-components/mood-api.mmd",
+      "markdownPath": "docs/c4/3-components/mood-api.md"
+    }
+  ]
 }

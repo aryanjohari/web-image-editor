@@ -4,7 +4,7 @@
 
 Visitor card copy: [`portfolio.yaml`](portfolio.yaml).  
 Architecture case study: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).  
-How-it-works diagram: [`docs/architecture.mmd`](docs/architecture.mmd).
+C4 diagrams: [`docs/c4/README.md`](docs/c4/README.md).
 
 ---
 

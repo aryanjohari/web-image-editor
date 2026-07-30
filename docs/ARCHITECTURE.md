@@ -29,27 +29,26 @@
 - **Mood as catalog + optional patch.** Keywords always map to a catalog look; optional AI returns `{ basePresetId, patch? }` validated server-side, with keyword fallback on any failure.
 - **Export clock hijack.** WebM capture writes `window.__SYNTH_EXPORT_TIME__` so each layer’s `u_*_t` follows a deterministic timeline, then clears it so live preview returns to the R3F clock.
 
-## C4 overview
+## Canonical diagrams (C4)
 
 | Level | Link |
 |-------|------|
-| Index | [`docs/c4/README.md`](c4/README.md) |
-| C1 Context | [`docs/c4/1-context.md`](c4/1-context.md) |
-| C2 Containers | [`docs/c4/2-containers.md`](c4/2-containers.md) |
+| Index + zoom path | [`docs/c4/README.md`](c4/README.md) |
+| C1 Context | [`docs/c4/1-context.md`](c4/1-context.md) · [`1-context.mmd`](c4/1-context.mmd) |
+| C2 Containers | [`docs/c4/2-containers.md`](c4/2-containers.md) · [`2-containers.mmd`](c4/2-containers.mmd) |
 | C3 `studio-spa` | [`docs/c4/3-components/studio-spa.md`](c4/3-components/studio-spa.md) |
 | C3 `mood-api` | [`docs/c4/3-components/mood-api.md`](c4/3-components/mood-api.md) |
+| Portfolio zoom index | [`docs/c4/portfolio-map.json`](c4/portfolio-map.json) |
 
-Portfolio fetch artifacts (aligned with C2): [`architecture.mmd`](architecture.mmd), [`architecture.graph.json`](architecture.graph.json). Declared in root [`portfolio.yaml`](../portfolio.yaml).
+Declared in root [`portfolio.yaml`](../portfolio.yaml). Older flowchart IR lives under [`docs/archive/`](archive/) (not maintained).
 
 ## System overview
 
-Two deployable pieces: the **SPA** in the browser and an optional **Mood API** on Vercel. No database. Keyword mood stays client-side; AI mood is dashed/optional.
-
-Visitor flowchart: [`architecture.mmd`](architecture.mmd). Container detail: [`c4/2-containers.mmd`](c4/2-containers.mmd).
+Two deployable pieces: the **SPA** in the browser and an optional **Mood API** on Vercel. No database. Keyword mood stays client-side; AI mood is dashed/optional. See C2 for the accurate container map.
 
 **Routes (one deploy, shared engine):** `/` living demo, `/lab` Background Studio panel, `/story` embed case study. Unknown paths redirect home.
 
-## Key components
+## Key modules (pointers)
 
 | Piece | Role |
 |-------|------|
@@ -64,7 +63,7 @@ Visitor flowchart: [`architecture.mmd`](architecture.mmd). Container detail: [`c
 | `src/lib/export/*` | PNG poster + WebM loop from the WebGL canvas |
 | `src/data/presetCatalog.ts` | 14 style looks (7 featured ambient + 7 legacy) |
 
-GPU math glossary: [`MATH.md`](../MATH.md). Embed guide: [`src/lib/preset/PORTING.md`](../src/lib/preset/PORTING.md).
+Full component inventory: C3 [`studio-spa`](c4/3-components/studio-spa.md). GPU math glossary: [`MATH.md`](../MATH.md). Embed guide: [`src/lib/preset/PORTING.md`](../src/lib/preset/PORTING.md).
 
 ## Data / control flow
 

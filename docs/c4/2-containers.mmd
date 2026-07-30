@@ -1,17 +1,37 @@
-flowchart TB
-  designer[Designer]
+%% C4 Containers — Background Studio
+%% IDs: studio-spa (Container spa), mood-api (Container moodApi)
+%% If your Mermaid renderer lacks C4Container, use the flowchart block at the bottom (uncomment it / paste into a viewer).
 
-  subgraph browser [Browser]
-    spa["studio-spa<br/>Background Studio SPA"]
-  end
+C4Container
+  title Containers — Background Studio
+  Person(designer, "Designer", "Uploads textures, tunes looks, exports")
 
-  moodApi["mood-api<br/>Mood API on Vercel"]
-  openai[OpenAI API]
-  embed[Your production site]
+  System_Boundary(studio, "Background Studio") {
+    Container(spa, "Background Studio SPA", "Vite, React, R3F, GLSL, Zustand", "Routes, scene store, single-pass WebGL compositor, preset / mood / export client")
+    Container(moodApi, "Mood API", "Vercel serverless", "Optional POST /api/mood → OpenAI → validated basePresetId + patch")
+  }
 
-  designer -->|uploads and tunes| spa
-  spa -->|exports preset JSON| embed
-  spa -->|optional WebM / PNG| designer
-  spa -.->|POST /api/mood when AI enabled| moodApi
-  moodApi -.->|chat completions| openai
-  moodApi -.->|basePresetId + optional patch| spa
+  System_Ext(openai, "OpenAI API", "Chat Completions")
+  System_Ext(embedSite, "Your production site", "Consumes preset JSON")
+
+  Rel(designer, spa, "Uses in the browser")
+  Rel(spa, embedSite, "Exports preset JSON")
+  Rel(spa, designer, "Optional WebM / PNG")
+  Rel(spa, moodApi, "POST /api/mood when AI enabled (gets basePresetId + patch)", "HTTPS")
+  Rel(moodApi, openai, "Chat completions", "HTTPS")
+
+%% flowchart equivalent (same topology):
+%% flowchart TB
+%%   designer[Designer]
+%%   subgraph browser [Browser]
+%%     spa["studio-spa — Background Studio SPA"]
+%%   end
+%%   moodApi["mood-api — Mood API on Vercel"]
+%%   openai[OpenAI API]
+%%   embed[Your production site]
+%%   designer -->|uploads and tunes| spa
+%%   spa -->|exports preset JSON| embed
+%%   spa -->|optional WebM / PNG| designer
+%%   spa -.->|POST /api/mood when AI enabled| moodApi
+%%   moodApi -.->|chat completions| openai
+%%   moodApi -.->|basePresetId + optional patch| spa

@@ -15,11 +15,12 @@ stack:
   - GLSL
   - Zustand
   - Tailwind CSS
-  - GSAP
 status: active
-diagram: docs/architecture.mmd
-graph: docs/architecture.graph.json
+# Canonical visitor diagram = C2 containers. Zoom index for Context→Containers→Components:
+diagram: docs/c4/2-containers.mmd
+# c4: docs/c4/portfolio-map.json   # prefer this when the portfolio site supports it
+docs: https://github.com/aryanjohari/web-image-editor/blob/main/docs/c4/README.md
 links:
   github: https://github.com/aryanjohari/web-image-editor
   demo: https://image.arkhives.nz
-  docs: https://github.com/aryanjohari/web-image-editor/blob/main/src/lib/preset/PORTING.md
+  docs: https://github.com/aryanjohari/web-image-editor/blob/main/docs/c4/README.md
