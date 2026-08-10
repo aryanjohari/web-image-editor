@@ -1,8 +1,12 @@
 # Architecture — Background Studio
 
+> **Direction:** This document describes the **implemented** system. Product north star and Phase 0 contracts for **Stage** (brand kit → jobs → campaign pack + live recipe, app + API) live in [`DIRECTION.md`](DIRECTION.md). OpenAPI: [`api/stage-v1.openapi.yaml`](api/stage-v1.openapi.yaml). Types: [`../src/lib/stage/`](../src/lib/stage/).
+
 ## Premise
 
 **Background Studio** (*The Algorithm Engine*) is a browser-only live background designer. It targets a practical landing-page need: ambient, animated full-viewport hero backgrounds without baking video or round-tripping through desktop compositors. Users optionally upload a hero texture and overlay, tune parametric looks in real time, and export **preset JSON** (primary) for embedding on production sites, plus **WebM loops** and **PNG posters** for demos and fallbacks.
+
+Stage evolves this compositor into a **visual automation module**: LLM operates validated scene JSON under brand rules; optional plate generation is a flagged side path; other products call `/api/v1` jobs. Until Phase 1+, the live GPU path remains SynthPreset v2 + `mood-api`.
 
 ## Goals and non-goals
 

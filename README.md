@@ -1,6 +1,8 @@
-# Background Studio
+# Background Studio → Stage
 
 Browser-based live hero-background designer (*The Algorithm Engine*). Upload a hero texture, tune parametric looks on a single WebGL canvas, and export **preset JSON** for embedding on real sites—plus optional WebM loops and PNG posters.
+
+**Product direction (Phase 0 frozen):** Stage — brand-ruled visual automation (campaign packs + live recipes, web + API). See [`docs/DIRECTION.md`](docs/DIRECTION.md), contracts in [`src/lib/stage/`](src/lib/stage/), OpenAPI [`docs/api/stage-v1.openapi.yaml`](docs/api/stage-v1.openapi.yaml). Runtime still uses SynthPreset v2 until Phase 1.
 
 Visitor overview: see [`portfolio.yaml`](portfolio.yaml).
 

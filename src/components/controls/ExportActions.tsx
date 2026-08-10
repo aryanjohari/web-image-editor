@@ -11,10 +11,16 @@ import {
   PresetValidationError,
   validatePreset,
 } from "@/lib/preset";
+import {
+  applyStageRecipeJson,
+  gatherStageRecipeExport,
+  recipeToJson,
+} from "@/lib/stage";
 import { useSynthStore } from "@/store/useSynthStore";
 
 export function ExportActions() {
   const presetImportRef = useRef<HTMLInputElement>(null);
+  const recipeImportRef = useRef<HTMLInputElement>(null);
   const [includeImagesInPreset, setIncludeImagesInPreset] = useState(false);
   const imageTexture = useSynthStore((s) => s.imageTexture);
 
@@ -76,6 +82,27 @@ export function ExportActions() {
     }
   };
 
+  const downloadStageRecipe = async () => {
+    const canvas = getR3fCanvas();
+    if (!canvas) {
+      window.alert("No canvas found.");
+      return;
+    }
+    try {
+      const recipe = await gatherStageRecipeExport(canvas, includeImagesInPreset);
+      const json = recipeToJson(recipe);
+      const blob = new Blob([json], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "stage-recipe.json";
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Stage recipe download failed.");
+    }
+  };
+
   const onImportPreset = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = "";
@@ -91,12 +118,27 @@ export function ExportActions() {
     }
   };
 
+  const onImportStageRecipe = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const result = await applyStageRecipeJson(text);
+      if (!result.ok) {
+        window.alert(result.error);
+      }
+    } catch (e) {
+      window.alert(e instanceof Error ? e.message : "Stage recipe import failed.");
+    }
+  };
+
   return (
     <div className="flex shrink-0 flex-col gap-2 border-t border-white/20 p-4 pt-4">
       <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Export</p>
       <p className="text-[10px] leading-relaxed text-zinc-500">
-        Preset JSON is the primary deliverable for embedding on your site. WebM and PNG are optional demo
-        or fallback exports.
+        Preset JSON (v2) remains the embed runtime format. StageRecipe (v3) is the product scene
+        contract — export/import both from lab.
       </p>
 
       <label className="flex cursor-pointer items-center gap-2 border border-white/20 px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-300">
@@ -106,7 +148,7 @@ export function ExportActions() {
           checked={includeImagesInPreset}
           onChange={(e) => setIncludeImagesInPreset(e.target.checked)}
         />
-        Include images in preset
+        Include images in preset / recipe
       </label>
 
       <button
@@ -124,6 +166,14 @@ export function ExportActions() {
         title="Download synth-preset.json for version control or handoff"
       >
         Download preset JSON
+      </button>
+      <button
+        type="button"
+        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
+        onClick={() => void downloadStageRecipe()}
+        title="Download StageRecipe schema v3 for the current scene"
+      >
+        Download StageRecipe JSON
       </button>
 
       <button
@@ -156,6 +206,21 @@ export function ExportActions() {
         onClick={() => presetImportRef.current?.click()}
       >
         Import preset
+      </button>
+
+      <input
+        ref={recipeImportRef}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        onChange={(e) => void onImportStageRecipe(e)}
+      />
+      <button
+        type="button"
+        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
+        onClick={() => recipeImportRef.current?.click()}
+      >
+        Import StageRecipe
       </button>
     </div>
   );

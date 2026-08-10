@@ -2,6 +2,8 @@
 
 Official-style C4 for this repo, built **bottom-up from code** (C1–C3 only; no Code/class level).
 
+> **Stage direction (Phase 0):** product freeze and future `stage-api` contract are in [`../DIRECTION.md`](../DIRECTION.md). C4 below still documents **shipped** containers (`studio-spa`, `mood-api`) until Phase 4 renames/expands the API surface.
+
 | Level | What it shows | Files |
 |-------|---------------|--------|
 | **C1 Context** | One system box, people, external systems | [`1-context.mmd`](1-context.mmd) · [`1-context.md`](1-context.md) |

@@ -7,6 +7,7 @@ import { SliderControl } from "@/components/controls/SliderControl";
 import { IdeasGallery } from "@/components/IdeasGallery";
 import { MoodInput } from "@/components/MoodInput";
 import { PreserveTextToggle } from "@/components/PreserveTextToggle";
+import { StageAssetList } from "@/components/StageAssetList";
 import { UploadButton } from "@/components/UploadButton";
 import { STUDIO_LAYER_TAB_LABELS } from "@/constants/studioLabels";
 import { MAX_TEXT_LAYERS } from "@/store/textLayers";
@@ -370,7 +371,7 @@ export function StackPanel() {
           <h3 id="studio-source-heading" className={SECTION_HEADING}>
             Source
           </h3>
-          <UploadButton variant="background" />
+          <StageAssetList />
         </section>
 
         <section aria-labelledby="studio-look-heading" className="flex flex-col gap-3">

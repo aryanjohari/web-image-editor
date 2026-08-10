@@ -1,11 +1,12 @@
 title: Background Studio
 slug: background-studio
-summary: Design animated full-screen hero backgrounds in the browser and export the look as reusable JSON.
+summary: Design animated full-screen hero backgrounds in the browser and export the look as reusable JSON. Evolving into Stage — brand-ruled campaign packs + live recipes (app + API).
 description: >
   Background Studio is a live WebGL tool for portfolio and landing-page heroes.
   Upload an image, pick one of fourteen looks or describe a mood, then tune motion and texture while the scene animates on a single canvas.
   Export preset JSON to reuse the same coefficients on your own site, or save a WebM loop or PNG still.
   Optional AI mood (when enabled) suggests a look and a small parameter patch; keyword matching works offline as a fallback.
+  Product direction (Stage, Phase 0): brand kits, jobs API, and campaign pack exports — see docs/DIRECTION.md.
 stack:
   - TypeScript
   - React

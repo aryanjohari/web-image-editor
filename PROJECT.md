@@ -1,10 +1,12 @@
-# Background Studio
+# Background Studio → Stage
 
-> Design **animated hero backgrounds for portfolios and landing pages** in the browser — export **preset JSON** for your site, **WebM loops** for demos, and **PNG posters** for fallbacks. Powered by *The Algorithm Engine*, a single-pass WebGL compositor.
+> **Today:** Design **animated hero backgrounds** in the browser — export **preset JSON**, **WebM loops**, and **PNG posters**. Powered by a single-pass WebGL compositor.  
+> **Direction (Stage):** Brand-ruled visual automation module — brief + brand kit → campaign pack + live background recipe (web app + API). Spec freeze: [`docs/DIRECTION.md`](docs/DIRECTION.md).
 
 Visitor card copy: [`portfolio.yaml`](portfolio.yaml).  
 Architecture case study: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).  
-C4 diagrams: [`docs/c4/README.md`](docs/c4/README.md).
+C4 diagrams: [`docs/c4/README.md`](docs/c4/README.md).  
+Stage contracts: [`src/lib/stage/`](src/lib/stage/) · [`docs/api/stage-v1.openapi.yaml`](docs/api/stage-v1.openapi.yaml).
 
 ---
 
@@ -47,10 +49,11 @@ Deeper tradeoffs and flow: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 - **Keep preview text** (default on) for catalog/mood/URL apply.
 - JSON export without upload; PNG/WebM require a hero texture.
 - Optional AI mood on Vercel when `VITE_MOOD_AI_ENABLED` + `OPENAI_API_KEY` are set.
+- **Phase 0 (Stage):** direction + Brand / Recipe v3 / Job schemas + OpenAPI frozen — not yet wired to the compositor.
 
 **Known limits:** shared store across routes (returning to `/` re-inits landing hero); single-pass shader only; browser/GPU dependent; English-first UI.
 
-Deferred ideas (not commitments): safe-zone / reduced-motion helpers, audio-reactive params, richer capture codec UX.
+**Next:** Phase 1 — recipe spine (adapt StageRecipe ↔ SynthPreset v2, multi-asset layers). See [`docs/DIRECTION.md`](docs/DIRECTION.md).
 
 ---
 

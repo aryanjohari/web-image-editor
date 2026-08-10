@@ -2,6 +2,7 @@ import { useRef, type ChangeEvent } from "react";
 import { LinearFilter, SRGBColorSpace, TextureLoader } from "three";
 import { useSynthStore } from "@/store/useSynthStore";
 import { createProcessedDecalTexture } from "@/utils/decalTexture";
+import { clearLabDraftGpuSlot, syncLabDraftFromUpload } from "@/lib/stage/labStageDraft";
 
 const DEBUG = false;
 
@@ -18,9 +19,11 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
   const decalTexture = useSynthStore((state) => state.decalTexture);
   const applyTexture = variant === "decal" ? setDecalTexture : setImageTexture;
   const hasSlot = variant === "decal" ? decalTexture != null : imageTexture != null;
+  const gpuSlot = variant === "decal" ? ("decal" as const) : ("background" as const);
 
   const onFileChange = (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
 
     if (DEBUG) {
@@ -43,6 +46,11 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
             });
           }
           applyTexture(texture);
+          try {
+            await syncLabDraftFromUpload(file, "decal");
+          } catch {
+            /* draft sync is best-effort; GPU slot already applied */
+          }
         } else if (DEBUG) {
           console.error("[UploadButton] Decal processing failed", {
             ts: new Date().toISOString(),
@@ -80,6 +88,9 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
 
         applyTexture(texture);
         URL.revokeObjectURL(objectUrl);
+        void syncLabDraftFromUpload(file, "background").catch(() => {
+          /* draft sync is best-effort; GPU slot already applied */
+        });
       },
       undefined,
       (error) => {
@@ -101,6 +112,7 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
     } else {
       setImageTexture(null);
     }
+    clearLabDraftGpuSlot(gpuSlot);
   };
 
   return (
@@ -120,10 +132,10 @@ export function UploadButton({ variant = "background" }: UploadButtonProps) {
           title={
             variant === "decal"
               ? "Optional logo, shape, or light-leak plate above the hero texture."
-              : "Optional brand photo or grain plate sampled full-viewport."
+              : "Brand photo or grain plate sampled full-viewport (replaces current hero)."
           }
         >
-          {variant === "decal" ? "Upload overlay" : "Upload hero texture"}
+          {variant === "decal" ? "Upload overlay" : "Upload hero"}
         </button>
         {hasSlot ? (
           <button
