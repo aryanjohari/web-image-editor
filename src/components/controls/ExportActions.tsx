@@ -1,4 +1,4 @@
-import { useRef, useState, type ChangeEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import { getSynthCanvas } from "@/constants/synthCanvas";
 import { exportCanvasPng } from "@/lib/export/exportImage";
 import { exportLoopWebm } from "@/lib/export/exportLoopWebm";
@@ -13,16 +13,47 @@ import {
 } from "@/lib/preset";
 import {
   applyStageRecipeJson,
+  downloadCampaignPack,
   gatherStageRecipeExport,
+  PackCaptureError,
   recipeToJson,
+  STAGE_DEFAULT_PACK_PROFILE_IDS,
+  getPackProfile,
 } from "@/lib/stage";
 import { useSynthStore } from "@/store/useSynthStore";
 
-export function ExportActions() {
+function packSizeHelperText(): string {
+  const parts = STAGE_DEFAULT_PACK_PROFILE_IDS.map((id) => {
+    const p = getPackProfile(id);
+    if (!p?.width || !p?.height) return id;
+    return `${p.id} ${p.width}×${p.height}`;
+  });
+  return `ZIP: ${parts.join(", ")} + stage-recipe.json (+ web_hero_live note).`;
+}
+
+export type ExportActionsProps = {
+  /** footer: sticky stack (legacy). menu: top-bar dropdown. */
+  variant?: "footer" | "menu";
+};
+
+export function ExportActions({ variant = "footer" }: ExportActionsProps) {
   const presetImportRef = useRef<HTMLInputElement>(null);
   const recipeImportRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [includeImagesInPreset, setIncludeImagesInPreset] = useState(false);
+  const [packExportStatus, setPackExportStatus] = useState<string | null>(null);
   const imageTexture = useSynthStore((s) => s.imageTexture);
+  const packBusy = packExportStatus != null;
+
+  useEffect(() => {
+    if (!menuOpen || variant !== "menu") return;
+    const onDoc = (e: MouseEvent) => {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen, variant]);
 
   const exportPng = () => {
     if (!imageTexture) {
@@ -133,13 +164,57 @@ export function ExportActions() {
     }
   };
 
-  return (
-    <div className="flex shrink-0 flex-col gap-2 border-t border-white/20 p-4 pt-4">
-      <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Export</p>
-      <p className="text-[10px] leading-relaxed text-zinc-500">
-        Preset JSON (v2) remains the embed runtime format. StageRecipe (v3) is the product scene
-        contract — export/import both from lab.
-      </p>
+  const exportCampaignPackZip = async () => {
+    if (!imageTexture) {
+      window.alert("Upload a hero texture first.");
+      return;
+    }
+    const canvas = getR3fCanvas();
+    if (!canvas) {
+      window.alert("No canvas found.");
+      return;
+    }
+    try {
+      setPackExportStatus("Capturing pack…");
+      await downloadCampaignPack({
+        canvas,
+        hasHeroTexture: true,
+        includeImagesInRecipe: includeImagesInPreset,
+      });
+      setPackExportStatus("Done");
+      window.setTimeout(() => setPackExportStatus(null), 1200);
+    } catch (e) {
+      setPackExportStatus(null);
+      const msg =
+        e instanceof PackCaptureError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : "Campaign pack export failed.";
+      window.alert(msg);
+    }
+  };
+
+  const btnClass =
+    variant === "menu"
+      ? "w-full border border-white/25 px-3 py-2 text-left text-[10px] uppercase tracking-wide text-zinc-200 transition hover:border-white hover:bg-white hover:text-black disabled:cursor-wait disabled:opacity-50"
+      : "border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black disabled:cursor-wait disabled:opacity-50";
+
+  const body = (
+    <>
+      {variant === "footer" ? (
+        <>
+          <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Export</p>
+          <p className="text-[10px] leading-relaxed text-zinc-500">
+            Preset JSON (v2) remains the embed runtime format. StageRecipe (v3) is the product scene
+            contract — export/import both from lab.
+          </p>
+        </>
+      ) : (
+        <p className="text-[10px] leading-relaxed text-zinc-500">
+          Campaign pack + StageRecipe. Hero texture required for pack / PNG / WebM.
+        </p>
+      )}
 
       <label className="flex cursor-pointer items-center gap-2 border border-white/20 px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-300">
         <input
@@ -153,43 +228,28 @@ export function ExportActions() {
 
       <button
         type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => void copyPreset()}
-        title="Copy embeddable preset JSON to clipboard"
+        className={btnClass}
+        disabled={packBusy}
+        onClick={() => void exportCampaignPackZip()}
+        title="Download ZIP with 3 stills at pack profile sizes plus StageRecipe JSON"
       >
-        Copy preset JSON
+        {packBusy ? packExportStatus : "Download campaign pack"}
       </button>
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => void downloadPreset()}
-        title="Download synth-preset.json for version control or handoff"
-      >
-        Download preset JSON
-      </button>
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => void downloadStageRecipe()}
-        title="Download StageRecipe schema v3 for the current scene"
-      >
+      <p className="text-[10px] leading-relaxed text-zinc-500">{packSizeHelperText()}</p>
+
+      <button type="button" className={btnClass} onClick={() => void downloadStageRecipe()}>
         Download StageRecipe JSON
       </button>
-
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => void exportWebm()}
-        title="Record a short looping WebM for demos or social"
-      >
+      <button type="button" className={btnClass} onClick={() => void copyPreset()}>
+        Copy preset JSON
+      </button>
+      <button type="button" className={btnClass} onClick={() => void downloadPreset()}>
+        Download preset JSON
+      </button>
+      <button type="button" className={btnClass} onClick={() => void exportWebm()}>
         Export loop WebM
       </button>
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={exportPng}
-        title="Save a still frame as fallback or thumbnail (requires hero texture)"
-      >
+      <button type="button" className={btnClass} onClick={exportPng}>
         Export PNG poster
       </button>
 
@@ -200,11 +260,7 @@ export function ExportActions() {
         className="hidden"
         onChange={onImportPreset}
       />
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => presetImportRef.current?.click()}
-      >
+      <button type="button" className={btnClass} onClick={() => presetImportRef.current?.click()}>
         Import preset
       </button>
 
@@ -215,13 +271,33 @@ export function ExportActions() {
         className="hidden"
         onChange={(e) => void onImportStageRecipe(e)}
       />
-      <button
-        type="button"
-        className="border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black"
-        onClick={() => recipeImportRef.current?.click()}
-      >
+      <button type="button" className={btnClass} onClick={() => recipeImportRef.current?.click()}>
         Import StageRecipe
       </button>
-    </div>
+    </>
+  );
+
+  if (variant === "menu") {
+    return (
+      <div className="relative" ref={menuRef}>
+        <button
+          type="button"
+          className="border border-white/35 bg-black/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm transition hover:bg-white hover:text-black"
+          aria-expanded={menuOpen}
+          onClick={() => setMenuOpen((o) => !o)}
+        >
+          Export
+        </button>
+        {menuOpen ? (
+          <div className="absolute right-0 top-full z-[80] mt-1 flex max-h-[min(70vh,28rem)] w-[min(100vw-1.5rem,18rem)] flex-col gap-2 overflow-y-auto border border-white/25 bg-black/95 p-3 shadow-2xl backdrop-blur-md">
+            {body}
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex shrink-0 flex-col gap-2 border-t border-white/20 p-4 pt-4">{body}</div>
   );
 }

@@ -1,6 +1,9 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  /** Preferred Stage Phase 2 flag for brief → Gemini */
+  readonly VITE_STAGE_BRIEF_AI_ENABLED?: string;
+  /** Legacy alias — still honored when VITE_STAGE_BRIEF_AI_ENABLED unset */
   readonly VITE_MOOD_AI_ENABLED?: string;
 }
 

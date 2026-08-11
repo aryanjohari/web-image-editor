@@ -1,64 +1,58 @@
 # Background Studio → Stage
 
-> **Today:** Design **animated hero backgrounds** in the browser — export **preset JSON**, **WebM loops**, and **PNG posters**. Powered by a single-pass WebGL compositor.  
-> **Direction (Stage):** Brand-ruled visual automation module — brief + brand kit → campaign pack + live background recipe (web app + API). Spec freeze: [`docs/DIRECTION.md`](docs/DIRECTION.md).
+> **Today:** Design **animated hero backgrounds** in the browser — export **preset / StageRecipe JSON**, **campaign pack ZIP**, **WebM**, and **PNG**.  
+> **Direction (Stage):** Brand-ruled visual automation — brief + brand kit → campaign pack + live background recipe (web app + Jobs API). Spec: [`docs/DIRECTION.md`](docs/DIRECTION.md).
 
 Visitor card copy: [`portfolio.yaml`](portfolio.yaml).  
-Architecture case study: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).  
-C4 diagrams: [`docs/c4/README.md`](docs/c4/README.md).  
-Stage contracts: [`src/lib/stage/`](src/lib/stage/) · [`docs/api/stage-v1.openapi.yaml`](docs/api/stage-v1.openapi.yaml).
+Architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).  
+C4: [`docs/c4/README.md`](docs/c4/README.md).  
+Contracts: [`src/lib/stage/`](src/lib/stage/) · [`docs/api/stage-v1.openapi.yaml`](docs/api/stage-v1.openapi.yaml).
 
 ---
 
 ## What problem this solves
 
-Ambient, performant animated backgrounds without baking video or round-tripping through desktop compositing software.
+Ambient animated backgrounds without baking video — plus brand-ruled brief → recipe for campaign packs and module callers.
 
-1. Optionally bring in a **hero texture** as the sampled backdrop.
-2. Optionally add an **overlay** and **preview text** for lab layout (production sites use HTML above the canvas).
-3. Twist the look in real time, then export **JSON you can embed** on a real site ([`PORTING.md`](src/lib/preset/PORTING.md)).
+1. Optionally bring in a **hero texture**.
+2. Optionally add overlay / preview text (production sites use HTML above the canvas).
+3. Twist the look, brief with brand rules, export **JSON you can embed** ([`EMBED.md`](src/lib/stage/EMBED.md), [`PORTING.md`](src/lib/preset/PORTING.md)).
 
 ---
 
 ## Routes
 
-One deploy, three surfaces, one shared shader + Zustand store + canvas.
-
 | Route | Surface |
 |-------|---------|
-| **`/`** | Living demo — demo hero + preset on mount; mood (keywords + optional AI) |
-| **`/lab`** | Background Studio — Source / Look / Tune / Export / Advanced |
-| **`/story`** | Case study — HTML above canvas, preset JSON, exports |
+| **`/`** | Living demo — mood (keywords + optional Gemini) |
+| **`/lab`** | Studio — brand, brief, pack ZIP, exports |
+| **`/story`** | Case study |
+| **`/embed-demo`** | Live StageRecipe behind HTML |
 
 ---
 
 ## What makes it mine
 
-- **One draw, many looks** — hero, overlay, and preview text each get their own effect bank in a single fragment program (`L0` / `L1` / `T0–T3`).
-- **Presets as coefficients** — schema v2 stores numbers and optional assets, not baked frames; apply modes preserve uploads or preview text when you only want a grade.
-- **Full-viewport embed pattern** — controls overlay the canvas so the background still reads as a site hero behind HTML.
-
-Deeper tradeoffs and flow: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
+- **One draw, many looks** — `L0` / `L1` / `T0–T3` in a single fragment program.
+- **Presets / recipes as coefficients** — not baked frames.
+- **Jobs API** — other modules call `POST /api/v1/jobs` with an API key (in-memory dogfood store).
 
 ---
 
 ## Current state
 
-- Local: `npm run dev` / `npm run build` / `npm test`.
-- **14** bundled looks (7 featured ambient + 7 legacy under More looks).
-- **Keep preview text** (default on) for catalog/mood/URL apply.
-- JSON export without upload; PNG/WebM require a hero texture.
-- Optional AI mood on Vercel when `VITE_MOOD_AI_ENABLED` + `OPENAI_API_KEY` are set.
-- **Phase 0 (Stage):** direction + Brand / Recipe v3 / Job schemas + OpenAPI frozen — not yet wired to the compositor.
+- Phases **0–5** done with honest limits (see DIRECTION).
+- Gemini brief/mood; OpenAI path removed.
+- In-memory `/api/v1` brands + jobs (`STAGE_API_KEY`); lab brand = localStorage.
+- Embed helper + `/embed-demo`; not a published npm player.
 
-**Known limits:** shared store across routes (returning to `/` re-inits landing hero); single-pass shader only; browser/GPU dependent; English-first UI.
+**Known limits:** cold-start wipe; compositor L0+L1; lab Add-images bugs deferred to post–UI remake; shared Zustand across routes.
 
-**Next:** Phase 1 — recipe spine (adapt StageRecipe ↔ SynthPreset v2, multi-asset layers). See [`docs/DIRECTION.md`](docs/DIRECTION.md).
+**Next:** UI remake phase, then bugfix. Do not start UI remake from this doc alone without an explicit phase.
 
 ---
 
 ## Links
 
-- Operator docs: [README.md](README.md)
-- GPU math: [MATH.md](MATH.md)
-- Embed guide: [src/lib/preset/PORTING.md](src/lib/preset/PORTING.md)
+- Live: see `portfolio.yaml` demo URL  
+- Repo: GitHub link in `portfolio.yaml`

@@ -14,9 +14,17 @@ The JSON preset is **inputs only**. It does not include shaders, Three.js materi
 
 6. **Optional assets** — If the preset omits `assets`, supply hero texture and overlay images from your site CDN; `imageResolution` and transforms still apply once images are loaded.
 
-For the product narrative and embed thesis, see the case study at **`/story`**.
+For the product narrative and embed thesis, see the case study at **`/story`**. For StageRecipe drop-in inside this repo, see [`../stage/EMBED.md`](../stage/EMBED.md) and **`/embed-demo`**.
 
-## Embed on a website
+## Stage recipe embed (Phase 5)
+
+When you already have a **StageRecipe** JSON (lab export or Jobs API):
+
+1. Prefer the in-repo helper: `StageEmbedBackground` + `getEmbedLayerStyle` in `src/lib/stage/embed/`.
+2. Keep the canvas at `z-index: 0` with `pointer-events: none`; put HTML above it.
+3. Honour `prefers-reduced-motion` (helper freezes `timeScale` / `colorCycleSpeed` when enabled).
+4. Outside this React+R3F app, still port GLSL + uniforms per the checklist above — there is no published standalone npm player yet.
+
 
 On a production site, Background Studio output is a **decorative full-viewport layer** behind your page content. HTML owns navigation, headlines, and CTAs — not `synth.textLayers` from the preset.
 

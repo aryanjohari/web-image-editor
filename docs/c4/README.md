@@ -2,27 +2,27 @@
 
 Official-style C4 for this repo, built **bottom-up from code** (C1–C3 only; no Code/class level).
 
-> **Stage direction (Phase 0):** product freeze and future `stage-api` contract are in [`../DIRECTION.md`](../DIRECTION.md). C4 below still documents **shipped** containers (`studio-spa`, `mood-api`) until Phase 4 renames/expands the API surface.
+> **Stage:** product freeze and Phase 4+ `stage-api` are in [`../DIRECTION.md`](../DIRECTION.md). Shipped containers: `studio-spa`, `stage-api` (includes keyless brief/mood + keyed `/api/v1`).
 
 | Level | What it shows | Files |
 |-------|---------------|--------|
 | **C1 Context** | One system box, people, external systems | [`1-context.mmd`](1-context.mmd) · [`1-context.md`](1-context.md) |
 | **C2 Containers** | What actually runs/deploys | [`2-containers.mmd`](2-containers.mmd) · [`2-containers.md`](2-containers.md) |
-| **C3 Components** | Internals of each container that needs them | [`3-components/`](3-components/) |
+| **C3 Components** | Internals of each container | [`3-components/`](3-components/) — see `stage-api.md`, `mood-api.md`, `studio-spa.md` |
 
 ## Zoom path (portfolio / SVG)
 
 1. **Context** → click the system box → **Containers**
-2. **Containers** → click `studio-spa` or `mood-api` → that container’s **Components**
+2. **Containers** → click `studio-spa` or `stage-api` → that container’s **Components**
 
-Machine index for a future zoom UI: [`portfolio-map.json`](portfolio-map.json).
+Machine index: [`portfolio-map.json`](portfolio-map.json).
 
 ## How to read
 
 - **Visitor labels** are plain English.
-- **IDs** (`studio-spa`, `mood-api`, …) are stable kebab-case.
-- Dashed edges = optional / secondary (AI mood).
-- Complexity belongs in C3; C1/C2 stay clear but do not erase the single-pass compositor + preset-contract design (see `notes` in the markdown companions).
+- **IDs** (`studio-spa`, `stage-api`, …) are stable kebab-case.
+- In-memory Jobs Maps wipe on cold start — documented in DIRECTION / AUTH.
+- Complexity belongs in C3; C1/C2 stay clear.
 
 ## Case study prose
 

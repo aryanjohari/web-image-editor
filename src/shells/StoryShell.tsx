@@ -95,6 +95,9 @@ function StoryNav() {
         <Link to="/lab" className={navLinkClass}>
           Open Studio
         </Link>
+        <Link to="/embed-demo" className={navLinkClass}>
+          Embed demo
+        </Link>
         <a
           href={GITHUB_URL}
           target="_blank"

@@ -1,5 +1,5 @@
-import { createTextLayer } from "@/store/textLayers";
-import { makeIdeaPreset } from "@/data/presetBuilders";
+import { createTextLayer } from "../store/textLayers";
+import { makeIdeaPreset } from "./presetBuilders";
 
 const ambientSynthBase = {
   decalScale: 1,

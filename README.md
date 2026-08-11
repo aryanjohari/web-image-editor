@@ -1,19 +1,19 @@
 # Background Studio → Stage
 
-Browser-based live hero-background designer (*The Algorithm Engine*). Upload a hero texture, tune parametric looks on a single WebGL canvas, and export **preset JSON** for embedding on real sites—plus optional WebM loops and PNG posters.
+Browser-based live hero-background designer (*The Algorithm Engine*). Upload a hero texture, tune parametric looks on a single WebGL canvas, and export **preset / StageRecipe JSON** for embedding—plus optional WebM, PNG, and campaign pack ZIP.
 
-**Product direction (Phase 0 frozen):** Stage — brand-ruled visual automation (campaign packs + live recipes, web + API). See [`docs/DIRECTION.md`](docs/DIRECTION.md), contracts in [`src/lib/stage/`](src/lib/stage/), OpenAPI [`docs/api/stage-v1.openapi.yaml`](docs/api/stage-v1.openapi.yaml). Runtime still uses SynthPreset v2 until Phase 1.
+**Product direction:** Stage — brand-ruled visual automation (campaign packs + live recipes, web + Jobs API). See [`docs/DIRECTION.md`](docs/DIRECTION.md). Phases 0–5 + lab UI remake (IndexedDB workspace) shipped with honest limits (in-memory API; lab-local IDB only).
 
 Visitor overview: see [`portfolio.yaml`](portfolio.yaml).
 
 ## Features
 
-- **Living demo** (`/`) — auto-loads demo hero + preset; mood input (keywords; optional AI director)
-- **Background Studio** (`/lab`) — Source / Look / Tune / Export / Advanced; 14 catalog looks
-- **Case study** (`/story`) — embed narrative (HTML above canvas, preset contract)
-- **Single-pass GLSL compositor** — hero → overlay → preview text with per-layer effect banks
-- **Exports** — preset JSON (primary; no upload required for coefficients), WebM loop, PNG poster (media needs hero texture)
-- **Share URLs** — `?preset=<catalog-id>` (kebab-case id from `src/data/presetCatalog.ts`)
+- **Living demo** (`/`) — auto-loads demo hero + preset; mood (keywords; optional Gemini AI)
+- **Background Studio** (`/lab`) — Library (brands/assets) → hero → floating brief → campaign pack ZIP; Studio tune/advanced
+- **Case study** (`/story`) — embed narrative
+- **Embed demo** (`/embed-demo`) — StageRecipe live behind HTML (`pointer-events: none`, reduced-motion aware)
+- **Jobs API** (`/api/v1/*`) — keyed brands + sync brief→recipe jobs (in-memory)
+- **Exports** — preset JSON, StageRecipe JSON, campaign pack ZIP, WebM, PNG
 
 ## Quick start
 
@@ -27,63 +27,84 @@ npm run preview
 | Path | Purpose |
 |------|---------|
 | `/` | Living demo + mood |
-| `/lab` | Full studio panel |
+| `/lab` | Full-bleed canvas + Library / Studio / floating brief |
 | `/story` | Embed case study |
+| `/embed-demo` | StageRecipe behind HTML |
 
 Unknown paths redirect to `/`.
 
-Replace `public/demo/hero.jpg` to customize the landing demo. SPA fallbacks: `public/_redirects` (Netlify), `vercel.json` (Vercel).
-
 ## Config / env
 
-Copy [`.env.example`](.env.example) to `.env.local` for local flags.
+Copy [`.env.example`](.env.example) to `.env.local`.
 
 | Variable | Where | Purpose |
 |----------|--------|---------|
-| `VITE_MOOD_AI_ENABLED` | Client (build-time) | When `true`, mood POSTs to `/api/mood` before keyword fallback |
-| `OPENAI_API_KEY` | Server only | Required for `/api/mood` on Vercel / `vercel dev` |
-| `OPENAI_MODEL` | Server optional | Defaults to `gpt-4o-mini` |
+| `VITE_STAGE_BRIEF_AI_ENABLED` | Client | Lab `/api/brief` + landing `/api/mood` before keyword fallback |
+| `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Server | Required for brief / mood / jobs Gemini |
+| `GEMINI_MODEL` | Server optional | Default `gemini-2.5-flash` |
+| `STAGE_API_KEY` or `STAGE_API_KEYS` | Server | Required for `/api/v1/*` (except health) |
 
-**Never** put `OPENAI_API_KEY` in a `VITE_` variable.
+**Never** put API keys in `VITE_` vars. Lab brief stays keyless (Gemini only). Jobs API needs a Stage key.
 
-| Deploy | AI mood |
-|--------|---------|
-| **Vercel** | Set `OPENAI_API_KEY`; enable `VITE_MOOD_AI_ENABLED=true` at build |
-| **Netlify static** | Keyword mood only (`/api/mood` unavailable) |
-| **Local** | Terminal 1: `vercel dev --listen 3000` · Terminal 2: `npm run dev` (Vite proxies `/api`) |
+| Deploy | Notes |
+|--------|-------|
+| **Vercel** | Set Gemini + Stage API key(s); enable `VITE_STAGE_BRIEF_AI_ENABLED` at build |
+| **Netlify static** | Keyword fallback only (`/api/*` unavailable) |
+| **Local** | Terminal 1: `npm run dev:api` (`vercel dev --listen 3000`) · Terminal 2: `npm run dev` |
+
+## Jobs API smoke (curl)
+
+With `STAGE_API_KEY` and `GEMINI_API_KEY` set for `vercel dev`:
+
+```bash
+export STAGE_API_KEY=sk_stage_dev_change_me   # match .env.local
+curl -s http://127.0.0.1:3000/api/v1/health
+
+BRAND=$(curl -s -H "Authorization: Bearer $STAGE_API_KEY" -H "Content-Type: application/json" \
+  -d '{"name":"Demo","colors":[],"fonts":[]}' http://127.0.0.1:3000/api/v1/brands)
+echo "$BRAND"
+BRAND_ID=$(node -e "console.log(JSON.parse(process.argv[1]).id)" "$BRAND")
+
+JOB=$(curl -s -H "Authorization: Bearer $STAGE_API_KEY" -H "Content-Type: application/json" \
+  -d "{\"brandId\":\"$BRAND_ID\",\"brief\":\"soft dusk hero\"}" http://127.0.0.1:3000/api/v1/jobs)
+echo "$JOB" | head -c 400
+
+# Expect 401 without Authorization on /api/v1/brands
+```
+
+In-memory brands/jobs wipe on cold start / redeploy. See [`docs/api/AUTH.md`](docs/api/AUTH.md).
+
+## Embed
+
+In-repo helper + demo: [`src/lib/stage/EMBED.md`](src/lib/stage/EMBED.md) · `/embed-demo`.  
+Standalone shader port: [`src/lib/preset/PORTING.md`](src/lib/preset/PORTING.md).
 
 ## Tests / CI
 
 ```bash
-npm test         # Vitest — preset, mood, semantic mapping
+npm test
 npm run lint
-npm run build    # tsc -b + Vite production bundle
+npm run build
 ```
 
-Manual smoke: `/` mood + hero; `/lab?preset=archive` exports; `/story` nav; JSON without upload; PNG/WebM with hero uploaded.
+Manual smoke: `/` mood; `/lab` Library → hero → brief → campaign pack; curl Jobs API; `/embed-demo` HTML over canvas.
+
+**Lab smoke (happy path):** Open `/lab` → Library → create/set active brand → Assets upload → **Use as hero** → floating Brief Apply → Export → **Download campaign pack**. Reload: brands/assets should still be in IndexedDB.
 
 ## Architecture
 
-Design case study and tradeoffs: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
-
-C4 model (context → containers → components): [`docs/c4/README.md`](docs/c4/README.md)
-
-GPU formula glossary: [`MATH.md`](MATH.md)
-
-Embed / porting checklist: [`src/lib/preset/PORTING.md`](src/lib/preset/PORTING.md)
-
-Narrative overview: [`PROJECT.md`](PROJECT.md)
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · C4 [`docs/c4/README.md`](docs/c4/README.md) · [`MATH.md`](MATH.md) · [`PROJECT.md`](PROJECT.md)
 
 ### Entry map
 
 | Area | Files |
 |------|--------|
 | Routes | `src/App.tsx`, `src/shells/*` |
-| Store | `src/store/useSynthStore.ts`, `layerEffects.ts`, `textLayers.ts` |
-| GPU | `src/webgl/SynthCanvas.tsx`, `materials/SynthMaterial.tsx`, `shaders/*.glsl` |
-| Presets | `src/lib/preset/*` |
-| Mood | `src/lib/mood/*`, `api/mood.ts` |
-| Export | `src/lib/export/*` |
+| Store | `src/store/useSynthStore.ts` |
+| GPU | `src/webgl/*` |
+| Presets / Stage | `src/lib/preset/*`, `src/lib/stage/*` |
+| API | `api/brief.ts`, `api/mood.ts`, `api/v1/*` |
+| Export | `src/lib/export/*`, `src/lib/stage/exportCampaignPack.ts` |
 
 ## License
 

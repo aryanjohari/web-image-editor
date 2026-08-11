@@ -4,9 +4,9 @@ import {
   LAYER_IDS,
   type LayerEffectParams,
   type LayerEffectsMap,
-} from "@/store/layerEffects";
-import { MAX_TEXT_LAYERS, type TextLayer } from "@/store/textLayers";
-import { useSynthStore } from "@/store/useSynthStore";
+} from "../../store/layerEffects";
+import { MAX_TEXT_LAYERS, type TextLayer } from "../../store/textLayers";
+import { useSynthStore } from "../../store/useSynthStore";
 import type { SynthPresetV2 } from "./types";
 import { PresetValidationError } from "./validate";
 

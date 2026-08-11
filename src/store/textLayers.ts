@@ -1,4 +1,4 @@
-import { createDefaultLayerEffects, type LayerEffectParams } from "@/store/layerEffects";
+import { createDefaultLayerEffects, type LayerEffectParams } from "./layerEffects";
 
 export const MAX_TEXT_LAYERS = 4;
 

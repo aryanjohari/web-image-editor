@@ -1,6 +1,6 @@
-import type { LayerEffectParams, LayerEffectsMap } from "@/store/layerEffects";
-import type { TextLayer } from "@/store/textLayers";
-import type { SynthParams } from "@/store/useSynthStore";
+import type { LayerEffectParams, LayerEffectsMap } from "../../store/layerEffects";
+import type { TextLayer } from "../../store/textLayers";
+import type { SynthParams } from "../../store/useSynthStore";
 
 /** Legacy preset files (single text string + global styling). */
 export const PRESET_SCHEMA_VERSION_V1 = 1 as const;

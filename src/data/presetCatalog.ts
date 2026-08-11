@@ -1,10 +1,10 @@
-import type { SynthPresetV2 } from "@/lib/preset/types";
+import type { SynthPresetV2 } from "../lib/preset/types";
 import {
   BG_CLEAN_LOOP,
   BG_FILM_GRAIN,
   BG_NIGHT_GRADIENT,
   BG_SOFT_DRIFT,
-} from "@/data/backgroundPresets";
+} from "./backgroundPresets";
 import {
   IDEA_ACID_NOIR,
   IDEA_ARCHIVE,
@@ -16,7 +16,7 @@ import {
   IDEA_SUNSET_MELT,
   IDEA_TAPE_WORN,
   IDEA_XEROX_PUNK,
-} from "@/data/demoIdeasPresets";
+} from "./demoIdeasPresets";
 
 export type PresetCategory = "featured" | "legacy";
 

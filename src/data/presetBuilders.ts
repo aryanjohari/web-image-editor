@@ -1,12 +1,12 @@
 import pkg from "../../package.json";
-import { PRESET_SCHEMA_VERSION } from "@/lib/preset/types";
-import type { SynthPresetViewport, SynthPresetV2 } from "@/lib/preset/types";
+import { PRESET_SCHEMA_VERSION } from "../lib/preset/types";
+import type { SynthPresetViewport, SynthPresetV2 } from "../lib/preset/types";
 import {
   createDefaultLayerEffectsMap,
   type LayerEffectParams,
   type LayerEffectsMap,
   type LayerId,
-} from "@/store/layerEffects";
+} from "../store/layerEffects";
 
 export const DEMO_VIEWPORT: SynthPresetViewport = {
   drawBufferWidth: 1920,

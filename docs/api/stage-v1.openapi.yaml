@@ -1,12 +1,14 @@
 openapi: 3.1.0
 info:
   title: Stage API
-  version: stage-phase0-2026-08-10
+  version: stage-phase4-2026-08-11
   description: |
-    Phase 0 freeze for the Stage visual automation module.
-    Evolves today's optional `/api/mood` into a brand + jobs API.
-    Implementation is Phase 2–4; this file is the HTTP contract source of truth.
-    See docs/DIRECTION.md.
+    Stage HTTP contract for brands + jobs (Phase 4).
+    Happy-path jobs run Gemini synchronously and return status `succeeded` with a StageRecipe.
+    Pack ZIP remains a client capability; artifacts endpoint is a metadata stub (no blob store).
+    `POST /v1/assets` is not implemented in Phase 4.
+    Lab UI continues to use keyless `POST /api/brief` and `POST /api/mood` (Gemini).
+    In-memory store resets on cold start / redeploy. See docs/DIRECTION.md and docs/api/AUTH.md.
 servers:
   - url: /api
     description: Same-origin Vite / Vercel deploy (paths prefixed as /api/v1 in handlers)
@@ -102,30 +104,24 @@ paths:
   /v1/assets:
     post:
       tags: [assets]
-      summary: Upload an image asset (multipart or JSON base64 — impl choice Phase 4)
+      summary: Upload an image asset — NOT IMPLEMENTED in Phase 4 (deferred)
+      description: |
+        Deferred past Phase 4. Lab uploads stay client-side; API jobs return recipe JSON only.
       security: [{ ApiKeyAuth: [] }]
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              type: object
-              required: [file, kind]
-              properties:
-                file: { type: string, format: binary }
-                kind: { $ref: "#/components/schemas/AssetKind" }
-                brandId: { type: string }
       responses:
-        "201":
-          description: Created
+        "501":
+          description: Not implemented
           content:
             application/json:
-              schema: { $ref: "#/components/schemas/AssetRef" }
+              schema: { $ref: "#/components/schemas/Error" }
 
   /v1/jobs:
     post:
       tags: [jobs]
-      summary: Create a Stage job from brief + brand
+      summary: Create a Stage job from brief + brand (sync Gemini → recipe)
+      description: |
+        Runs in-request. On success returns Job with status `succeeded` and `recipe` set.
+        `artifacts` starts empty. Pack ZIP is produced client-side in `/lab`, not by this endpoint.
       security: [{ ApiKeyAuth: [] }]
       requestBody:
         required: true
@@ -133,12 +129,19 @@ paths:
           application/json:
             schema: { $ref: "#/components/schemas/JobRequest" }
       responses:
-        "202":
-          description: Accepted
+        "200":
+          description: Job finished (succeeded or failed) with current state
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Job" }
         "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "503":
+          description: Gemini or API keys not configured
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /v1/jobs/{jobId}:
     parameters:
@@ -184,7 +187,7 @@ paths:
     post:
       tags: [jobs]
       summary: |
-        Attach client-rendered pack artifacts (v1). Server-side rasterization deferred.
+        Stub — append client-rendered pack artifact metadata (URLs only; no blob store).
       security: [{ ApiKeyAuth: [] }]
       requestBody:
         required: true
@@ -211,10 +214,10 @@ components:
       scheme: bearer
       bearerFormat: stage_api_key
       description: |
-        Phase 0 auth stance — personal / module keys.
-        Header: Authorization: Bearer sk_stage_...
-        Alternate (impl may accept): X-Stage-Key
-        Public try = demo key + rate limits. No VITE_ secrets for API keys.
+        Header: Authorization: Bearer <key>
+        Alternate: X-Stage-Key: <key>
+        Env: STAGE_API_KEY and/or comma-separated STAGE_API_KEYS.
+        No VITE_ secrets for API keys. Lab /api/brief stays keyless.
 
   parameters:
     brandId:
@@ -355,7 +358,9 @@ components:
         assetIds:
           type: array
           items: { type: string }
-        baseRecipeId: { type: string }
+        baseRecipeId:
+          type: string
+          description: Optional job id whose recipe is used as conversational context
         options: { $ref: "#/components/schemas/JobOptions" }
 
     JobOptions:
@@ -364,12 +369,15 @@ components:
         packProfileIds:
           type: array
           items: { type: string }
-          description: Defaults to square, story, web_hero
+          description: Defaults to square, story, web_hero (client pack only in v1)
         allowPlateGeneration: { type: boolean, default: false }
         baseLookId: { type: string }
 
     JobStatus:
       type: string
+      description: |
+        Phase 4 happy path uses running → succeeded (with recipe) or failed.
+        awaiting_client_render is reserved; not set by the sync Jobs API.
       enum:
         - queued
         - running

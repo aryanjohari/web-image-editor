@@ -6,18 +6,18 @@ import {
   type LayerId,
   createDefaultLayerEffects,
   createDefaultLayerEffectsMap,
-} from "@/store/layerEffects";
+} from "./layerEffects";
 import {
   MAX_TEXT_LAYERS,
   type TextLayer,
   createTextLayer,
   initialTextLayersBootstrap,
-} from "@/store/textLayers";
+} from "./textLayers";
 
 const DEBUG = false;
 
-export type { LayerEffectParams, LayerId, LayerEffectsMap } from "@/store/layerEffects";
-export type { TextLayer } from "@/store/textLayers";
+export type { LayerEffectParams, LayerId, LayerEffectsMap } from "./layerEffects";
+export type { TextLayer } from "./textLayers";
 
 export type StackTab = LayerId;
 

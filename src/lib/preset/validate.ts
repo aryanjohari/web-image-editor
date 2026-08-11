@@ -1,5 +1,5 @@
-import { LAYER_IDS } from "@/store/layerEffects";
-import { MAX_TEXT_LAYERS } from "@/store/textLayers";
+import { LAYER_IDS } from "../../store/layerEffects";
+import { MAX_TEXT_LAYERS } from "../../store/textLayers";
 import {
   PRESET_SCHEMA_VERSION,
   PRESET_SCHEMA_VERSION_V1,

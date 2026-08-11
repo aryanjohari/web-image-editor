@@ -1,5 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { OrthographicCamera } from "@react-three/drei";
+import { PackExportViewportBridge } from "@/components/PackExportViewportBridge";
 import { SYNTH_CANVAS_ID } from "@/constants/synthCanvas";
 import { SynthScene } from "@/webgl/SynthCanvas";
 
@@ -23,6 +24,7 @@ export function SynthCanvasView() {
           far={10}
           position={[0, 0, 1]}
         />
+        <PackExportViewportBridge />
         <SynthScene />
       </Canvas>
     </div>

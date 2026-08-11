@@ -1,5 +1,5 @@
-import { createTextLayer } from "@/store/textLayers";
-import { makeIdeaPreset } from "@/data/presetBuilders";
+import { createTextLayer } from "../store/textLayers";
+import { makeIdeaPreset } from "./presetBuilders";
 
 /** High-contrast duotone bleed, linked motion — noir / acid flyer look. */
 export const IDEA_ACID_NOIR = makeIdeaPreset(

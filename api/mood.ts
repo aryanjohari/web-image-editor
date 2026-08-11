@@ -1,5 +1,15 @@
-import { buildAiMoodSystemPrompt } from "../src/lib/mood/buildAiMoodSystemPrompt";
-import { parseAiMoodResponse } from "../src/lib/mood/parseAiMoodResponse";
+/**
+ * Legacy mood endpoint — now powered by Gemini Stage brief (OpenAI removed).
+ * Accepts { prompt } or { brief, brand?, ... }; returns { basePresetId, patch? }
+ * for landing MoodInput compatibility. Prefer POST /api/brief for Stage lab.
+ */
+
+import {
+  getGeminiApiKeyFromEnv,
+  getGeminiModelFromEnv,
+  runStageBrief,
+} from "../src/lib/stage/runStageBrief";
+import type { StageBrandKit, StageRecipe } from "../src/lib/stage/types";
 
 type VercelRequest = {
   method?: string;
@@ -12,16 +22,9 @@ type VercelResponse = {
   setHeader: (name: string, value: string) => void;
 };
 
-type ChatCompletionResponse = {
-  choices?: Array<{
-    message?: {
-      content?: string;
-    };
-  }>;
-  error?: {
-    message?: string;
-  };
-};
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return v !== null && typeof v === "object" && !Array.isArray(v);
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== "POST") {
@@ -29,64 +32,49 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = getGeminiApiKeyFromEnv();
   if (!apiKey) {
-    return res.status(503).json({ error: "AI mood is not configured" });
+    return res.status(503).json({ error: "AI mood is not configured (set GEMINI_API_KEY or GOOGLE_API_KEY)" });
   }
 
-  const body = req.body as { prompt?: unknown } | undefined;
-  const prompt = typeof body?.prompt === "string" ? body.prompt.trim() : "";
-  if (!prompt) {
+  const body = isRecord(req.body) ? req.body : {};
+  const brief =
+    typeof body.brief === "string"
+      ? body.brief.trim()
+      : typeof body.prompt === "string"
+        ? body.prompt.trim()
+        : "";
+
+  if (!brief) {
     return res.status(400).json({ error: "prompt is required" });
   }
 
-  const model = process.env.OPENAI_MODEL ?? "gpt-4o-mini";
+  const brand = (body.brand as StageBrandKit | null | undefined) ?? null;
+  const recipe = (body.recipe as StageRecipe | null | undefined) ?? null;
 
-  let upstream: Response;
-  try {
-    upstream = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: buildAiMoodSystemPrompt() },
-          { role: "user", content: prompt },
-        ],
-        temperature: 0.4,
-      }),
-    });
-  } catch {
-    return res.status(502).json({ error: "Failed to reach OpenAI" });
+  const result = await runStageBrief({
+    brief,
+    brand,
+    recipe,
+    apiKey,
+    model: getGeminiModelFromEnv(),
+  });
+
+  if (!result.ok) {
+    return res.status(result.status).json({ error: result.error });
   }
 
-  let data: ChatCompletionResponse;
-  try {
-    data = (await upstream.json()) as ChatCompletionResponse;
-  } catch {
-    return res.status(502).json({ error: "Invalid response from OpenAI" });
+  const { patch, baseLookId } = result.data;
+  if (!baseLookId) {
+    // Landing mood always expects a base preset; keyword fallback on client if empty.
+    // Prefer soft-drift when model only returned a patch.
+    const basePresetId = "soft-drift";
+    const payload: Record<string, unknown> = { basePresetId };
+    if (patch && Object.keys(patch).length > 0) payload.patch = patch;
+    return res.status(200).json(payload);
   }
 
-  if (!upstream.ok) {
-    return res.status(502).json({
-      error: data.error?.message ?? "OpenAI request failed",
-    });
-  }
-
-  const content = data.choices?.[0]?.message?.content;
-  if (!content) {
-    return res.status(502).json({ error: "Empty response from OpenAI" });
-  }
-
-  const parsed = parseAiMoodResponse(content);
-  if (!parsed.ok) {
-    return res.status(422).json({ error: parsed.error });
-  }
-
-  const { basePresetId, patch } = parsed.data;
-  return res.status(200).json(patch ? { basePresetId, patch } : { basePresetId });
+  const payload: Record<string, unknown> = { basePresetId: baseLookId };
+  if (patch && Object.keys(patch).length > 0) payload.patch = patch;
+  return res.status(200).json(payload);
 }

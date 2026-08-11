@@ -1,19 +1,19 @@
 # C1 — System context
 
-**Background Studio** is one product: a browser tool for designing animated full-viewport hero backgrounds and exporting **preset JSON** (plus optional WebM/PNG).
+**Background Studio → Stage** designs animated full-viewport heroes and brand-ruled campaign recipes (web app + Jobs API).
 
 ## Elements
 
 | ID | Type | Role | Evidence |
 |----|------|------|----------|
-| `designer` | Person | Authors looks on `/`, `/lab`, `/story` | `src/App.tsx`, shells |
-| `studio` | Software system | This repository’s product (SPA ± optional Mood API) | whole repo |
-| `openai` | External system | Optional upstream for AI mood | `api/mood.ts` → `api.openai.com/v1/chat/completions` |
-| `embedSite` | External system | A site that reuses exported preset coefficients (not part of this deploy) | `src/lib/preset/PORTING.md` |
+| `designer` | Person | Authors looks on `/`, `/lab`, `/story`, `/embed-demo` | `src/App.tsx`, shells |
+| `moduleConsumer` | Person | External modules calling keyed `/api/v1` | `docs/api/AUTH.md` |
+| `studio` | Software system | This repository (SPA + Stage API) | whole repo |
+| `gemini` | External system | Constrained brief → patch | `src/lib/stage/runStageBrief.ts` |
+| `embedSite` | External system | Site that reuses exported coefficients | `src/lib/preset/PORTING.md`, `src/lib/stage/EMBED.md` |
 
 ## Notes
 
-- Keyword mood runs entirely in the browser; AI mood is optional and needs the Mood API + `OPENAI_API_KEY` (see C2).
-- No hosted database, no multi-tenant backend, no Docker/workers.
-- Browser WebGL / `MediaRecorder` / `localStorage` are **platform capabilities of the SPA**, not separate software systems on this diagram.
+- Keyword mood runs in the browser; AI brief/mood/jobs need Gemini + Vercel (or `vercel dev`).
+- Jobs API brands/jobs are **in-memory** (cold-start wipe). No multi-tenant durable backend.
 - Diagram: [`1-context.mmd`](1-context.mmd). Zoom → [`2-containers.md`](2-containers.md).

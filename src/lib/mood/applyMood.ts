@@ -25,6 +25,9 @@ export type ApplyMoodOptions = {
 function isAiMoodEnabled(options?: ApplyMoodOptions): boolean {
   if (options?.preferAi === false) return false;
   if (options?.preferAi === true) return true;
+  const stageFlag = import.meta.env.VITE_STAGE_BRIEF_AI_ENABLED;
+  if (stageFlag === "true") return true;
+  if (stageFlag === "false") return false;
   return import.meta.env.VITE_MOOD_AI_ENABLED === "true";
 }
 

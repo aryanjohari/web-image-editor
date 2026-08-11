@@ -6,7 +6,7 @@
  */
 
 /** Bump when StageRecipe / BrandKit / StageJob break consumers. */
-export const STAGE_CONTRACT_VERSION = "stage-phase0-2026-08-10" as const;
+export const STAGE_CONTRACT_VERSION = "stage-phase4-2026-08-11" as const;
 
 /** Recipe document version (product schema, not GPU engineVersion). */
 export const STAGE_RECIPE_SCHEMA_VERSION = 3 as const;
@@ -180,6 +180,10 @@ export type StageRecipe = {
   meta?: {
     title?: string;
     brief?: string;
+    /** Operator / LLM one-liner */
+    summary?: string;
+    /** e.g. stage-job */
+    source?: string;
     createdAt?: string;
     updatedAt?: string;
   };
