@@ -6,8 +6,8 @@
  * (isLoading === false), then applies the URL preset on top — style/text only;
  * hero image stays. Never calls initLandingHero.
  *
- * Lab (`/lab`): no hero init; applies catalog style immediately on mount when
- * the param is present. Upload/export afterward still work.
+ * Studio (`/studio`, `/lab` redirects): no hero init; applies catalog style
+ * immediately on mount when the param is present. Upload/export afterward still work.
  *
  * Re-applies only when the preset search param changes, not on every render.
  * Query param is left in the address bar for shareable links.

@@ -32,8 +32,11 @@ export function EmbedDemoShell() {
             <Link to="/" className={navLinkClass}>
               Home
             </Link>
-            <Link to="/lab" className={navLinkClass}>
-              Lab
+            <Link to="/workspace" className={navLinkClass}>
+              Workspace
+            </Link>
+            <Link to="/studio" className={navLinkClass}>
+              Studio
             </Link>
             <Link to="/story" className={navLinkClass}>
               Story

@@ -2,15 +2,16 @@
 
 Browser-based live hero-background designer (*The Algorithm Engine*). Upload a hero texture, tune parametric looks on a single WebGL canvas, and export **preset / StageRecipe JSON** for embedding—plus optional WebM, PNG, and campaign pack ZIP.
 
-**Product direction:** Stage — brand-ruled visual automation (campaign packs + live recipes, web + Jobs API). See [`docs/DIRECTION.md`](docs/DIRECTION.md). Phases 0–5 + lab UI remake (IndexedDB workspace) shipped with honest limits (in-memory API; lab-local IDB only).
+**Product direction:** Stage — brand-ruled visual automation (campaign packs + live recipes, web + Jobs API). See [`docs/DIRECTION.md`](docs/DIRECTION.md). Phases 0–5 + lab UI remake + multi-page soft shell shipped with honest limits (in-memory API; browser-local IDB only).
 
 Visitor overview: see [`portfolio.yaml`](portfolio.yaml).
 
 ## Features
 
-- **Living demo** (`/`) — auto-loads demo hero + preset; mood (keywords; optional Gemini AI)
-- **Background Studio** (`/lab`) — Library (brands/assets) → hero → floating brief → campaign pack ZIP; Studio tune/advanced
-- **Case study** (`/story`) — embed narrative
+- **Home** (`/`) — soft landing + CTAs (Workspace / Studio)
+- **Workspace** (`/workspace`) — brands + assets (IndexedDB)
+- **Studio** (`/studio`) — full-bleed canvas, floating brief, Looks panel, export (campaign pack ZIP)
+- **Case study** (`/story`) — embed narrative (footer/link)
 - **Embed demo** (`/embed-demo`) — StageRecipe live behind HTML (`pointer-events: none`, reduced-motion aware)
 - **Jobs API** (`/api/v1/*`) — keyed brands + sync brief→recipe jobs (in-memory)
 - **Exports** — preset JSON, StageRecipe JSON, campaign pack ZIP, WebM, PNG
@@ -26,8 +27,10 @@ npm run preview
 
 | Path | Purpose |
 |------|---------|
-| `/` | Living demo + mood |
-| `/lab` | Full-bleed canvas + Library / Studio / floating brief |
+| `/` | Home — soft landing |
+| `/workspace` | Brands + Assets library |
+| `/studio` | Create — canvas + brief + export |
+| `/lab` | Redirect → `/studio` |
 | `/story` | Embed case study |
 | `/embed-demo` | StageRecipe behind HTML |
 
@@ -39,12 +42,12 @@ Copy [`.env.example`](.env.example) to `.env.local`.
 
 | Variable | Where | Purpose |
 |----------|--------|---------|
-| `VITE_STAGE_BRIEF_AI_ENABLED` | Client | Lab `/api/brief` + landing `/api/mood` before keyword fallback |
+| `VITE_STAGE_BRIEF_AI_ENABLED` | Client | Studio `/api/brief` + legacy `/api/mood` before keyword fallback |
 | `GEMINI_API_KEY` or `GOOGLE_API_KEY` | Server | Required for brief / mood / jobs Gemini |
 | `GEMINI_MODEL` | Server optional | Default `gemini-2.5-flash` |
 | `STAGE_API_KEY` or `STAGE_API_KEYS` | Server | Required for `/api/v1/*` (except health) |
 
-**Never** put API keys in `VITE_` vars. Lab brief stays keyless (Gemini only). Jobs API needs a Stage key.
+**Never** put API keys in `VITE_` vars. Studio brief stays keyless (Gemini only). Jobs API needs a Stage key.
 
 | Deploy | Notes |
 |--------|-------|
@@ -87,9 +90,9 @@ npm run lint
 npm run build
 ```
 
-Manual smoke: `/` mood; `/lab` Library → hero → brief → campaign pack; curl Jobs API; `/embed-demo` HTML over canvas.
+Manual smoke: Home → Workspace → Studio → Export; curl Jobs API; `/embed-demo` HTML over canvas.
 
-**Lab smoke (happy path):** Open `/lab` → Library → create/set active brand → Assets upload → **Use as hero** → floating Brief Apply → Export → **Download campaign pack**. Reload: brands/assets should still be in IndexedDB.
+**Happy path:** Open `/workspace` → create/set active brand → Assets upload → **Use as hero** or **Open in Studio** → floating Brief Apply → Export → **Download campaign pack**. Reload: brands/assets should still be in IndexedDB. `/lab` should land on `/studio`.
 
 ## Architecture
 
@@ -99,7 +102,7 @@ Manual smoke: `/` mood; `/lab` Library → hero → brief → campaign pack; cur
 
 | Area | Files |
 |------|--------|
-| Routes | `src/App.tsx`, `src/shells/*` |
+| Routes | `src/App.tsx`, `src/shells/*`, `src/components/shell/` |
 | Store | `src/store/useSynthStore.ts` |
 | GPU | `src/webgl/*` |
 | Presets / Stage | `src/lib/preset/*`, `src/lib/stage/*` |

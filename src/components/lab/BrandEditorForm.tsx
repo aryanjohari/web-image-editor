@@ -2,9 +2,9 @@ import { PRESET_CATALOG } from "@/data/presetCatalog";
 import type { StageBrandKit, StageBrandLimits, StageColorToken, StageFontToken } from "@/lib/stage/types";
 
 export const brandEditorInputClass =
-  "w-full border border-white/25 bg-black/60 px-2 py-1.5 text-[11px] text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/40";
+  "w-full rounded-xl border border-stage-border bg-stage-bg/60 px-3 py-2 text-sm text-stage-text placeholder:text-stage-muted/70 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--stage-focus)]";
 
-export const brandEditorLabelClass = "text-[10px] uppercase tracking-[0.16em] text-zinc-500";
+export const brandEditorLabelClass = "text-xs font-medium text-stage-muted";
 
 export function parseHexList(raw: string): StageColorToken[] {
   return raw
@@ -121,9 +121,9 @@ export function BrandEditorForm({
 
       <fieldset className="flex flex-col gap-1.5">
         <legend className={brandEditorLabelClass}>Allowed looks (optional)</legend>
-        <div className="flex max-h-28 flex-col gap-1 overflow-y-auto border border-white/15 p-2">
+        <div className="flex max-h-28 flex-col gap-1 overflow-y-auto rounded-xl border border-stage-border p-2">
           {PRESET_CATALOG.map((entry) => (
-            <label key={entry.id} className="flex items-center gap-2 text-[11px] text-zinc-300">
+            <label key={entry.id} className="flex items-center gap-2 text-sm text-stage-text">
               <input
                 type="checkbox"
                 checked={allowedLookIds.includes(entry.id)}

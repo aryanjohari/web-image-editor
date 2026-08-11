@@ -32,7 +32,13 @@ describe("isValidCatalogPresetId", () => {
 });
 
 describe("buildPresetShareUrl", () => {
-  it("builds lab share url with encoded preset param", () => {
+  it("builds studio share url with encoded preset param", () => {
+    expect(buildPresetShareUrl("/studio", "glitch-core", "https://example.com")).toBe(
+      "https://example.com/studio?preset=glitch-core",
+    );
+  });
+
+  it("builds lab share url (legacy path still supported)", () => {
     expect(buildPresetShareUrl("/lab", "glitch-core", "https://example.com")).toBe(
       "https://example.com/lab?preset=glitch-core",
     );

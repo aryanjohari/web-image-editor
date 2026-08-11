@@ -13,6 +13,9 @@ export type SemanticSliderControlsHandle = {
 
 export type SemanticSliderControlsProps = {
   resetRef?: Ref<SemanticSliderControlsHandle | null>;
+  onScrubStart?: () => void;
+  onScrubEnd?: () => void;
+  tone?: "lab" | "stage";
 };
 
 const SLIDERS: {
@@ -20,12 +23,17 @@ const SLIDERS: {
   label: string;
   hint: string;
 }[] = [
-  { key: "intensity", label: "Intensity", hint: "warp & color strength" },
-  { key: "motion", label: "Motion", hint: "animation speed" },
-  { key: "grit", label: "Grit", hint: "grain & texture" },
+  { key: "intensity", label: "Intensity", hint: "Warp & color strength" },
+  { key: "motion", label: "Motion", hint: "Animation speed" },
+  { key: "grit", label: "Grit", hint: "Grain & texture" },
 ];
 
-export function SemanticSliderControls({ resetRef }: SemanticSliderControlsProps) {
+export function SemanticSliderControls({
+  resetRef,
+  onScrubStart,
+  onScrubEnd,
+  tone = "lab",
+}: SemanticSliderControlsProps) {
   const [values, setValues] = useState<SemanticSliderValues>(DEFAULT_SEMANTIC);
 
   const applyValues = useCallback((next: SemanticSliderValues) => {
@@ -39,11 +47,16 @@ export function SemanticSliderControls({ resetRef }: SemanticSliderControlsProps
 
   useImperativeHandle(resetRef, () => ({ resetToDefaults }), [resetToDefaults]);
 
+  const stage = tone === "stage";
+
   return (
     <div className="flex flex-col gap-4">
-      <p className="text-[10px] leading-relaxed text-zinc-500">
-        Sliders set absolute background values and override mood or background look tweaks until you apply a new mood.
-      </p>
+      {!stage ? (
+        <p className="text-[10px] leading-relaxed text-zinc-500">
+          Sliders set absolute background values and override mood or background look tweaks until you
+          apply a new mood.
+        </p>
+      ) : null}
       {SLIDERS.map(({ key, label, hint }) => (
         <div key={key} className="flex flex-col gap-1">
           <SliderControl
@@ -52,6 +65,9 @@ export function SemanticSliderControls({ resetRef }: SemanticSliderControlsProps
             max={1}
             step={0.01}
             value={values[key]}
+            tone={tone}
+            onScrubStart={onScrubStart}
+            onScrubEnd={onScrubEnd}
             onChange={(next) => {
               setValues((prev) => {
                 const updated = { ...prev, [key]: next };
@@ -60,7 +76,7 @@ export function SemanticSliderControls({ resetRef }: SemanticSliderControlsProps
               });
             }}
           />
-          <p className="text-[10px] text-zinc-500">{hint}</p>
+          <p className={stage ? "text-xs text-stage-muted" : "text-[10px] text-zinc-500"}>{hint}</p>
         </div>
       ))}
     </div>

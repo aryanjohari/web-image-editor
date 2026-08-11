@@ -1,17 +1,21 @@
 import { useRef } from "react";
 import { FormulaPanel } from "@/components/controls/FormulaPanel";
 import { LayerEffectControls } from "@/components/controls/LayerEffectControls";
-import { SemanticSliderControls, type SemanticSliderControlsHandle } from "@/components/controls/SemanticSliderControls";
+import {
+  SemanticSliderControls,
+  type SemanticSliderControlsHandle,
+} from "@/components/controls/SemanticSliderControls";
 import { SliderControl } from "@/components/controls/SliderControl";
 import { IdeasGallery } from "@/components/IdeasGallery";
 import { PreserveTextToggle } from "@/components/PreserveTextToggle";
 import { STUDIO_LAYER_TAB_LABELS } from "@/constants/studioLabels";
+import { usePointerScrub } from "@/hooks/usePointerScrub";
 import { MAX_TEXT_LAYERS } from "@/store/textLayers";
 import { useSynthStore } from "@/store/useSynthStore";
 
-const SECTION_HEADING = "text-[10px] uppercase tracking-[0.2em] text-zinc-400";
+const SECTION_HEADING = "text-sm font-medium text-stage-text";
 const DETAILS_SUMMARY =
-  "cursor-pointer list-none px-3 py-2.5 text-[10px] uppercase tracking-[0.18em] text-zinc-300 hover:bg-white/5 [&::-webkit-details-marker]:hidden";
+  "cursor-pointer list-none rounded-xl px-3 py-2.5 text-sm text-stage-text hover:bg-white/5 [&::-webkit-details-marker]:hidden";
 
 export type StudioDrawerProps = {
   open: boolean;
@@ -19,11 +23,13 @@ export type StudioDrawerProps = {
 };
 
 /**
- * Slim right Studio drawer — featured looks + tune + collapsed advanced.
- * Brand / assets / brief / export live in Library + floating AI + top bar.
+ * Soft Tune floating card — semantic sliders + light looks.
+ * Hides entirely while pointer-scrubbing so the canvas preview stays full-bleed.
+ * Advanced banks / formula stay collapsed away from the primary surface.
  */
 export function StudioDrawer({ open, onClose }: StudioDrawerProps) {
   const semanticRef = useRef<SemanticSliderControlsHandle | null>(null);
+  const { isScrubbing, onScrubStart, onScrubEnd } = usePointerScrub();
 
   const {
     stackTab,
@@ -49,10 +55,12 @@ export function StudioDrawer({ open, onClose }: StudioDrawerProps) {
   const tabBtn = (id: typeof stackTab, label: string, showLeftBorder: boolean) => (
     <button
       type="button"
-      className={`flex-1 py-2.5 text-[9px] uppercase tracking-[0.12em] transition-colors sm:text-[10px] sm:tracking-[0.16em] ${
-        showLeftBorder ? "border-l border-white/25" : ""
+      className={`flex-1 py-2.5 text-xs transition-colors sm:text-sm ${
+        showLeftBorder ? "border-l border-stage-border" : ""
       } ${
-        stackTab === id ? "bg-white text-black" : "text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+        stackTab === id
+          ? "bg-stage-text text-stage-bg"
+          : "text-stage-muted hover:bg-white/5 hover:text-stage-text"
       }`}
       onClick={() => setStackTab(id)}
     >
@@ -62,7 +70,7 @@ export function StudioDrawer({ open, onClose }: StudioDrawerProps) {
 
   const advancedBody = (
     <>
-      <div className="flex w-full border border-white/25">
+      <div className="flex w-full overflow-hidden rounded-xl border border-stage-border">
         {tabBtn("background", STUDIO_LAYER_TAB_LABELS.background, false)}
         {tabBtn("decal", STUDIO_LAYER_TAB_LABELS.decal, true)}
         {tabBtn("text", STUDIO_LAYER_TAB_LABELS.text, true)}
@@ -70,17 +78,17 @@ export function StudioDrawer({ open, onClose }: StudioDrawerProps) {
 
       {stackTab === "background" ? (
         <>
-          <p className="text-[10px] leading-relaxed text-zinc-500">
-            Set the hero from Library → Assets.
+          <p className="text-sm leading-relaxed text-stage-muted">
+            Set the hero from Workspace → Assets.
           </p>
           <LayerEffectControls layer="background" />
         </>
       ) : stackTab === "decal" ? (
         <>
-          <p className="text-[10px] leading-relaxed text-zinc-500">
-            Set the overlay from Library → Assets (PNG / WebP).
+          <p className="text-sm leading-relaxed text-stage-muted">
+            Set the overlay from Workspace → Assets (PNG / WebP).
           </p>
-          <p className="border-t border-white/20 pt-4 text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+          <p className="border-t border-stage-border pt-4 text-xs font-medium text-stage-muted">
             Placement
           </p>
           <SliderControl
@@ -307,67 +315,121 @@ export function StudioDrawer({ open, onClose }: StudioDrawerProps) {
     </>
   );
 
-  return (
-    <>
-      {open ? (
-        <button
-          type="button"
-          className="fixed inset-0 z-[45] bg-black/40 md:bg-transparent"
-          aria-label="Close studio"
-          onClick={onClose}
-        />
-      ) : null}
+  const scrubbing = open && isScrubbing;
+  /** Fade chrome only — keep layout so the active thumb does not jump mid-drag. */
+  const chromeClass = scrubbing ? "pointer-events-none opacity-0" : "opacity-100";
 
-      <aside
-        className={`fixed right-0 top-0 z-50 flex h-full w-full flex-col border-l border-white/20 bg-panel/95 shadow-2xl backdrop-blur-md transition-transform duration-300 ease-out md:w-[min(100vw,360px)] ${
-          open ? "pointer-events-auto translate-x-0" : "pointer-events-none translate-x-full"
-        }`}
-        aria-hidden={!open}
+  return (
+    <aside
+      id="studio-looks-drawer"
+      role="dialog"
+      aria-modal={false}
+      aria-labelledby="studio-tune-title"
+      className={`stage-drawer-motion pointer-events-none fixed bottom-4 right-4 left-auto top-auto z-[55] flex max-h-[min(70dvh,36rem)] w-[min(100vw-1.5rem,22rem)] flex-col rounded-2xl ${
+        open ? "" : "invisible opacity-0"
+      } ${
+        scrubbing
+          ? "border border-transparent bg-transparent shadow-none backdrop-blur-none"
+          : "border border-stage-border bg-stage-panel/92 shadow-stage backdrop-blur-md"
+      }`}
+      aria-hidden={!open}
+    >
+      <div
+        className={`flex min-h-0 flex-1 flex-col ${open ? "pointer-events-auto" : "pointer-events-none"}`}
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-white/20 px-4 py-3">
-          <h2 className="text-sm uppercase tracking-[0.22em]">Studio</h2>
-          <button
-            type="button"
-            className="border border-white/35 px-2 py-1 text-[10px] uppercase tracking-widest"
-            onClick={onClose}
-          >
-            Close
-          </button>
+        <div
+          className={`stage-drawer-motion flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3 ${
+            scrubbing ? "border-transparent" : "border-stage-border"
+          } ${chromeClass}`}
+          aria-hidden={scrubbing}
+        >
+          <h2 id="studio-tune-title" className="text-base font-medium text-stage-text">
+            Tune
+          </h2>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              tabIndex={scrubbing ? -1 : undefined}
+              className="rounded-xl border border-stage-border px-3 py-1.5 text-sm text-stage-muted transition hover:bg-stage-elevated hover:text-stage-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--stage-focus)]"
+              onClick={() => semanticRef.current?.resetToDefaults()}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              tabIndex={scrubbing ? -1 : undefined}
+              className="rounded-xl border border-stage-border px-3 py-1.5 text-sm text-stage-text transition hover:bg-stage-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--stage-focus)]"
+              onClick={onClose}
+            >
+              Close
+            </button>
+          </div>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4">
-          <section className="flex flex-col gap-3" aria-labelledby="studio-look-heading">
-            <h3 id="studio-look-heading" className={SECTION_HEADING}>
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <p
+            className={`stage-drawer-motion text-sm leading-relaxed text-stage-muted ${chromeClass}`}
+            aria-hidden={scrubbing}
+          >
+            Drag sliders — chrome hides so you can see the canvas.
+          </p>
+
+          {/* Soft plate so sliders stay readable; pad is constant to avoid thumb jump */}
+          <section
+            className={`flex flex-col gap-3 rounded-2xl border p-3 ${
+              scrubbing
+                ? "border-stage-border/60 bg-stage-panel/80 shadow-stage backdrop-blur-md"
+                : "border-transparent"
+            }`}
+            aria-labelledby="studio-tune-sliders"
+          >
+            <h3
+              id="studio-tune-sliders"
+              className={`stage-drawer-motion ${SECTION_HEADING} ${chromeClass}`}
+              aria-hidden={scrubbing}
+            >
+              Intensity · Motion · Grit
+            </h3>
+            <SemanticSliderControls
+              resetRef={semanticRef}
+              tone="stage"
+              onScrubStart={onScrubStart}
+              onScrubEnd={onScrubEnd}
+            />
+          </section>
+
+          <details
+            className={`stage-drawer-motion rounded-2xl border border-stage-border ${chromeClass}`}
+            aria-hidden={scrubbing}
+          >
+            <summary className={DETAILS_SUMMARY} tabIndex={scrubbing ? -1 : undefined}>
               Looks
-            </h3>
-            <details className="border border-white/20">
-              <summary className={DETAILS_SUMMARY}>Featured looks</summary>
-              <div className="border-t border-white/20 p-3">
-                <IdeasGallery hidePreserveToggle sectionLabel="Featured" />
-              </div>
-            </details>
-            <PreserveTextToggle />
-          </section>
+            </summary>
+            <div className="flex flex-col gap-3 border-t border-stage-border p-3">
+              <PreserveTextToggle />
+              <IdeasGallery hidePreserveToggle sectionLabel="Featured" />
+            </div>
+          </details>
 
-          <section className="flex flex-col gap-3" aria-labelledby="studio-tune-heading">
-            <h3 id="studio-tune-heading" className={SECTION_HEADING}>
-              Tune
-            </h3>
-            <SemanticSliderControls resetRef={semanticRef} />
-            <details className="border border-white/20">
-              <summary className={DETAILS_SUMMARY}>Formula glossary</summary>
-              <div className="border-t border-white/20 p-3">
-                <FormulaPanel />
-              </div>
-            </details>
-          </section>
-
-          <details className="border border-white/20">
-            <summary className={DETAILS_SUMMARY}>Advanced controls</summary>
-            <div className="flex flex-col gap-5 border-t border-white/20 p-3 pt-4">{advancedBody}</div>
+          <details
+            className={`stage-drawer-motion rounded-2xl border border-stage-border ${chromeClass}`}
+            aria-hidden={scrubbing}
+          >
+            <summary className={DETAILS_SUMMARY} tabIndex={scrubbing ? -1 : undefined}>
+              Advanced
+            </summary>
+            <div className="flex flex-col gap-5 border-t border-stage-border p-3 pt-4">
+              <details className="rounded-xl border border-stage-border">
+                <summary className={DETAILS_SUMMARY}>Formula glossary</summary>
+                <div className="border-t border-stage-border p-3">
+                  <FormulaPanel />
+                </div>
+              </details>
+              {advancedBody}
+            </div>
           </details>
         </div>
-      </aside>
-    </>
+      </div>
+    </aside>
   );
 }

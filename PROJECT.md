@@ -24,9 +24,11 @@ Ambient animated backgrounds without baking video — plus brand-ruled brief →
 
 | Route | Surface |
 |-------|---------|
-| **`/`** | Living demo — mood (keywords + optional Gemini) |
-| **`/lab`** | Studio — brand, brief, pack ZIP, exports |
-| **`/story`** | Case study |
+| **`/`** | Home — soft landing, CTAs |
+| **`/workspace`** | Brands + Assets (IndexedDB) |
+| **`/studio`** | Create — canvas, brief, pack ZIP, exports |
+| **`/lab`** | Redirect → `/studio` |
+| **`/story`** | Case study (secondary) |
 | **`/embed-demo`** | Live StageRecipe behind HTML |
 
 ---
@@ -42,13 +44,14 @@ Ambient animated backgrounds without baking video — plus brand-ruled brief →
 ## Current state
 
 - Phases **0–5** done with honest limits (see DIRECTION).
+- Multi-page soft UI shell: Home · Workspace · Studio (library moved out of the lab drawer).
 - Gemini brief/mood; OpenAI path removed.
-- In-memory `/api/v1` brands + jobs (`STAGE_API_KEY`); lab brand = localStorage.
+- In-memory `/api/v1` brands + jobs (`STAGE_API_KEY`); browser workspace = IndexedDB (`stage-workspace`).
 - Embed helper + `/embed-demo`; not a published npm player.
 
-**Known limits:** cold-start wipe; compositor L0+L1; lab Add-images bugs deferred to post–UI remake; shared Zustand across routes.
+**Known limits:** cold-start wipe; compositor L0+L1; shared Zustand across routes; no auth/sync for the web workspace.
 
-**Next:** UI remake phase, then bugfix. Do not start UI remake from this doc alone without an explicit phase.
+**Next:** Bugfix. Do not start plate gen (Phase 6) without an explicit revise.
 
 ---
 

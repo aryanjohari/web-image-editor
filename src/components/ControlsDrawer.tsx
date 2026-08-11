@@ -1,5 +1,5 @@
 /**
- * @deprecated LabShell uses LabTopBar + LibraryDrawer + StudioDrawer.
+ * @deprecated StudioShell uses AppNav + StudioDrawer; library is `/workspace`.
  * Kept for accidental imports; opens StudioDrawer-shaped panel via StackPanel alias.
  */
 import { useState } from "react";

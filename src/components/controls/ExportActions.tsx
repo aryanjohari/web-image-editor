@@ -197,7 +197,7 @@ export function ExportActions({ variant = "footer" }: ExportActionsProps) {
 
   const btnClass =
     variant === "menu"
-      ? "w-full border border-white/25 px-3 py-2 text-left text-[10px] uppercase tracking-wide text-zinc-200 transition hover:border-white hover:bg-white hover:text-black disabled:cursor-wait disabled:opacity-50"
+      ? "w-full rounded-xl border border-stage-border px-3 py-2 text-left text-sm text-stage-text transition hover:border-stage-accent/40 hover:bg-stage-elevated disabled:cursor-wait disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--stage-focus)]"
       : "border border-white px-3 py-2 text-xs uppercase tracking-wide transition hover:bg-white hover:text-black disabled:cursor-wait disabled:opacity-50";
 
   const body = (
@@ -216,7 +216,13 @@ export function ExportActions({ variant = "footer" }: ExportActionsProps) {
         </p>
       )}
 
-      <label className="flex cursor-pointer items-center gap-2 border border-white/20 px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-300">
+      <label
+        className={
+          variant === "menu"
+            ? "flex cursor-pointer items-center gap-2 rounded-xl border border-stage-border px-3 py-2 text-sm text-stage-muted"
+            : "flex cursor-pointer items-center gap-2 border border-white/20 px-3 py-2 text-[10px] uppercase tracking-wide text-zinc-300"
+        }
+      >
         <input
           type="checkbox"
           className="h-3.5 w-3.5 accent-white"
@@ -282,14 +288,18 @@ export function ExportActions({ variant = "footer" }: ExportActionsProps) {
       <div className="relative" ref={menuRef}>
         <button
           type="button"
-          className="border border-white/35 bg-black/70 px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] text-white backdrop-blur-sm transition hover:bg-white hover:text-black"
+          className="rounded-xl border border-stage-border bg-stage-panel/90 px-3 py-1.5 text-sm text-stage-text backdrop-blur-md transition hover:border-stage-accent/40 hover:bg-stage-elevated focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--stage-focus)]"
           aria-expanded={menuOpen}
+          aria-haspopup="menu"
           onClick={() => setMenuOpen((o) => !o)}
         >
           Export
         </button>
         {menuOpen ? (
-          <div className="absolute right-0 top-full z-[80] mt-1 flex max-h-[min(70vh,28rem)] w-[min(100vw-1.5rem,18rem)] flex-col gap-2 overflow-y-auto border border-white/25 bg-black/95 p-3 shadow-2xl backdrop-blur-md">
+          <div
+            role="menu"
+            className="absolute right-0 top-full z-[80] mt-1 flex max-h-[min(70vh,28rem)] w-[min(100vw-1.5rem,18rem)] flex-col gap-2 overflow-y-auto rounded-2xl border border-stage-border bg-stage-panel/95 p-3 shadow-stage backdrop-blur-md"
+          >
             {body}
           </div>
         ) : null}

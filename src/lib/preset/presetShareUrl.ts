@@ -12,7 +12,7 @@ export function isValidCatalogPresetId(id: string): boolean {
 }
 
 export function buildPresetShareUrl(
-  path: "/" | "/lab",
+  path: "/" | "/lab" | "/studio",
   presetId: string,
   origin?: string,
 ): string {

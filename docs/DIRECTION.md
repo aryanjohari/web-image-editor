@@ -197,7 +197,7 @@ Prefer **`succeeded` with recipe JSON**. Pack ZIP remains a **client** (`/lab`) 
 
 #### Explicit non-goals / known deferred bugs
 
-- ~~Full UI remake / design system~~ — lab remake landed (see UI remake status below); no design system
+- Full UI remake / design system — multi-page soft shell landed (see Multi-page UI shell); tokens only, no new UI framework
 - Plate gen (Phase 6)
 - Real DB, multi-tenant SaaS, Meta publish
 - npm registry publish
@@ -235,16 +235,35 @@ Prefer **`succeeded` with recipe JSON**. Pack ZIP remains a **client** (`/lab`) 
 
 ### UI remake / local workspace (2026-08-11)
 
-**Done in `/lab`:** Full-bleed canvas + minimal chrome. **Library** drawer (Brands | Assets) backed by IndexedDB `stage-workspace` (multi-brand CRUD, asset blobs, Use as hero / Use as overlay). Floating draggable **Brief** (`applyBriefFromText` + active workspace brand → `/api/brief`, keyword fallback). Slim **Studio** drawer (featured looks secondary, Tune, collapsed Advanced). **Export** menu (campaign pack + StageRecipe + preset/PNG/WebM). One-shot migrate from legacy `stage.activeBrandKit.v1` localStorage.
+**Done in `/lab`:** Full-bleed canvas + minimal chrome. **Library** drawer (Brands | Assets) backed by IndexedDB `stage-workspace` (multi-brand CRUD, asset blobs, Use as hero / Use as overlay). Floating draggable **Brief** (`applyBriefFromText` + active workspace brand → `/api/brief`, keyword fallback). Soft **Tune** floating card (Intensity / Motion / Grit; featured looks + Advanced collapsed). Dragging a semantic slider fades Tune chrome (title, Looks, Advanced) and leaves the sliders visible until pointer/touch release; keyboard adjust keeps the full card. **Export** menu (campaign pack + StageRecipe + preset/PNG/WebM). One-shot migrate from legacy `stage.activeBrandKit.v1` localStorage.
 
 **Honest limits:** No auth / sync / multi-device. Lab-first only (`/` marketing + `/story` not remade). GPU still one hero + one overlay. Lab workspace ≠ API `/v1/brands`. No Phase 6 plate gen / Jobs UI.
 
 **Smoke:** Library → create brand → set active → upload assets → Use as hero → floating brief Apply → Export → Download campaign pack. Reload: brands/assets persist in IDB.
 
+### Multi-page UI shell (2026-08-11)
+
+**Status:** Done — calm product shell; AI brief / pack / recipe / embed behaviour unchanged.
+
+| Route | Role |
+|-------|------|
+| `/` | Home — soft landing, CTAs (no heavy WebGL hero) |
+| `/workspace` | Brands + Assets library (IndexedDB `stage-workspace`) |
+| `/studio` | Create — full-bleed canvas (was `/lab`) |
+| `/lab` | Redirect → `/studio` (bookmarks preserved) |
+| `/embed-demo` | Secondary nav / footer |
+| `/story` | Optional footer/link only — not primary nav |
+
+Primary nav: **Home · Workspace · Studio**. Shared tokens in `globals.css` (`--stage-*`). Workspace owns library CRUD; Studio is create (thin bar + FloatingBrief + Tune overlay + Export). No auth, Jobs UI, or plate gen.
+
+**Limits unchanged:** browser-local IDB only; workspace ≠ `/v1/brands`; GPU one hero + one overlay.
+
+**Smoke:** Home → Workspace (brand + asset) → Studio (hero/brief) → Export campaign pack.
+
 ### Known issues / deferred (bugfix)
 
 - Legacy `BrandKitPanel` / old Source “Add images” paths no longer primary (Library replaces them); leftover draft/`labStageDraft` quirks may still exist for recipe extras
-- Library assets are IndexedDB `Blob`s; upload alone does not paint the canvas — use **Use as hero** / overlay
+- Workspace assets are IndexedDB `Blob`s; upload alone does not paint the canvas — use **Use as hero** / overlay / **Open in Studio**
 - Compositor still L0 hero + L1 decal + text slots
 - Cold-start wipe of API brands/jobs
 - No multi-tenant SaaS / real storage / Meta publish
@@ -289,3 +308,4 @@ Bump a short note here when the freeze changes:
 | `stage-phase3-2026-08-10` | Phase 3 campaign pack ZIP (3 stills + StageRecipe) from `/lab` |
 | `stage-phase4-2026-08-11` | Phase 4 in-memory Jobs API + API key gate; Phase 5 embed helper + `/embed-demo` |
 | `stage-lab-ui-2026-08-11` | Lab UI remake — IndexedDB workspace (brands/assets), Library + floating brief + Studio/Export chrome |
+| `stage-multi-page-shell-2026-08-11` | Multi-page soft shell — `/`, `/workspace`, `/studio` (+ `/lab`→`/studio`); library moved out of drawer |

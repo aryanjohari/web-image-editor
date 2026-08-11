@@ -90,9 +90,9 @@ function StoryNav() {
       </span>
       <div className="flex flex-wrap items-center gap-2">
         <Link to="/" className={navLinkClass}>
-          Try it
+          Home
         </Link>
-        <Link to="/lab" className={navLinkClass}>
+        <Link to="/studio" className={navLinkClass}>
           Open Studio
         </Link>
         <Link to="/embed-demo" className={navLinkClass}>
@@ -144,7 +144,7 @@ export function StoryShell() {
             <Link to="/" className={navLinkClass}>
               Try /
             </Link>
-            <Link to="/lab" className={navLinkClass}>
+            <Link to="/studio" className={navLinkClass}>
               Open Studio
             </Link>
           </div>
@@ -226,7 +226,7 @@ export function StoryShell() {
             <code className="text-zinc-200">MATH.md</code> in the repo. Background
             Studio{" "}
             <strong className="font-medium text-white">Formula glossary</strong> (
-            <code className="text-zinc-200">/lab</code> → Tune → Formula glossary)
+            <code className="text-zinc-200">/studio</code> → Looks → Formula glossary)
             exposes the same coefficients with live sliders via{" "}
             <code className="text-zinc-200">src/data/formulaCatalog.ts</code>.
           </p>
@@ -259,7 +259,7 @@ export function StoryShell() {
           <CodeBlock>{PRESET_EXAMPLE}</CodeBlock>
           <p className="mt-4 text-sm leading-relaxed text-zinc-300 md:text-base">
             Share a catalog look via{" "}
-            <code className="text-zinc-200">/lab?preset=soft-drift</code> (ids in{" "}
+            <code className="text-zinc-200">/studio?preset=soft-drift</code> (ids in{" "}
             <code className="text-zinc-200">src/data/presetCatalog.ts</code>).
             Key fields: <code className="text-zinc-200">layerEffects</code> per
             layer; <code className="text-zinc-200">synth.textLayers</code> for lab
@@ -411,7 +411,7 @@ export function StoryShell() {
             Run the living demo on{" "}
             <Link to="/" className="underline hover:text-white">/</Link>, design and
             export preset JSON in{" "}
-            <Link to="/lab" className="underline hover:text-white">Background Studio</Link>
+            <Link to="/studio" className="underline hover:text-white">Background Studio</Link>
             , read the embed guide in{" "}
             <code className="text-zinc-200">src/lib/preset/PORTING.md</code>, or
             the formula notes in{" "}
@@ -421,7 +421,7 @@ export function StoryShell() {
             <Link to="/" className={navLinkClass}>
               Try /
             </Link>
-            <Link to="/lab" className={navLinkClass}>
+            <Link to="/studio" className={navLinkClass}>
               Open Studio
             </Link>
             <a
