@@ -1,1 +1,0 @@
-Catalog presets load via `?preset=<id>` on `/` and `/lab`. Full preset JSON export from Background Studio (`/lab` → Background Studio panel (open by default on `/lab`) → export footer). To embed on a production site, see the layout and load sequence in [`src/lib/preset/PORTING.md`](../../src/lib/preset/PORTING.md).
