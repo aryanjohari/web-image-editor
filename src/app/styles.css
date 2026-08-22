@@ -1,0 +1,150 @@
+:root {
+  color-scheme: dark;
+  --bg: #1a1b1e;
+  --fg: #f2f0eb;
+  --muted: #9a968c;
+  --accent: #c4a574;
+  --danger: #d45d5d;
+  --panel: #25262b;
+  --border: #3a3b42;
+  font-family: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.45;
+  background: radial-gradient(1200px 600px at 20% -10%, #2a2c33, var(--bg));
+  color: var(--fg);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+}
+
+.app {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+h1 {
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.35rem;
+}
+
+.muted {
+  color: var(--muted);
+  margin: 0;
+}
+
+.canvas-hint {
+  font-size: 0.8rem;
+}
+
+.error-banner {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: color-mix(in srgb, var(--danger) 18%, transparent);
+  border: 1px solid color-mix(in srgb, var(--danger) 55%, transparent);
+  color: #ffd5d5;
+  border-radius: 4px;
+}
+
+.lab {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.25rem;
+  grid-template-columns: 1fr;
+  align-items: start;
+}
+
+@media (min-width: 860px) {
+  .lab {
+    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+  }
+
+  .panel {
+    position: sticky;
+    top: 1rem;
+  }
+}
+
+.panel {
+  position: relative;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  z-index: 2;
+}
+
+.lab-preview {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.panel label {
+  display: grid;
+  gap: 0.35rem;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.panel input[type="file"],
+.panel input[type="text"],
+.panel textarea {
+  width: 100%;
+  color: var(--fg);
+  background: #16171a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 0.45rem 0.55rem;
+}
+
+.canvas-wrap {
+  position: relative;
+  z-index: 0;
+  width: 100%;
+  height: min(360px, 52vh);
+  background: #0e0f12;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+  contain: layout;
+  isolation: isolate;
+}
+
+.canvas-wrap canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  /* Prevent intrinsic bitmap size from affecting layout */
+  object-fit: contain;
+}
+
+button {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: #30323a;
+  color: var(--fg);
+  border-radius: 4px;
+  padding: 0.45rem 0.7rem;
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent);
+}
