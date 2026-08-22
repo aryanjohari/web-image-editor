@@ -1,0 +1,24 @@
+{
+  "id": "poster-punch",
+  "version": "1.0.0",
+  "label": "Poster Punch",
+  "summary": "High-key contrast, chroma, vignette, and duotone accent",
+  "axes": ["contrast", "chroma", "vignette", "duotone"],
+  "mainEffects": [
+    { "id": "contrast", "params": { "amount": 0.55 } },
+    { "id": "saturation", "params": { "amount": 0.35 } },
+    { "id": "vignette", "params": { "amount": 0.45 } },
+    {
+      "id": "duotone",
+      "params": {
+        "amount": 0.55,
+        "shadow": "#1a1030",
+        "highlight": "#f2e6c8"
+      }
+    }
+  ],
+  "overlay": {
+    "opacity": 0.35,
+    "blend": "screen"
+  }
+}

@@ -148,3 +148,51 @@ button {
 button:hover {
   border-color: var(--accent);
 }
+
+.panel-heading {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pack-block,
+.slider-block {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.pack-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.pack-row button.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 22%, #30323a);
+}
+
+.panel input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.recipe-peek {
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.recipe-peek pre {
+  margin: 0.4rem 0 0;
+  max-height: 180px;
+  overflow: auto;
+  padding: 0.5rem;
+  background: #16171a;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

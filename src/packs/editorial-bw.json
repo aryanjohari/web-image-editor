@@ -1,0 +1,17 @@
+{
+  "id": "editorial-bw",
+  "version": "1.0.0",
+  "label": "Editorial B&W",
+  "summary": "Desaturated print look with fade and paper grain",
+  "axes": ["contrast", "chroma", "fade", "grain"],
+  "mainEffects": [
+    { "id": "saturation", "params": { "amount": -0.95 } },
+    { "id": "contrast", "params": { "amount": 0.4 } },
+    { "id": "fade", "params": { "amount": 0.18 } },
+    { "id": "grain", "params": { "amount": 0.28 } }
+  ],
+  "overlay": {
+    "opacity": 0.9,
+    "blend": "multiply"
+  }
+}

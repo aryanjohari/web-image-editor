@@ -1,5 +1,5 @@
 import type { AssetRecord } from "../assets/types";
-import type { BlendMode, Recipe, RecipeObject, Transform2D } from "../recipe/types";
+import type { BlendMode, Effect, Recipe, RecipeObject, Transform2D } from "../recipe/types";
 import {
   createFullscreenQuad,
   createGL,
@@ -35,6 +35,75 @@ type Fbo = {
   width: number;
   height: number;
 };
+
+/** Uniform pack for Tier A main grade (missing effect → identity 0). */
+type GradeUniforms = {
+  enable: boolean;
+  exposure: number;
+  contrast: number;
+  saturation: number;
+  temperature: number;
+  fade: number;
+  duotone: number;
+  vignette: number;
+  grain: number;
+  duotoneShadow: [number, number, number];
+  duotoneHighlight: [number, number, number];
+};
+
+const IDENTITY_GRADE: GradeUniforms = {
+  enable: false,
+  exposure: 0,
+  contrast: 0,
+  saturation: 0,
+  temperature: 0,
+  fade: 0,
+  duotone: 0,
+  vignette: 0,
+  grain: 0,
+  duotoneShadow: [0.1, 0.06, 0.19],
+  duotoneHighlight: [0.95, 0.9, 0.78],
+};
+
+function parseHexRgb(hex: string): [number, number, number] {
+  const m = /^#?([0-9a-fA-F]{6})$/.exec(hex.trim());
+  if (!m) return [0, 0, 0];
+  const n = parseInt(m[1]!, 16);
+  return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255];
+}
+
+function amountOf(effects: Effect[], id: string): number {
+  const ef = effects.find((e) => e.id === id);
+  if (!ef) return 0;
+  const v = ef.params.amount;
+  return typeof v === "number" ? v : 0;
+}
+
+function gradeFromEffects(effects: Effect[], enable: boolean): GradeUniforms {
+  if (!enable) return IDENTITY_GRADE;
+  const duo = effects.find((e) => e.id === "duotone");
+  const shadow =
+    duo && typeof duo.params.shadow === "string"
+      ? parseHexRgb(duo.params.shadow)
+      : IDENTITY_GRADE.duotoneShadow;
+  const highlight =
+    duo && typeof duo.params.highlight === "string"
+      ? parseHexRgb(duo.params.highlight)
+      : IDENTITY_GRADE.duotoneHighlight;
+  return {
+    enable: true,
+    exposure: amountOf(effects, "exposure"),
+    contrast: amountOf(effects, "contrast"),
+    saturation: amountOf(effects, "saturation"),
+    temperature: amountOf(effects, "temperature"),
+    fade: amountOf(effects, "fade"),
+    duotone: amountOf(effects, "duotone"),
+    vignette: amountOf(effects, "vignette"),
+    grain: amountOf(effects, "grain"),
+    duotoneShadow: shadow,
+    duotoneHighlight: highlight,
+  };
+}
 
 function blendModeIndex(b: BlendMode): number {
   switch (b) {
@@ -182,6 +251,32 @@ export class Compositor {
     return uploaded;
   }
 
+
+  private setGradeUniforms(prog: WebGLProgram, grade: GradeUniforms): void {
+    const gl = this.gl;
+    gl.uniform1i(gl.getUniformLocation(prog, "u_enableGrade"), grade.enable ? 1 : 0);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_exposure"), grade.exposure);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_contrast"), grade.contrast);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_saturation"), grade.saturation);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_temperature"), grade.temperature);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_fade"), grade.fade);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_duotone"), grade.duotone);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_vignette"), grade.vignette);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_grain"), grade.grain);
+    gl.uniform3f(
+      gl.getUniformLocation(prog, "u_duotoneShadow"),
+      grade.duotoneShadow[0],
+      grade.duotoneShadow[1],
+      grade.duotoneShadow[2],
+    );
+    gl.uniform3f(
+      gl.getUniformLocation(prog, "u_duotoneHighlight"),
+      grade.duotoneHighlight[0],
+      grade.duotoneHighlight[1],
+      grade.duotoneHighlight[2],
+    );
+  }
+
   private drawTextured(
     target: WebGLFramebuffer | null,
     tex: UploadedTexture,
@@ -191,6 +286,7 @@ export class Compositor {
     isBase: boolean,
     viewW: number,
     viewH: number,
+    grade: GradeUniforms = IDENTITY_GRADE,
   ): void {
     const gl = this.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, target);
@@ -215,6 +311,7 @@ export class Compositor {
     gl.uniform1f(locOpacity, opacity);
     gl.uniform1i(locBlend, blendModeIndex(blend));
     gl.uniform1i(locBase, isBase ? 1 : 0);
+    this.setGradeUniforms(this.texturedProg, grade);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, tex.texture);
@@ -233,6 +330,7 @@ export class Compositor {
     blend: BlendMode,
     viewW: number,
     viewH: number,
+    grade: GradeUniforms = IDENTITY_GRADE,
   ): void {
     const gl = this.gl;
     // Blit dst → write, then premul source-over the layer (blend modes ≠ normal
@@ -252,6 +350,7 @@ export class Compositor {
     gl.uniform1f(gl.getUniformLocation(this.texturedProg, "u_opacity"), opacity);
     gl.uniform1i(gl.getUniformLocation(this.texturedProg, "u_blendMode"), blendModeIndex(blend));
     gl.uniform1i(gl.getUniformLocation(this.texturedProg, "u_isBase"), blend === "normal" ? 1 : 0);
+    this.setGradeUniforms(this.texturedProg, grade);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, srcTex.texture);
     gl.uniform1i(gl.getUniformLocation(this.texturedProg, "u_tex"), 0);
@@ -306,6 +405,7 @@ export class Compositor {
       for (const obj of layers) {
         if (obj.kind === "image") {
           const tex = await this.resolveTexture(obj, input.assetsById);
+          const grade = gradeFromEffects(obj.effects, obj.role === "main");
           if (!hasContent) {
             gl.bindFramebuffer(gl.FRAMEBUFFER, read.framebuffer);
             gl.clearColor(0.08, 0.09, 0.11, 1);
@@ -319,6 +419,7 @@ export class Compositor {
               true,
               viewW,
               viewH,
+              grade,
             );
             hasContent = true;
           } else {
@@ -331,6 +432,7 @@ export class Compositor {
               obj.blend,
               viewW,
               viewH,
+              grade,
             );
             const tmp = read;
             read = write;
