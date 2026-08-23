@@ -18,6 +18,7 @@ uniform float u_fade;
 uniform float u_duotone;
 uniform float u_vignette;
 uniform float u_grain;
+uniform float u_grainSeed;
 uniform vec3 u_duotoneShadow;
 uniform vec3 u_duotoneHighlight;
 
@@ -43,7 +44,7 @@ float luma709(vec3 c) {
   return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
-// Stable UV hash (no time) — OPEN grain-seed default for I1.
+// Stable UV hash (no u_time) — optional u_grainSeed folds in (M04 X7).
 float hash21(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
@@ -89,7 +90,7 @@ vec3 applyGrade(vec3 rgb, vec2 uv) {
   }
 
   if (u_grain > 1e-5) {
-    float n = hash21(uv * vec2(1024.0, 768.0)) - 0.5;
+    float n = hash21(uv * vec2(1024.0, 768.0) + vec2(u_grainSeed * 17.0, u_grainSeed * 31.0)) - 0.5;
     rgb += n * u_grain * 0.22;
   }
 

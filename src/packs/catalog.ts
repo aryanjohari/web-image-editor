@@ -56,6 +56,7 @@ function validateEffect(raw: unknown, path: string): Effect {
   }
   for (const [key, pspec] of Object.entries(spec.params)) {
     if (!(key in paramsRaw)) {
+      if (pspec.optional) continue;
       throw new PackError("MISSING_PARAM", `${path}.params.${key}: required`);
     }
     const val = paramsRaw[key];

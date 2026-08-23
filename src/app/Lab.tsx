@@ -25,10 +25,19 @@ import { applyPathPatch } from "../recipe/pathPatch";
 import type { Recipe } from "../recipe/types";
 import { validateRecipe } from "../recipe/validate";
 import { ErrorBanner } from "./ErrorBanner";
+import {
+  downloadPng,
+  downloadRecipeJson,
+  encodeRecipeHash,
+  ExportError,
+  listMissingAssets,
+  ShareHashError,
+  tryDecodeLocationHash,
+} from "../export";
 
 const RECIPE_KEY = "prism.recipe.v1";
 
-function loadRecipe(): Recipe {
+function loadRecipeFromStorage(): Recipe {
   try {
     const raw = localStorage.getItem(RECIPE_KEY);
     if (!raw) return identityRecipe();
@@ -40,6 +49,23 @@ function loadRecipe(): Recipe {
 
 function saveRecipe(recipe: Recipe): void {
   localStorage.setItem(RECIPE_KEY, JSON.stringify(recipe));
+}
+
+function bootRecipe(): { recipe: Recipe; hashError: string | null; fromHash: boolean } {
+  const decoded = tryDecodeLocationHash(
+    typeof window !== "undefined" ? window.location.hash : "",
+  );
+  if (decoded.present) {
+    if (decoded.recipe) {
+      return { recipe: decoded.recipe, hashError: null, fromHash: true };
+    }
+    return {
+      recipe: loadRecipeFromStorage(),
+      hashError: decoded.error ?? "share hash decode failed",
+      fromHash: true,
+    };
+  }
+  return { recipe: loadRecipeFromStorage(), hashError: null, fromHash: false };
 }
 
 function newAssetId(prefix: string): string {
@@ -92,10 +118,14 @@ export function Lab() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
   const compositorRef = useRef<Compositor | null>(null);
-  const recipeRef = useRef<Recipe>(loadRecipe());
+  const boot = bootRecipe();
+  const recipeRef = useRef<Recipe>(boot.recipe);
 
   const [recipe, setRecipe] = useState<Recipe>(() => recipeRef.current);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => boot.hashError);
+  const [exportBusy, setExportBusy] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [reconnectMainId, setReconnectMainId] = useState<string | null>(null);
   const [textDraft, setTextDraft] = useState(() => {
     const t = recipeRef.current.objects.find((o) => o.kind === "text");
     return t && t.kind === "text" ? t.text.content : "Prism";
@@ -216,8 +246,16 @@ export function Lab() {
   async function onMainFile(file: File | null) {
     if (!file) return;
     try {
-      const assetId = newAssetId("main");
+      const assetId = reconnectMainId ?? newAssetId("main");
       await putAsset(assetId, file, { name: file.name });
+      if (reconnectMainId) {
+        // FILTR reconnect: keep shared recipe, fill expected asset id
+        setReconnectMainId(null);
+        setError(null);
+        setToast(`Reconnected main asset "${assetId}"`);
+        setRecipe({ ...recipe }); // trigger redraw with same recipe
+        return;
+      }
       const overlay = recipe.objects.find((o) => o.kind === "image" && o.role === "overlay");
       const text = recipe.objects.find((o) => o.kind === "text");
       const objects = [...recipeWithMain(assetId).objects];
@@ -318,6 +356,86 @@ export function Lab() {
     }
   }
 
+
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { map } = await loadAssetsMap(recipe);
+      if (cancelled) return;
+      const missing = listMissingAssets(recipe, map);
+      const mainMiss = missing.find((m) => m.role === "main");
+      setReconnectMainId(mainMiss?.assetId ?? null);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [recipe]);
+
+  async function onDownloadPng() {
+    const c = compositorRef.current;
+    const wrap = wrapRef.current;
+    if (!c || !wrap) return;
+    setExportBusy(true);
+    setToast(null);
+    try {
+      const { map, error: resolveErr } = await loadAssetsMap(recipe);
+      if (resolveErr) {
+        const missing = listMissingAssets(recipe, map);
+        const mainMiss = missing.find((m) => m.role === "main");
+        if (mainMiss) setReconnectMainId(mainMiss.assetId);
+        setError(resolveErr);
+        return;
+      }
+      await downloadPng(c, recipe, map, Math.max(1, wrap.clientHeight));
+      setToast("PNG downloaded");
+    } catch (e) {
+      const msg =
+        e instanceof ExportError || e instanceof ShareHashError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : String(e);
+      setError(msg);
+    } finally {
+      setExportBusy(false);
+    }
+  }
+
+  function onDownloadRecipe() {
+    try {
+      downloadRecipeJson(recipe);
+      setToast("Recipe JSON downloaded");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function onDownloadBoth() {
+    await onDownloadPng();
+    onDownloadRecipe();
+  }
+
+  async function onCopyLink() {
+    try {
+      const hash = encodeRecipeHash(recipe);
+      const url = `${window.location.origin}${window.location.pathname}${hash}`;
+      await navigator.clipboard.writeText(url);
+      window.history.replaceState(null, "", hash);
+      setToast("Share link copied (recipe only — photos reconnect locally)");
+      setError(null);
+    } catch (e) {
+      const msg =
+        e instanceof ShareHashError
+          ? e.message
+          : e instanceof Error
+            ? e.message
+            : String(e);
+      setError(msg);
+    }
+  }
+
   return (
     <div className="lab">
       <aside className="panel">
@@ -407,6 +525,42 @@ export function Lab() {
           ))}
         </div>
 
+        <div className="export-block">
+          <p className="panel-heading">Export</p>
+          <div className="pack-row">
+            <button
+              type="button"
+              disabled={!hasMain(recipe) || exportBusy}
+              onClick={() => void onDownloadPng()}
+            >
+              {exportBusy ? "Exporting…" : "Download PNG"}
+            </button>
+            <button type="button" onClick={onDownloadRecipe}>
+              Download recipe
+            </button>
+            <button type="button" onClick={() => void onCopyLink()}>
+              Copy share link
+            </button>
+            <button
+              type="button"
+              disabled={!hasMain(recipe) || exportBusy}
+              onClick={() => void onDownloadBoth()}
+            >
+              PNG + recipe
+            </button>
+          </div>
+          <p className="muted honesty">
+            PNG matches lab preview (blends are approximate).
+          </p>
+          {toast && <p className="muted">{toast}</p>}
+          {reconnectMainId && (
+            <p className="reconnect">
+              Main asset <code>{reconnectMainId}</code> missing — re-upload main to
+              reconnect this shared recipe.
+            </p>
+          )}
+        </div>
+
         <button type="button" onClick={onReset}>
           Reset recipe
         </button>
@@ -421,7 +575,7 @@ export function Lab() {
       </aside>
       <div className="lab-preview">
         <ErrorBanner message={error} />
-        <div className="canvas-wrap" ref={wrapRef}>
+        <div className={`canvas-wrap${reconnectMainId ? " canvas-blocked" : ""}`} ref={wrapRef}>
           <canvas ref={canvasRef} width={640} height={480} />
         </div>
         <p className="muted canvas-hint">

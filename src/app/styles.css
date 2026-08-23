@@ -196,3 +196,84 @@ button:hover {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+
+.export-block {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.honesty {
+  font-size: 0.8rem;
+}
+
+.reconnect {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #ffd5d5;
+}
+
+.canvas-wrap.canvas-blocked::after {
+  content: "Re-upload main to reconnect";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, #0e0f12 72%, transparent);
+  color: #ffd5d5;
+  font-size: 0.9rem;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  align-items: end;
+  color: var(--fg);
+  background: #0e0f12;
+}
+
+.hero-stage {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.hero-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 40rem;
+  padding: 2.5rem 1.5rem 3rem;
+  pointer-events: auto;
+}
+
+.hero-brand {
+  margin: 0 0 0.35rem;
+  font-family: "IBM Plex Serif", Georgia, serif;
+  font-size: clamp(2.5rem, 8vw, 4.5rem);
+  letter-spacing: -0.03em;
+}
+
+.hero-copy h1 {
+  font-size: clamp(1.25rem, 3vw, 1.75rem);
+  font-weight: 500;
+  margin: 0 0 0.75rem;
+}
+
+.hero-error {
+  color: var(--danger);
+}
+
+.hero-copy a {
+  color: var(--accent);
+}

@@ -109,6 +109,7 @@ export function defaultEffectParams(effectId: string): Effect["params"] {
   }
   const params: Effect["params"] = {};
   for (const [key, pspec] of Object.entries(spec.params)) {
+    if (pspec.optional) continue;
     if (pspec.type === "number") {
       params[key] = 0;
     } else if (pspec.type === "boolean") {

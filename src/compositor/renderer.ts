@@ -47,6 +47,7 @@ type GradeUniforms = {
   duotone: number;
   vignette: number;
   grain: number;
+  grainSeed: number;
   duotoneShadow: [number, number, number];
   duotoneHighlight: [number, number, number];
 };
@@ -61,6 +62,7 @@ const IDENTITY_GRADE: GradeUniforms = {
   duotone: 0,
   vignette: 0,
   grain: 0,
+  grainSeed: 0,
   duotoneShadow: [0.1, 0.06, 0.19],
   duotoneHighlight: [0.95, 0.9, 0.78],
 };
@@ -76,6 +78,13 @@ function amountOf(effects: Effect[], id: string): number {
   const ef = effects.find((e) => e.id === id);
   if (!ef) return 0;
   const v = ef.params.amount;
+  return typeof v === "number" ? v : 0;
+}
+
+function grainSeedOf(effects: Effect[]): number {
+  const ef = effects.find((e) => e.id === "grain");
+  if (!ef) return 0;
+  const v = ef.params.seed;
   return typeof v === "number" ? v : 0;
 }
 
@@ -100,6 +109,7 @@ function gradeFromEffects(effects: Effect[], enable: boolean): GradeUniforms {
     duotone: amountOf(effects, "duotone"),
     vignette: amountOf(effects, "vignette"),
     grain: amountOf(effects, "grain"),
+    grainSeed: grainSeedOf(effects),
     duotoneShadow: shadow,
     duotoneHighlight: highlight,
   };
@@ -263,6 +273,7 @@ export class Compositor {
     gl.uniform1f(gl.getUniformLocation(prog, "u_duotone"), grade.duotone);
     gl.uniform1f(gl.getUniformLocation(prog, "u_vignette"), grade.vignette);
     gl.uniform1f(gl.getUniformLocation(prog, "u_grain"), grade.grain);
+    gl.uniform1f(gl.getUniformLocation(prog, "u_grainSeed"), grade.grainSeed);
     gl.uniform3f(
       gl.getUniformLocation(prog, "u_duotoneShadow"),
       grade.duotoneShadow[0],
@@ -379,6 +390,240 @@ export class Compositor {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
+  private async ensureTextTexture(
+    obj: RecipeObject & { kind: "text" },
+    textScale: number,
+  ): Promise<UploadedTexture> {
+    const scaled = {
+      ...obj.text,
+      fontSize: Math.max(1, obj.text.fontSize * textScale),
+      letterSpacing:
+        obj.text.letterSpacing != null ? obj.text.letterSpacing * textScale : undefined,
+      lineHeight: obj.text.lineHeight != null ? obj.text.lineHeight * textScale : undefined,
+    };
+    const key = `${textScale.toFixed(6)}:${JSON.stringify(scaled)}`;
+    if (key !== this.textKey || !this.textTex) {
+      const raster = rasterizeText(scaled);
+      this.textTex = uploadCanvas(this.gl, raster.canvas, this.textTex?.texture ?? null);
+      this.textKey = key;
+    }
+    return this.textTex;
+  }
+
+  /**
+   * Compose visible layers into read/write FBO pair at viewW×viewH.
+   * Returns the FBO holding the final composite.
+   */
+  private async composeToFbos(
+    input: RenderFrameInput,
+    read: Fbo,
+    write: Fbo,
+    viewW: number,
+    viewH: number,
+    textScale: number,
+  ): Promise<Fbo> {
+    const gl = this.gl;
+    const layers = [...input.recipe.objects]
+      .filter((o) => o.visible)
+      .sort((a, b) => a.z - b.z);
+
+    gl.bindFramebuffer(gl.FRAMEBUFFER, read.framebuffer);
+    gl.viewport(0, 0, viewW, viewH);
+    gl.clearColor(0.08, 0.09, 0.11, 1);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+
+    let curRead = read;
+    let curWrite = write;
+    let hasContent = false;
+
+    for (const obj of layers) {
+      if (obj.kind === "image") {
+        const tex = await this.resolveTexture(obj, input.assetsById);
+        const grade = gradeFromEffects(obj.effects, obj.role === "main");
+        if (!hasContent) {
+          gl.bindFramebuffer(gl.FRAMEBUFFER, curRead.framebuffer);
+          gl.clearColor(0.08, 0.09, 0.11, 1);
+          gl.clear(gl.COLOR_BUFFER_BIT);
+          this.drawTextured(
+            curRead.framebuffer,
+            tex,
+            obj.transform,
+            obj.opacity,
+            "normal",
+            true,
+            viewW,
+            viewH,
+            grade,
+          );
+          hasContent = true;
+        } else {
+          this.compositeLayer(
+            curRead,
+            curWrite,
+            tex,
+            obj.transform,
+            obj.opacity,
+            obj.blend,
+            viewW,
+            viewH,
+            grade,
+          );
+          const tmp = curRead;
+          curRead = curWrite;
+          curWrite = tmp;
+        }
+      } else if (obj.kind === "text") {
+        const textTex = await this.ensureTextTexture(obj, textScale);
+        if (!hasContent) {
+          this.drawTextured(
+            curRead.framebuffer,
+            textTex,
+            obj.transform,
+            obj.opacity,
+            "normal",
+            true,
+            viewW,
+            viewH,
+          );
+          hasContent = true;
+        } else {
+          this.compositeLayer(
+            curRead,
+            curWrite,
+            textTex,
+            obj.transform,
+            obj.opacity,
+            obj.blend,
+            viewW,
+            viewH,
+          );
+          const tmp = curRead;
+          curRead = curWrite;
+          curWrite = tmp;
+        }
+      } else {
+        throw {
+          code: "UNSUPPORTED",
+          message: `unsupported active object`,
+        } satisfies CompositorError;
+      }
+    }
+    return curRead;
+  }
+
+  private createTempFbo(width: number, height: number): Fbo {
+    const gl = this.gl;
+    const texture = createTexture(gl);
+    gl.bindTexture(gl.TEXTURE_2D, texture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    const fb = gl.createFramebuffer();
+    if (!fb) throw new Error("createFramebuffer failed");
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0);
+    const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER);
+    if (status !== gl.FRAMEBUFFER_COMPLETE) {
+      throw new Error(`FBO incomplete: ${status}`);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    return { framebuffer: fb, texture, width, height };
+  }
+
+  private deleteFbo(fbo: Fbo): void {
+    const gl = this.gl;
+    gl.deleteFramebuffer(fbo.framebuffer);
+    gl.deleteTexture(fbo.texture);
+  }
+
+  /** Max GPU texture edge for export clamp. */
+  maxTextureSize(): number {
+    return this.gl.getParameter(this.gl.MAX_TEXTURE_SIZE) as number;
+  }
+
+  /**
+   * Resolve main image native pixel size (after upload/decode).
+   * Fail closed if main missing or unresolved.
+   */
+  async resolveMainNativeSize(
+    recipe: Recipe,
+    assetsById: Map<string, AssetRecord>,
+  ): Promise<{ width: number; height: number }> {
+    const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
+    if (!main || main.kind !== "image" || !main.visible) {
+      throw {
+        code: "MISSING_ASSET",
+        message: "main image missing — cannot export PNG",
+      } satisfies CompositorError;
+    }
+    const tex = await this.resolveTexture(main, assetsById);
+    return { width: tex.width, height: tex.height };
+  }
+
+  /**
+   * Export at source RT: same shaders as preview, different FBO size (E14 / X1).
+   * Never touches canvas drawing-buffer / preserveDrawingBuffer.
+   * Returns bottom-up RGBA (GL order) — caller flips Y for Canvas2D.
+   */
+  async exportPixels(
+    input: RenderFrameInput,
+    exportWidth: number,
+    exportHeight: number,
+    previewHeight: number,
+  ): Promise<{ width: number; height: number; pixels: Uint8Array }> {
+    this.lastError = null;
+    const gl = this.gl;
+    const viewW = Math.max(1, Math.floor(exportWidth));
+    const viewH = Math.max(1, Math.floor(exportHeight));
+    const textScale = previewHeight > 0 ? viewH / Math.max(1, previewHeight) : 1;
+
+    for (const obj of input.recipe.objects) {
+      if (!obj.visible || obj.kind !== "image") continue;
+      await this.resolveTexture(obj, input.assetsById);
+    }
+
+    const fboA = this.createTempFbo(viewW, viewH);
+    const fboB = this.createTempFbo(viewW, viewH);
+    try {
+      const finalFbo = await this.composeToFbos(
+        input,
+        fboA,
+        fboB,
+        viewW,
+        viewH,
+        textScale,
+      );
+      gl.bindFramebuffer(gl.FRAMEBUFFER, finalFbo.framebuffer);
+      const pixels = new Uint8Array(viewW * viewH * 4);
+      gl.readPixels(0, 0, viewW, viewH, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+      const err = gl.getError();
+      if (err !== gl.NO_ERROR) {
+        throw {
+          code: "READPIXELS",
+          message: `readPixels failed (gl error ${err}) — possible CORS taint`,
+        } satisfies CompositorError;
+      }
+      return { width: viewW, height: viewH, pixels };
+    } catch (e) {
+      const err =
+        e && typeof e === "object" && "code" in e && "message" in e
+          ? (e as CompositorError)
+          : {
+              code: "EXPORT",
+              message: e instanceof Error ? e.message : String(e),
+            };
+      this.lastError = err;
+      throw err;
+    } finally {
+      this.deleteFbo(fboA);
+      this.deleteFbo(fboB);
+      this.textKey = "";
+      if (this.textTex) {
+        gl.deleteTexture(this.textTex.texture);
+        this.textTex = null;
+      }
+      gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    }
+  }
+
   async render(input: RenderFrameInput): Promise<boolean> {
     this.lastError = null;
     const gl = this.gl;
@@ -387,101 +632,16 @@ export class Compositor {
     this.ensureFbos(viewW, viewH);
     if (!this.fboA || !this.fboB) return false;
 
-    const layers = [...input.recipe.objects]
-      .filter((o) => o.visible)
-      .sort((a, b) => a.z - b.z);
-
     try {
-      // Clear accumulate buffer
-      gl.bindFramebuffer(gl.FRAMEBUFFER, this.fboA.framebuffer);
-      gl.viewport(0, 0, viewW, viewH);
-      gl.clearColor(0.08, 0.09, 0.11, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-
-      let read = this.fboA;
-      let write = this.fboB;
-      let hasContent = false;
-
-      for (const obj of layers) {
-        if (obj.kind === "image") {
-          const tex = await this.resolveTexture(obj, input.assetsById);
-          const grade = gradeFromEffects(obj.effects, obj.role === "main");
-          if (!hasContent) {
-            gl.bindFramebuffer(gl.FRAMEBUFFER, read.framebuffer);
-            gl.clearColor(0.08, 0.09, 0.11, 1);
-            gl.clear(gl.COLOR_BUFFER_BIT);
-            this.drawTextured(
-              read.framebuffer,
-              tex,
-              obj.transform,
-              obj.opacity,
-              "normal",
-              true,
-              viewW,
-              viewH,
-              grade,
-            );
-            hasContent = true;
-          } else {
-            this.compositeLayer(
-              read,
-              write,
-              tex,
-              obj.transform,
-              obj.opacity,
-              obj.blend,
-              viewW,
-              viewH,
-              grade,
-            );
-            const tmp = read;
-            read = write;
-            write = tmp;
-          }
-        } else if (obj.kind === "text") {
-          const key = JSON.stringify(obj.text);
-          if (key !== this.textKey || !this.textTex) {
-            const raster = rasterizeText(obj.text);
-            this.textTex = uploadCanvas(this.gl, raster.canvas, this.textTex?.texture ?? null);
-            this.textKey = key;
-          }
-          if (!hasContent) {
-            this.drawTextured(
-              read.framebuffer,
-              this.textTex,
-              obj.transform,
-              obj.opacity,
-              "normal",
-              true,
-              viewW,
-              viewH,
-            );
-            hasContent = true;
-          } else {
-            this.compositeLayer(
-              read,
-              write,
-              this.textTex,
-              obj.transform,
-              obj.opacity,
-              obj.blend,
-              viewW,
-              viewH,
-            );
-            const tmp = read;
-            read = write;
-            write = tmp;
-          }
-        } else {
-          throw {
-            code: "UNSUPPORTED",
-            message: `unsupported active object`,
-          } satisfies CompositorError;
-        }
-      }
-
-      // Present to canvas
-      this.blitTexture(read.texture, null, viewW, viewH);
+      const finalFbo = await this.composeToFbos(
+        input,
+        this.fboA,
+        this.fboB,
+        viewW,
+        viewH,
+        1,
+      );
+      this.blitTexture(finalFbo.texture, null, viewW, viewH);
       return true;
     } catch (e) {
       const err =
@@ -492,7 +652,6 @@ export class Compositor {
               message: e instanceof Error ? e.message : String(e),
             };
       this.lastError = err;
-      // Loud fail: clear to dark red-tinted so blank success is impossible to miss
       gl.bindFramebuffer(gl.FRAMEBUFFER, null);
       gl.viewport(0, 0, viewW, viewH);
       gl.clearColor(0.25, 0.05, 0.05, 1);

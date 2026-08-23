@@ -1,9 +1,9 @@
 /** Closed Tier A effect registry (01 §6.7 / M01). */
 
 export type EffectParamSpec =
-  | { type: "number"; min: number; max: number }
-  | { type: "string" }
-  | { type: "boolean" };
+  | { type: "number"; min: number; max: number; optional?: boolean }
+  | { type: "string"; optional?: boolean }
+  | { type: "boolean"; optional?: boolean };
 
 export type EffectSpec = {
   params: Record<string, EffectParamSpec>;
@@ -51,7 +51,11 @@ export const TIER_A_EFFECTS: Record<string, EffectSpec> = {
   grain: {
     kinds: ["image"],
     roles: ["main"],
-    params: { amount: { type: "number", min: 0, max: 1 } },
+    params: {
+      amount: { type: "number", min: 0, max: 1 },
+      /** Folded into UV hash; omit → 0 (M04 X7). */
+      seed: { type: "number", min: 0, max: 1e9, optional: true },
+    },
   },
   vignette: {
     kinds: ["image"],

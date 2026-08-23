@@ -215,6 +215,7 @@ function validateEffect(
   }
   for (const [key, pspec] of Object.entries(spec.params)) {
     if (!(key in raw.params)) {
+      if (pspec.optional) continue;
       throw new RecipeValidationError(
         "MISSING_PARAM",
         `${path}.params.${key}`,
