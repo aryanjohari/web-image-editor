@@ -34,6 +34,13 @@ import {
   ShareHashError,
   tryDecodeLocationHash,
 } from "../export";
+import {
+  applyTalk,
+  buildRecipeContext,
+  normalizeTalkResponse,
+  postTalk,
+  TalkClientError,
+} from "../talk";
 
 const RECIPE_KEY = "prism.recipe.v1";
 
@@ -133,6 +140,9 @@ export function Lab() {
   const [libraryCount, setLibraryCount] = useState(0);
   const [glReady, setGlReady] = useState(false);
   const [intensity, setIntensity] = useState(1);
+  const [talkText, setTalkText] = useState("");
+  const [talkBusy, setTalkBusy] = useState(false);
+  const [talkStatus, setTalkStatus] = useState<string | null>(null);
 
   recipeRef.current = recipe;
   const packs = listPacks();
@@ -356,6 +366,48 @@ export function Lab() {
     }
   }
 
+  async function onTalkSend() {
+    const text = talkText.trim();
+    if (!text || talkBusy) return;
+    if (!hasMain(recipe)) {
+      setTalkStatus("upload a main image before talk");
+      return;
+    }
+    setTalkBusy(true);
+    setTalkStatus(null);
+    try {
+      const recipeContext = buildRecipeContext(recipe);
+      const raw = await postTalk({ text, recipeContext });
+      const normalized = normalizeTalkResponse(raw, recipeContext);
+      if (!normalized.ok) {
+        setTalkStatus(`${normalized.code}: ${normalized.message}`);
+        return;
+      }
+      const applied = applyTalk(recipe, normalized.response);
+      if (!applied.ok) {
+        setTalkStatus(`${applied.code}: ${applied.message}`);
+        return;
+      }
+      setRecipe(applied.recipe);
+      setError(null);
+      if (applied.say) {
+        setToast(applied.say);
+        setTalkStatus(applied.say);
+      } else {
+        setTalkStatus("applied");
+      }
+      setTalkText("");
+    } catch (e) {
+      if (e instanceof TalkClientError) {
+        setTalkStatus(`${e.code}: ${e.message}`);
+      } else {
+        setTalkStatus(e instanceof Error ? e.message : String(e));
+      }
+    } finally {
+      setTalkBusy(false);
+    }
+  }
+
 
 
   useEffect(() => {
@@ -470,6 +522,31 @@ export function Lab() {
         <button type="button" onClick={onTextCommit}>
           Apply text
         </button>
+
+        <div className="talk-block">
+          <p className="panel-heading">Talk</p>
+          <label>
+            Mood / refine
+            <input
+              type="text"
+              value={talkText}
+              disabled={talkBusy}
+              placeholder="e.g. warm film, less grain…"
+              onChange={(e) => setTalkText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") void onTalkSend();
+              }}
+            />
+          </label>
+          <button
+            type="button"
+            disabled={talkBusy || !talkText.trim()}
+            onClick={() => void onTalkSend()}
+          >
+            {talkBusy ? "Sending…" : "Send"}
+          </button>
+          {talkStatus && <p className="muted talk-status">{talkStatus}</p>}
+        </div>
 
         <div className="pack-block">
           <p className="panel-heading">Packs</p>
