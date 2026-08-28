@@ -1,16 +1,16 @@
 /**
- * Connect-style POST /api/talk handler (M03 §3).
+ * Vercel serverless POST /api/talk (I3b).
+ * Reuses server/talkCore — same contract as dev Vite middleware.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { clientIpFromForwarded, processTalk } from "./talkCore";
+import { clientIpFromForwarded, processTalk } from "../server/talkCore";
 
-function clientIp(req: IncomingMessage): string {
-  return clientIpFromForwarded(
-    req.headers["x-forwarded-for"],
-    req.socket.remoteAddress ?? "unknown",
-  );
-}
+type VercelRequest = IncomingMessage & {
+  method?: string;
+  body?: unknown;
+  headers: IncomingMessage["headers"] & Record<string, string | string[] | undefined>;
+};
 
 function sendJson(res: ServerResponse, status: number, body: unknown): void {
   const payload = JSON.stringify(body);
@@ -29,7 +29,11 @@ function sendError(
   sendJson(res, status, { error: { code, message } });
 }
 
-function readBody(req: IncomingMessage): Promise<string> {
+async function readRawBody(req: VercelRequest): Promise<unknown> {
+  if (req.body !== undefined) {
+    return req.body;
+  }
+
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     req.on("data", (c: Buffer) => {
@@ -44,8 +48,8 @@ function readBody(req: IncomingMessage): Promise<string> {
   });
 }
 
-export async function handleTalkRequest(
-  req: IncomingMessage,
+export default async function handler(
+  req: VercelRequest,
   res: ServerResponse,
 ): Promise<void> {
   if (req.method === "OPTIONS") {
@@ -61,11 +65,14 @@ export async function handleTalkRequest(
     return;
   }
 
-  const ip = clientIp(req);
+  const ip = clientIpFromForwarded(
+    req.headers["x-forwarded-for"],
+    req.socket?.remoteAddress ?? "unknown",
+  );
 
-  let bodyText: string;
+  let rawBody: unknown;
   try {
-    bodyText = await readBody(req);
+    rawBody = await readRawBody(req);
   } catch (e) {
     sendError(
       res,
@@ -76,33 +83,19 @@ export async function handleTalkRequest(
     return;
   }
 
-  const result = await processTalk(bodyText, { ip });
-  if (!result.ok) {
-    sendError(res, result.status, result.code, result.message);
-    return;
-  }
-
-  sendJson(res, 200, result.response);
-}
-
-/** Connect middleware: mount at /api/talk. */
-export function talkMiddleware(
-  req: IncomingMessage,
-  res: ServerResponse,
-  next: (err?: unknown) => void,
-): void {
-  const url = req.url ?? "";
-  const path = url.split("?")[0];
-  if (path !== "/api/talk" && path !== "/api/talk/") {
-    next();
-    return;
-  }
-  void handleTalkRequest(req, res).catch((e) => {
+  try {
+    const result = await processTalk(rawBody, { ip });
+    if (!result.ok) {
+      sendError(res, result.status, result.code, result.message);
+      return;
+    }
+    sendJson(res, 200, result.response);
+  } catch (e) {
     sendError(
       res,
       500,
       "HTTP_500",
       e instanceof Error ? e.message : "talk handler failed",
     );
-  });
+  }
 }
