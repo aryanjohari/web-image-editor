@@ -2,17 +2,29 @@
 
 import {
   mainHasDuotone,
+  mainHasMask,
+  readRegionalSliderValue,
   readSliderValue,
+  REGIONAL_SLIDERS,
   SEMANTIC_SLIDERS,
+  type RegionalSliderId,
   type SemanticSliderId,
-} from "../packs/sliders";
+} from "../packs";
 import type { Recipe } from "../recipe/types";
-import type { RecipeContext, RecipeContextSliders } from "./types";
+import type { RecipeContext, RecipeContextRegionalSliders, RecipeContextSliders } from "./types";
 
 function mainEffectIds(recipe: Recipe): string[] {
   const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
   if (!main || main.kind !== "image") return [];
   return main.effects.map((e) => e.id);
+}
+
+function readRegionalSliders(recipe: Recipe): RecipeContextRegionalSliders {
+  const out = {} as RecipeContextRegionalSliders;
+  for (const spec of REGIONAL_SLIDERS) {
+    out[spec.id as RegionalSliderId] = readRegionalSliderValue(recipe, spec.id);
+  }
+  return out;
 }
 
 export function buildRecipeContext(recipe: Recipe): RecipeContext {
@@ -28,11 +40,15 @@ export function buildRecipeContext(recipe: Recipe): RecipeContext {
   if (mainHasDuotone(recipe)) {
     sliders.duotone = readSliderValue(recipe, "duotone");
   }
+  const hasMask = mainHasMask(recipe);
   return {
     packId: recipe.packId,
     packVersion: recipe.packVersion,
     sliders,
     mainEffectIds: mainEffectIds(recipe),
+    ...(hasMask
+      ? { hasMask: true, regionalSliders: readRegionalSliders(recipe) }
+      : {}),
   };
 }
 

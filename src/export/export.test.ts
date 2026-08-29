@@ -67,6 +67,34 @@ describe("listMissingAssets", () => {
     ]);
     expect(listMissingAssets(recipe, map)).toEqual([]);
   });
+
+  it("lists missing mask asset on main (F3)", () => {
+    const recipe = validateRecipe({
+      ...recipeWithMain("main-ok"),
+      engineVersion: "0.2.0",
+      objects: [
+        {
+          ...recipeWithMain("main-ok").objects[0]!,
+          maskRef: { type: "id", assetId: "mask-missing" },
+          regional: { subject: { effects: [] }, background: { effects: [] } },
+        },
+      ],
+    });
+    const map = new Map([
+      [
+        "main-ok",
+        {
+          assetId: "main-ok",
+          blob: new Blob(),
+          mime: "image/png",
+          createdAt: new Date().toISOString(),
+        },
+      ],
+    ]);
+    expect(listMissingAssets(recipe, map)).toEqual([
+      { objectId: "main", role: "mask", assetId: "mask-missing" },
+    ]);
+  });
 });
 
 describe("flipYRgba", () => {

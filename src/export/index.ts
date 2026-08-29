@@ -17,5 +17,6 @@ export {
 export {
   listMissingAssets,
   missingMainAssetId,
+  missingMaskAssetId,
   type MissingAsset,
 } from "./missingAssets";

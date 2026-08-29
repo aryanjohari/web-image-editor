@@ -15,3 +15,7 @@ dist-ssr
 .env
 .env.*
 !.env.example
+
+# MediaPipe assets copied from node_modules on postinstall (scripts/copy-mediapipe-assets.mjs)
+public/mediapipe/*
+!public/mediapipe/.gitkeep

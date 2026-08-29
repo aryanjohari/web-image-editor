@@ -283,3 +283,29 @@ button:hover {
 .hero-copy a {
   color: var(--accent);
 }
+
+.mask-chip {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.1rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+}
+
+.mask-generating {
+  color: var(--accent);
+}
+
+.mask-ready {
+  color: #7ec89a;
+}
+
+.mask-failed,
+.mask-idle {
+  color: var(--muted);
+}
+
+.mask-banner {
+  font-size: 0.85rem;
+}

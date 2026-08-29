@@ -81,6 +81,12 @@ export async function exportPng(
       `main asset "${main.source.assetId}" missing — re-upload`,
     );
   }
+  if (main.maskRef?.type === "id" && !assetsById.has(main.maskRef.assetId)) {
+    throw new ExportError(
+      "MISSING_MASK",
+      `mask asset "${main.maskRef.assetId}" missing — regenerate or re-upload`,
+    );
+  }
 
   const native = await compositor.resolveMainNativeSize(recipe, assetsById);
   const maxEdge = compositor.maxTextureSize();

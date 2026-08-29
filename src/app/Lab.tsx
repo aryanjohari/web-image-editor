@@ -5,16 +5,22 @@ import { AssetStoreError } from "../assets/errors";
 import { Compositor } from "../compositor/renderer";
 import {
   applyPack,
+  applyRegionalSlider,
   applySemanticSlider,
   DUOTONE_SLIDER,
   listPacks,
   mainHasDuotone,
+  mainHasMask,
   PACK_IDS,
+  readRegionalSliderValue,
   readSliderValue,
+  REGIONAL_SLIDERS,
   resetLook,
   SEMANTIC_SLIDERS,
+  type RegionalSliderId,
   type SemanticSliderId,
 } from "../packs";
+import { attachPersonMask, segmentPersonMask } from "../masks";
 import {
   identityOverlayImage,
   identityText,
@@ -86,8 +92,11 @@ async function loadAssetsMap(recipe: Recipe): Promise<{
   const map = new Map<string, AssetRecord>();
   const ids = new Set<string>();
   for (const o of recipe.objects) {
-    if (o.kind === "image" && o.source.type === "id") {
-      ids.add(o.source.assetId);
+    if (o.kind === "image") {
+      if (o.source.type === "id") ids.add(o.source.assetId);
+      if (o.role === "main" && o.maskRef?.type === "id") {
+        ids.add(o.maskRef.assetId);
+      }
     }
   }
   for (const id of ids) {
@@ -110,16 +119,23 @@ function hasMain(recipe: Recipe): boolean {
 function recipePeek(recipe: Recipe): string {
   const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
   const effects = main && main.kind === "image" ? main.effects : [];
+  const maskRef = main && main.kind === "image" ? main.maskRef : undefined;
+  const regional = main && main.kind === "image" ? main.regional : undefined;
   return JSON.stringify(
     {
       packId: recipe.packId,
       packVersion: recipe.packVersion,
+      engineVersion: recipe.engineVersion,
       mainEffects: effects,
+      maskRef,
+      regional,
     },
     null,
     2,
   );
 }
+
+type MaskStatus = "idle" | "generating" | "ready" | "failed";
 
 export function Lab() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -143,12 +159,18 @@ export function Lab() {
   const [talkText, setTalkText] = useState("");
   const [talkBusy, setTalkBusy] = useState(false);
   const [talkStatus, setTalkStatus] = useState<string | null>(null);
+  const [maskStatus, setMaskStatus] = useState<MaskStatus>(() =>
+    mainHasMask(recipeRef.current) ? "ready" : "idle",
+  );
+  const [maskBanner, setMaskBanner] = useState<string | null>(null);
+  const [reconnectMaskId, setReconnectMaskId] = useState<string | null>(null);
 
   recipeRef.current = recipe;
   const packs = listPacks();
   const sliderSpecs = mainHasDuotone(recipe)
     ? [...SEMANTIC_SLIDERS, DUOTONE_SLIDER]
     : [...SEMANTIC_SLIDERS];
+  const maskReady = maskStatus === "ready" && mainHasMask(recipe);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -253,6 +275,38 @@ export function Lab() {
     };
   }, [recipe]);
 
+  async function generateMaskForMain(
+    file: File,
+    baseRecipe: Recipe,
+  ): Promise<Recipe> {
+    setMaskStatus("generating");
+    setMaskBanner(null);
+    try {
+      const bitmap = await createImageBitmap(file);
+      const result = await segmentPersonMask(bitmap);
+      bitmap.close();
+      if ("code" in result) {
+        setMaskStatus("failed");
+        setMaskBanner(`Mask unavailable — global grade only (${result.message})`);
+        return baseRecipe;
+      }
+      const maskId = newAssetId("mask");
+      await putAsset(maskId, result.blob, {
+        width: result.width,
+        height: result.height,
+        name: `${file.name}-mask.png`,
+      });
+      const withMask = attachPersonMask(baseRecipe, maskId);
+      setMaskStatus("ready");
+      return withMask;
+    } catch (e) {
+      setMaskStatus("failed");
+      const detail = e instanceof Error ? e.message : String(e);
+      setMaskBanner(`Mask unavailable — global grade only (${detail})`);
+      return baseRecipe;
+    }
+  }
+
   async function onMainFile(file: File | null) {
     if (!file) return;
     try {
@@ -271,7 +325,9 @@ export function Lab() {
       const objects = [...recipeWithMain(assetId).objects];
       if (overlay) objects.push(overlay);
       if (text) objects.push(text);
-      setRecipe(validateRecipe({ ...identityRecipe(), objects }));
+      const base = validateRecipe({ ...identityRecipe(), objects });
+      const next = await generateMaskForMain(file, base);
+      setRecipe(next);
       setIntensity(1);
       setError(null);
     } catch (e) {
@@ -321,6 +377,8 @@ export function Lab() {
     setRecipe(identityRecipe());
     setTextDraft("Prism");
     setIntensity(1);
+    setMaskStatus("idle");
+    setMaskBanner(null);
     setError(null);
   }
 
@@ -347,6 +405,39 @@ export function Lab() {
     if (!recipe.packId || !hasMain(recipe)) return;
     try {
       setRecipe(applyPack(recipe, recipe.packId, { intensity: next }));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function onRegenerateMask() {
+    const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
+    if (!main || main.kind !== "image" || main.source.type !== "id") {
+      setError("upload a main image before regenerating mask");
+      return;
+    }
+    try {
+      const rec = await getAsset(main.source.assetId);
+      const file = new File([rec.blob], rec.name ?? "main.jpg", {
+        type: rec.mime || "image/jpeg",
+      });
+      const next = await generateMaskForMain(file, recipe);
+      setRecipe(next);
+      setError(null);
+      setToast("Mask regenerated");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onRegionalSlider(id: RegionalSliderId, value: number) {
+    try {
+      if (!maskReady) {
+        setError("regional sliders require a ready person mask");
+        return;
+      }
+      setRecipe(applyRegionalSlider(recipe, id, value));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -390,6 +481,9 @@ export function Lab() {
       }
       setRecipe(applied.recipe);
       setError(null);
+      if (applied.regenerateMask) {
+        await onRegenerateMask();
+      }
       if (applied.say) {
         setToast(applied.say);
         setTalkStatus(applied.say);
@@ -417,7 +511,9 @@ export function Lab() {
       if (cancelled) return;
       const missing = listMissingAssets(recipe, map);
       const mainMiss = missing.find((m) => m.role === "main");
+      const maskMiss = missing.find((m) => m.role === "mask");
       setReconnectMainId(mainMiss?.assetId ?? null);
+      setReconnectMaskId(maskMiss?.assetId ?? null);
     })();
     return () => {
       cancelled = true;
@@ -499,6 +595,20 @@ export function Lab() {
             onChange={(e) => void onMainFile(e.target.files?.[0] ?? null)}
           />
         </label>
+        <div className="mask-block">
+          <p className="panel-heading">
+            Mask{" "}
+            <span className={`mask-chip mask-${maskStatus}`}>{maskStatus}</span>
+          </p>
+          {maskBanner && <p className="muted mask-banner">{maskBanner}</p>}
+          <button
+            type="button"
+            disabled={!hasMain(recipe) || maskStatus === "generating"}
+            onClick={() => void onRegenerateMask()}
+          >
+            {maskStatus === "generating" ? "Generating mask…" : "Regenerate mask"}
+          </button>
+        </div>
         <label>
           Overlay image
           <input
@@ -602,6 +712,27 @@ export function Lab() {
           ))}
         </div>
 
+        <div className="slider-block regional-block">
+          <p className="panel-heading">Regional sliders</p>
+          {!maskReady && (
+            <p className="muted">Enabled when person mask is ready.</p>
+          )}
+          {REGIONAL_SLIDERS.map((spec) => (
+            <label key={spec.id}>
+              {spec.label} {readRegionalSliderValue(recipe, spec.id).toFixed(2)}
+              <input
+                type="range"
+                min={spec.min}
+                max={spec.max}
+                step={spec.step}
+                value={readRegionalSliderValue(recipe, spec.id)}
+                disabled={!maskReady}
+                onChange={(e) => onRegionalSlider(spec.id, Number(e.target.value))}
+              />
+            </label>
+          ))}
+        </div>
+
         <div className="export-block">
           <p className="panel-heading">Export</p>
           <div className="pack-row">
@@ -636,6 +767,12 @@ export function Lab() {
               reconnect this shared recipe.
             </p>
           )}
+          {reconnectMaskId && (
+            <p className="reconnect">
+              Mask asset <code>{reconnectMaskId}</code> missing — regenerate mask or
+              re-upload main.
+            </p>
+          )}
         </div>
 
         <button type="button" onClick={onReset}>
@@ -652,7 +789,10 @@ export function Lab() {
       </aside>
       <div className="lab-preview">
         <ErrorBanner message={error} />
-        <div className={`canvas-wrap${reconnectMainId ? " canvas-blocked" : ""}`} ref={wrapRef}>
+        <div
+          className={`canvas-wrap${reconnectMainId || reconnectMaskId ? " canvas-blocked" : ""}`}
+          ref={wrapRef}
+        >
           <canvas ref={canvasRef} width={640} height={480} />
         </div>
         <p className="muted canvas-hint">

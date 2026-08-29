@@ -1,9 +1,16 @@
 /**
- * Pure TalkResponse normalizer (M03 §4–5).
- * Delta → absolute clamp via SEMANTIC_SLIDERS / DUOTONE_SLIDER.
+ * Pure TalkResponse normalizer (M03 §4–5; M05 regional).
+ * Delta → absolute clamp via SEMANTIC_SLIDERS / REGIONAL_SLIDERS.
  * Unknown pack/slider → fail closed. refuse → pass through (no write later).
  */
 
+import {
+  defaultDeltaForRegionalSlider,
+  REGIONAL_SLIDERS,
+  type RegionalPresetId,
+  type RegionalRegion,
+  type RegionalSliderId,
+} from "../packs/regionalSliders";
 import {
   clampSliderValue,
   DUOTONE_SLIDER,
@@ -15,14 +22,20 @@ import type { PackId } from "../packs/types";
 import {
   DEFAULT_DELTA_FRACTION,
   TALK_PACK_IDS,
+  TALK_REGIONAL_PRESET_IDS,
+  TALK_REGIONAL_REGIONS,
+  TALK_REGIONAL_SLIDER_IDS,
   TALK_SLIDER_IDS,
   type RecipeContext,
   type TalkApplyPack,
+  type TalkApplyRegionalPreset,
+  type TalkDeltaRegionalSlider,
   type TalkDeltaSlider,
   type TalkErrorCode,
   type TalkPatch,
   type TalkRefuse,
   type TalkResponse,
+  type TalkSetRegionalSlider,
   type TalkSetSlider,
 } from "./types";
 
@@ -44,12 +57,45 @@ function sliderSpec(id: string): SliderSpec | null {
   return SEMANTIC_SLIDERS.find((s) => s.id === id) ?? null;
 }
 
+function regionalSliderSpec(id: string) {
+  return REGIONAL_SLIDERS.find((s) => s.id === id) ?? null;
+}
+
 function isPackId(id: unknown): id is PackId {
   return typeof id === "string" && (TALK_PACK_IDS as readonly string[]).includes(id);
 }
 
 function isSliderId(id: unknown): id is SemanticSliderId {
   return typeof id === "string" && (TALK_SLIDER_IDS as readonly string[]).includes(id);
+}
+
+function isRegionalSliderId(id: unknown): id is RegionalSliderId {
+  return (
+    typeof id === "string" &&
+    (TALK_REGIONAL_SLIDER_IDS as readonly string[]).includes(id)
+  );
+}
+
+function isRegionalRegion(id: unknown): id is RegionalRegion {
+  return typeof id === "string" && (TALK_REGIONAL_REGIONS as readonly string[]).includes(id);
+}
+
+function isRegionalPresetId(id: unknown): id is RegionalPresetId {
+  return (
+    typeof id === "string" &&
+    (TALK_REGIONAL_PRESET_IDS as readonly string[]).includes(id)
+  );
+}
+
+function requireMask(ctx: RecipeContext, tool: string): NormalizeErr | null {
+  if (!ctx.hasMask) {
+    return {
+      ok: false,
+      code: "NO_MASK",
+      message: `${tool} requires an active person mask on main`,
+    };
+  }
+  return null;
 }
 
 function defaultDelta(spec: SliderSpec): number {
@@ -81,6 +127,13 @@ function currentSliderAmount(
     default:
       return 0;
   }
+}
+
+function currentRegionalSliderAmount(
+  ctx: RecipeContext,
+  sliderId: RegionalSliderId,
+): number {
+  return ctx.regionalSliders?.[sliderId] ?? 0;
 }
 
 function parseRefuse(raw: unknown): TalkRefuse | NormalizeErr {
@@ -119,16 +172,32 @@ function parseApplyPack(raw: unknown): TalkApplyPack | NormalizeErr {
   return { packId: rec.packId, ...(intensity !== undefined ? { intensity } : {}) };
 }
 
-function parsePatch(
+function parseApplyRegionalPreset(
   raw: unknown,
+  ctx: RecipeContext,
+): TalkApplyRegionalPreset | NormalizeErr {
+  const maskErr = requireMask(ctx, "applyRegionalPreset");
+  if (maskErr) return maskErr;
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, code: "SCHEMA", message: "applyRegionalPreset must be an object" };
+  }
+  const rec = raw as Record<string, unknown>;
+  if (!isRegionalPresetId(rec.presetId)) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: `unknown regional presetId "${String(rec.presetId)}"`,
+    };
+  }
+  return { presetId: rec.presetId };
+}
+
+function parseGlobalPatch(
+  raw: Record<string, unknown>,
   ctx: RecipeContext,
   index: number,
 ): TalkSetSlider | NormalizeErr {
-  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
-    return { ok: false, code: "SCHEMA", message: `patches[${index}] must be an object` };
-  }
-  const rec = raw as Record<string, unknown>;
-  const op = rec.op;
+  const op = raw.op;
   if (op !== "set_slider" && op !== "delta_slider") {
     return {
       ok: false,
@@ -136,51 +205,184 @@ function parsePatch(
       message: `patches[${index}].op must be set_slider or delta_slider`,
     };
   }
-  if (!isSliderId(rec.sliderId)) {
+  if (!isSliderId(raw.sliderId)) {
     return {
       ok: false,
       code: "UNKNOWN_SLIDER",
-      message: `unknown sliderId "${String(rec.sliderId)}"`,
+      message: `unknown sliderId "${String(raw.sliderId)}"`,
     };
   }
-  const spec = sliderSpec(rec.sliderId);
+  const spec = sliderSpec(raw.sliderId);
   if (!spec) {
     return {
       ok: false,
       code: "UNKNOWN_SLIDER",
-      message: `unknown sliderId "${rec.sliderId}"`,
+      message: `unknown sliderId "${raw.sliderId}"`,
     };
   }
 
   if (op === "set_slider") {
-    if (typeof rec.value !== "number" || !Number.isFinite(rec.value)) {
+    if (typeof raw.value !== "number" || !Number.isFinite(raw.value)) {
       return {
         ok: false,
         code: "SCHEMA",
         message: `patches[${index}].value must be a finite number`,
       };
     }
-    const value = clampSliderValue(spec, rec.value);
-    return { op: "set_slider", sliderId: rec.sliderId, value };
+    const value = clampSliderValue(spec, raw.value);
+    return { op: "set_slider", sliderId: raw.sliderId, value };
   }
 
   let delta: number;
-  if (rec.delta === undefined || rec.delta === null) {
+  if (raw.delta === undefined || raw.delta === null) {
     delta = defaultDelta(spec);
-  } else if (typeof rec.delta !== "number" || !Number.isFinite(rec.delta)) {
+  } else if (typeof raw.delta !== "number" || !Number.isFinite(raw.delta)) {
     return {
       ok: false,
       code: "SCHEMA",
       message: `patches[${index}].delta must be a finite number`,
     };
   } else {
-    delta = rec.delta;
+    delta = raw.delta;
   }
   const next = clampSliderValue(
     spec,
-    currentSliderAmount(ctx, rec.sliderId) + delta,
+    currentSliderAmount(ctx, raw.sliderId) + delta,
   );
-  return { op: "set_slider", sliderId: rec.sliderId, value: next };
+  return { op: "set_slider", sliderId: raw.sliderId, value: next };
+}
+
+function parseRegionalPatch(
+  raw: Record<string, unknown>,
+  ctx: RecipeContext,
+  index: number,
+): TalkSetRegionalSlider | NormalizeErr {
+  const maskErr = requireMask(ctx, "regional slider patch");
+  if (maskErr) return maskErr;
+
+  const op = raw.op;
+  if (op !== "set_regional_slider" && op !== "delta_regional_slider") {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: `patches[${index}].op must be set_regional_slider or delta_regional_slider`,
+    };
+  }
+  if (!isRegionalRegion(raw.region)) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: `patches[${index}].region must be subject or background`,
+    };
+  }
+  if (!isRegionalSliderId(raw.sliderId)) {
+    return {
+      ok: false,
+      code: "UNKNOWN_SLIDER",
+      message: `unknown regional sliderId "${String(raw.sliderId)}"`,
+    };
+  }
+  const spec = regionalSliderSpec(raw.sliderId);
+  if (!spec) {
+    return {
+      ok: false,
+      code: "UNKNOWN_SLIDER",
+      message: `unknown regional sliderId "${raw.sliderId}"`,
+    };
+  }
+  if (spec.region !== raw.region) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: `patches[${index}]: slider "${raw.sliderId}" belongs to region "${spec.region}"`,
+    };
+  }
+
+  const clampRegional = (v: number) =>
+    Math.min(spec.max, Math.max(spec.min, v));
+
+  if (op === "set_regional_slider") {
+    if (typeof raw.value !== "number" || !Number.isFinite(raw.value)) {
+      return {
+        ok: false,
+        code: "SCHEMA",
+        message: `patches[${index}].value must be a finite number`,
+      };
+    }
+    return {
+      op: "set_regional_slider",
+      region: raw.region,
+      sliderId: raw.sliderId,
+      value: clampRegional(raw.value),
+    };
+  }
+
+  let delta: number;
+  if (raw.delta === undefined || raw.delta === null) {
+    delta = defaultDeltaForRegionalSlider(raw.sliderId);
+  } else if (typeof raw.delta !== "number" || !Number.isFinite(raw.delta)) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: `patches[${index}].delta must be a finite number`,
+    };
+  } else {
+    delta = raw.delta;
+  }
+  const next = clampRegional(
+    currentRegionalSliderAmount(ctx, raw.sliderId) + delta,
+  );
+  return {
+    op: "set_regional_slider",
+    region: raw.region,
+    sliderId: raw.sliderId,
+    value: next,
+  };
+}
+
+function parsePatch(
+  raw: unknown,
+  ctx: RecipeContext,
+  index: number,
+): TalkSetSlider | TalkSetRegionalSlider | NormalizeErr {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, code: "SCHEMA", message: `patches[${index}] must be an object` };
+  }
+  const rec = raw as Record<string, unknown>;
+  const op = rec.op;
+  if (op === "set_slider" || op === "delta_slider") {
+    return parseGlobalPatch(rec, ctx, index);
+  }
+  if (op === "set_regional_slider" || op === "delta_regional_slider") {
+    return parseRegionalPatch(rec, ctx, index);
+  }
+  return {
+    ok: false,
+    code: "SCHEMA",
+    message: `patches[${index}].op unknown`,
+  };
+}
+
+function updateCtxAfterPatch(ctx: RecipeContext, patch: TalkPatch): RecipeContext {
+  if (patch.op === "set_slider") {
+    return {
+      ...ctx,
+      sliders: { ...ctx.sliders, [patch.sliderId]: patch.value },
+    };
+  }
+  if (patch.op === "set_regional_slider") {
+    return {
+      ...ctx,
+      regionalSliders: {
+        bg_mute: ctx.regionalSliders?.bg_mute ?? 0,
+        bg_fade: ctx.regionalSliders?.bg_fade ?? 0,
+        subject_pop: ctx.regionalSliders?.subject_pop ?? 0,
+        subject_chroma: ctx.regionalSliders?.subject_chroma ?? 0,
+        [patch.sliderId]: patch.value,
+      },
+    };
+  }
+  return ctx;
 }
 
 /**
@@ -196,12 +398,16 @@ export function normalizeTalkResponse(
   }
   const rec = raw as Record<string, unknown>;
   const out: TalkResponse = {};
-  const ctx: RecipeContext = {
+  let ctx: RecipeContext = {
     packId: recipeContext.packId,
     packVersion: recipeContext.packVersion,
     sliders: { ...recipeContext.sliders },
     mainEffectIds: recipeContext.mainEffectIds
       ? [...recipeContext.mainEffectIds]
+      : undefined,
+    hasMask: recipeContext.hasMask,
+    regionalSliders: recipeContext.regionalSliders
+      ? { ...recipeContext.regionalSliders }
       : undefined,
   };
 
@@ -221,6 +427,27 @@ export function normalizeTalkResponse(
     out.applyPack = pack as TalkApplyPack;
   }
 
+  if (
+    "applyRegionalPreset" in rec &&
+    rec.applyRegionalPreset !== undefined &&
+    rec.applyRegionalPreset !== null
+  ) {
+    const preset = parseApplyRegionalPreset(rec.applyRegionalPreset, ctx);
+    if ("ok" in preset && preset.ok === false) return preset;
+    out.applyRegionalPreset = preset as TalkApplyRegionalPreset;
+  }
+
+  if ("regenerateMask" in rec && rec.regenerateMask !== undefined && rec.regenerateMask !== null) {
+    if (typeof rec.regenerateMask !== "boolean") {
+      return { ok: false, code: "SCHEMA", message: "regenerateMask must be boolean" };
+    }
+    const maskErr = requireMask(ctx, "regenerateMask");
+    if (maskErr) return maskErr;
+    if (rec.regenerateMask) {
+      out.regenerateMask = true;
+    }
+  }
+
   if ("patches" in rec && rec.patches !== undefined && rec.patches !== null) {
     if (!Array.isArray(rec.patches)) {
       return { ok: false, code: "SCHEMA", message: "patches must be an array" };
@@ -229,9 +456,8 @@ export function normalizeTalkResponse(
     for (let i = 0; i < rec.patches.length; i++) {
       const patch = parsePatch(rec.patches[i], ctx, i);
       if ("ok" in patch && patch.ok === false) return patch;
-      const set = patch as TalkSetSlider;
-      patches.push(set);
-      ctx.sliders = { ...ctx.sliders, [set.sliderId]: set.value };
+      patches.push(patch as TalkPatch);
+      ctx = updateCtxAfterPatch(ctx, patch as TalkPatch);
     }
     if (patches.length > 0) out.patches = patches;
   }
@@ -240,11 +466,17 @@ export function normalizeTalkResponse(
     out.say = rec.say.trim().slice(0, 200);
   }
 
-  if (!out.applyPack && !out.patches?.length && !out.refuse) {
+  if (
+    !out.applyPack &&
+    !out.patches?.length &&
+    !out.applyRegionalPreset &&
+    !out.regenerateMask &&
+    !out.refuse
+  ) {
     return {
       ok: false,
       code: "SCHEMA",
-      message: "TalkResponse empty: need applyPack, patches, or refuse",
+      message: "TalkResponse empty: need applyPack, patches, applyRegionalPreset, regenerateMask, or refuse",
     };
   }
 
@@ -260,4 +492,8 @@ export function defaultDeltaForSlider(sliderId: SemanticSliderId): number {
 
 export function isDeltaSlider(p: TalkPatch): p is TalkDeltaSlider {
   return p.op === "delta_slider";
+}
+
+export function isDeltaRegionalSlider(p: TalkPatch): p is TalkDeltaRegionalSlider {
+  return p.op === "delta_regional_slider";
 }

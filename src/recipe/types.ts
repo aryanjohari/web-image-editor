@@ -1,7 +1,7 @@
 /** Prism recipe document types (M01). Images are AssetRefs only — never bytes. */
 
 export const SCHEMA_VERSION = "1" as const;
-export const ENGINE_VERSION = "0.1.0" as const;
+export const ENGINE_VERSION = "0.2.0" as const;
 
 export type BlendMode = "normal" | "multiply" | "screen" | "overlay";
 export type FitMode = "contain" | "cover" | "fill";
@@ -36,6 +36,16 @@ export type Effect = {
   params: Record<string, number | string | boolean>;
 };
 
+/** Split grade stacks when main.maskRef is active (M05 M4). */
+export type RegionalStack = {
+  effects: Effect[];
+};
+
+export type RegionalGrade = {
+  subject: RegionalStack;
+  background: RegionalStack;
+};
+
 export type TextSource = {
   content: string;
   fontFamily: string;
@@ -65,6 +75,8 @@ export type ImageObject = RecipeObjectBase & {
   kind: "image";
   role: ImageRole;
   source: AssetRef;
+  /** Present when maskRef active on main (Tier B). */
+  regional?: RegionalGrade;
 };
 
 export type TextObject = RecipeObjectBase & {

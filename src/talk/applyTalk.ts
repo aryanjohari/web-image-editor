@@ -1,9 +1,10 @@
 /**
- * Apply normalized TalkResponse via shipped pack/slider helpers (M03 §5).
+ * Apply normalized TalkResponse via shipped pack/slider helpers (M03 §5; M05 regional).
  * All-or-nothing on a recipe copy. Never PathPatches packId alone.
  */
 
 import { applyPack } from "../packs/applyPack";
+import { applyRegionalPreset, applyRegionalSlider } from "../packs/regionalSliders";
 import { applySemanticSlider } from "../packs/sliders";
 import type { Recipe } from "../recipe/types";
 import type { TalkErrorCode, TalkResponse } from "./types";
@@ -12,6 +13,8 @@ export type ApplyTalkOk = {
   ok: true;
   recipe: Recipe;
   say?: string;
+  /** Host runs client mask worker (Lab onRegenerateMask). */
+  regenerateMask?: boolean;
 };
 
 export type ApplyTalkRefuse = {
@@ -41,7 +44,7 @@ function mapApplyError(e: unknown): ApplyTalkErr {
   if (lower.includes("unknown pack") || lower.includes('pack "')) {
     return { ok: false, code: "UNKNOWN_PACK", message: msg };
   }
-  if (lower.includes("unknown slider")) {
+  if (lower.includes("unknown slider") || lower.includes("unknown regional")) {
     return { ok: false, code: "UNKNOWN_SLIDER", message: msg };
   }
   if (lower.includes("validate") || lower.includes("schema")) {
@@ -73,20 +76,32 @@ export function applyTalk(recipe: Recipe, response: TalkResponse): ApplyTalkResu
       });
     }
 
+    if (response.applyRegionalPreset) {
+      next = applyRegionalPreset(next, response.applyRegionalPreset.presetId);
+    }
+
     if (response.patches) {
       for (const patch of response.patches) {
-        if (patch.op !== "set_slider") {
+        if (patch.op === "set_slider") {
+          next = applySemanticSlider(next, patch.sliderId, patch.value);
+        } else if (patch.op === "set_regional_slider") {
+          next = applyRegionalSlider(next, patch.sliderId, patch.value);
+        } else {
           return {
             ok: false,
             code: "SCHEMA",
-            message: "applyTalk expects normalized set_slider patches only",
+            message: "applyTalk expects normalized set_slider / set_regional_slider patches only",
           };
         }
-        next = applySemanticSlider(next, patch.sliderId, patch.value);
       }
     }
 
-    if (!response.applyPack && (!response.patches || response.patches.length === 0)) {
+    const hasRecipeWrite =
+      response.applyPack ||
+      response.applyRegionalPreset ||
+      (response.patches && response.patches.length > 0);
+
+    if (!hasRecipeWrite && !response.regenerateMask) {
       return {
         ok: false,
         code: "SCHEMA",
@@ -98,6 +113,7 @@ export function applyTalk(recipe: Recipe, response: TalkResponse): ApplyTalkResu
       ok: true,
       recipe: next,
       ...(response.say ? { say: response.say } : {}),
+      ...(response.regenerateMask ? { regenerateMask: true } : {}),
     };
   } catch (e) {
     return mapApplyError(e);

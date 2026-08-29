@@ -2,7 +2,7 @@ import { TIER_A_EFFECTS, isKnownEffectId } from "../recipe/effectsRegistry";
 import type { BlendMode, Effect } from "../recipe/types";
 import editorialBw from "./editorial-bw.json";
 import posterPunch from "./poster-punch.json";
-import type { Pack, PackId, PackOverlayDefaults } from "./types";
+import type { Pack, PackId, PackOverlayDefaults, PackRegionalDefaults } from "./types";
 import warmFilm from "./warm-film.json";
 
 export class PackError extends Error {
@@ -105,6 +105,30 @@ function validateOverlay(raw: unknown, path: string): PackOverlayDefaults | unde
   return out;
 }
 
+function validateRegionalDefaults(raw: unknown, path: string): PackRegionalDefaults | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new PackError("TYPE", `${path} must be an object`);
+  }
+  const rec = raw as Record<string, unknown>;
+  const out: PackRegionalDefaults = {};
+  if ("subject" in rec) {
+    if (!Array.isArray(rec.subject)) {
+      throw new PackError("TYPE", `${path}.subject must be an array`);
+    }
+    out.subject = rec.subject.map((e, i) => validateEffect(e, `${path}.subject[${i}]`));
+  }
+  if ("background" in rec) {
+    if (!Array.isArray(rec.background)) {
+      throw new PackError("TYPE", `${path}.background must be an array`);
+    }
+    out.background = rec.background.map((e, i) =>
+      validateEffect(e, `${path}.background[${i}]`),
+    );
+  }
+  return out;
+}
+
 export function validatePack(raw: unknown): Pack {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     throw new PackError("TYPE", "pack must be an object");
@@ -124,7 +148,17 @@ export function validatePack(raw: unknown): Pack {
   }
   const mainEffects = rec.mainEffects.map((e, i) => validateEffect(e, `mainEffects[${i}]`));
   const overlay = validateOverlay(rec.overlay, "overlay");
-  return { id, version, label, summary, axes, mainEffects, overlay };
+  const regionalDefaults = validateRegionalDefaults(rec.regionalDefaults, "regionalDefaults");
+  return {
+    id,
+    version,
+    label,
+    summary,
+    axes,
+    mainEffects,
+    overlay,
+    ...(regionalDefaults ? { regionalDefaults } : {}),
+  };
 }
 
 const RAW_PACKS: unknown[] = [editorialBw, warmFilm, posterPunch];

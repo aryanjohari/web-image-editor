@@ -7,6 +7,7 @@ import type {
   ImageObject,
   Recipe,
   RecipeObject,
+  RegionalGrade,
   TextObject,
   TextSource,
   Transform2D,
@@ -27,6 +28,61 @@ export class RecipeValidationError extends Error {
 
 const BLENDS = new Set<BlendMode>(["normal", "multiply", "screen", "overlay"]);
 const FITS = new Set(["contain", "cover", "fill"]);
+
+/** Tier B regional features gate on engineVersion ≥ 0.2.0 (M05 M17). */
+export function engineSupportsRegional(engineVersion: string): boolean {
+  const parts = engineVersion.split(".").map((p) => Number.parseInt(p, 10));
+  const major = parts[0] ?? 0;
+  const minor = parts[1] ?? 0;
+  if (Number.isNaN(major) || Number.isNaN(minor)) return false;
+  return major > 0 || (major === 0 && minor >= 2);
+}
+
+function validateRegionalGrade(
+  raw: unknown,
+  path: string,
+  role: ImageObject["role"],
+): RegionalGrade {
+  if (!isRecord(raw)) {
+    throw new RecipeValidationError("TYPE", path, `${path} must be an object`);
+  }
+  if (!isRecord(raw.subject)) {
+    throw new RecipeValidationError("TYPE", `${path}.subject`, `${path}.subject must be an object`);
+  }
+  if (!isRecord(raw.background)) {
+    throw new RecipeValidationError(
+      "TYPE",
+      `${path}.background`,
+      `${path}.background must be an object`,
+    );
+  }
+  if (!Array.isArray(raw.subject.effects)) {
+    throw new RecipeValidationError(
+      "TYPE",
+      `${path}.subject.effects`,
+      `${path}.subject.effects must be an array`,
+    );
+  }
+  if (!Array.isArray(raw.background.effects)) {
+    throw new RecipeValidationError(
+      "TYPE",
+      `${path}.background.effects`,
+      `${path}.background.effects must be an array`,
+    );
+  }
+  return {
+    subject: {
+      effects: raw.subject.effects.map((e, i) =>
+        validateEffect(e, `${path}.subject.effects[${i}]`, "image", role),
+      ),
+    },
+    background: {
+      effects: raw.background.effects.map((e, i) =>
+        validateEffect(e, `${path}.background.effects[${i}]`, "image", role),
+      ),
+    },
+  };
+}
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return v !== null && typeof v === "object" && !Array.isArray(v);
@@ -235,7 +291,11 @@ function validateEffect(
   return { id, params };
 }
 
-function validateObject(raw: unknown, path: string): RecipeObject {
+function validateObject(
+  raw: unknown,
+  path: string,
+  engineVersion: string,
+): RecipeObject {
   if (!isRecord(raw)) {
     throw new RecipeValidationError("TYPE", path, `${path} must be an object`);
   }
@@ -262,22 +322,25 @@ function validateObject(raw: unknown, path: string): RecipeObject {
   const transform = validateTransform(raw.transform, `${path}.transform`);
   const crop = raw.crop !== undefined ? validateCrop(raw.crop, `${path}.crop`) : undefined;
 
-  if (raw.maskRef !== undefined && raw.maskRef !== null) {
-    // Tier A: any present maskRef on a visible object is an active unsupported feature.
-    if (visible) {
-      throw new RecipeValidationError(
-        "MASK_ACTIVE",
-        `${path}.maskRef`,
-        "maskRef is not admitted in Tier A",
-      );
-    }
-  }
-
   if (!Array.isArray(raw.effects)) {
     throw new RecipeValidationError("TYPE", `${path}.effects`, `${path}.effects must be an array`);
   }
 
   if (kind === "text") {
+    if (raw.maskRef !== undefined && raw.maskRef !== null && visible) {
+      throw new RecipeValidationError(
+        "MASK_SCOPE",
+        `${path}.maskRef`,
+        "maskRef is only allowed on main image (I4 scope)",
+      );
+    }
+    if (raw.regional !== undefined && raw.regional !== null) {
+      throw new RecipeValidationError(
+        "REGIONAL_SCOPE",
+        `${path}.regional`,
+        "regional grade is only allowed on main image",
+      );
+    }
     if (raw.effects.length > 0) {
       throw new RecipeValidationError(
         "EFFECT_KIND",
@@ -305,6 +368,34 @@ function validateObject(raw: unknown, path: string): RecipeObject {
   if (role !== "main" && role !== "overlay") {
     throw new RecipeValidationError("ENUM", `${path}.role`, `unsupported role "${role}"`);
   }
+  const regionalEnabled = engineSupportsRegional(engineVersion);
+
+  if (raw.maskRef !== undefined && raw.maskRef !== null) {
+    if (!regionalEnabled) {
+      if (visible) {
+        throw new RecipeValidationError(
+          "MASK_ACTIVE",
+          `${path}.maskRef`,
+          "maskRef is not admitted below engineVersion 0.2.0",
+        );
+      }
+    } else if (role !== "main" && visible) {
+      throw new RecipeValidationError(
+        "MASK_SCOPE",
+        `${path}.maskRef`,
+        "maskRef is only allowed on main image (I4 scope)",
+      );
+    }
+  }
+
+  if (raw.regional !== undefined && raw.regional !== null && role !== "main") {
+    throw new RecipeValidationError(
+      "REGIONAL_SCOPE",
+      `${path}.regional`,
+      "regional grade is only allowed on main image",
+    );
+  }
+
   const source = validateAssetRef(raw.source, `${path}.source`);
   const effects = raw.effects.map((e, i) =>
     validateEffect(e, `${path}.effects[${i}]`, "image", role),
@@ -322,6 +413,40 @@ function validateObject(raw: unknown, path: string): RecipeObject {
     source,
   };
   if (crop) obj.crop = crop;
+
+  if (raw.maskRef !== undefined && raw.maskRef !== null && regionalEnabled) {
+    obj.maskRef = validateAssetRef(raw.maskRef, `${path}.maskRef`);
+  }
+
+  if (raw.regional !== undefined && raw.regional !== null) {
+    if (!regionalEnabled) {
+      throw new RecipeValidationError(
+        "REGIONAL_ACTIVE",
+        `${path}.regional`,
+        "regional grade is not admitted below engineVersion 0.2.0",
+      );
+    }
+    obj.regional = validateRegionalGrade(raw.regional, `${path}.regional`, role);
+  }
+
+  if (obj.maskRef && visible && role === "main") {
+    if (!obj.regional) {
+      throw new RecipeValidationError(
+        "REGIONAL_REQUIRED",
+        `${path}.regional`,
+        "regional { subject, background } required when maskRef is active",
+      );
+    }
+  }
+
+  if (obj.regional && !obj.maskRef && visible && role === "main") {
+    throw new RecipeValidationError(
+      "MASK_REQUIRED",
+      `${path}.maskRef`,
+      "maskRef required when regional grade is active on main",
+    );
+  }
+
   return obj;
 }
 
@@ -370,7 +495,13 @@ export function validateRecipe(raw: unknown): Recipe {
     throw new RecipeValidationError("TYPE", "objects", "objects must be an array");
   }
 
-  const objects = raw.objects.map((o, i) => validateObject(o, `objects[${i}]`));
+  const objects = raw.objects.map((o, i) => validateObject(o, `objects[${i}]`, engineVersion));
+
+  // One mask max across all objects (M05 M3)
+  const maskObjects = objects.filter((o) => o.maskRef !== undefined);
+  if (maskObjects.length > 1) {
+    throw new RecipeValidationError("CAP", "objects", "at most one maskRef allowed (main only)");
+  }
 
   // Tier A caps among visible objects
   const active = objects.filter((o) => o.visible);

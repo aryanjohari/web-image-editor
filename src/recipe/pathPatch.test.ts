@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { attachPersonMask } from "../masks/segment";
 import {
   identityOverlayImage,
   identityText,
   recipeWithMain,
 } from "./identityRecipe";
+import { applyRegionalSlider } from "../packs/regionalSliders";
 import { PathPatchError, applyPathPatch } from "./pathPatch";
 import { validateRecipe } from "./validate";
 
@@ -39,6 +41,24 @@ describe("applyPathPatch", () => {
       expect(e).toBeInstanceOf(PathPatchError);
       expect((e as PathPatchError).code).toBe("ALLOWLIST");
     }
+  });
+
+  it("allows regional effect param paths", () => {
+    const base = applyRegionalSlider(
+      attachPersonMask(recipeWithMain("a"), "mask-1"),
+      "subject_pop",
+      0.2,
+    );
+    const next = applyPathPatch(base, [
+      {
+        path: "/objects/main/regional/subject/effects/0/params/amount",
+        value: 0.35,
+      },
+    ]);
+    const main = next.objects[0];
+    expect(
+      main?.kind === "image" && main.regional?.subject.effects[0]?.params.amount,
+    ).toBe(0.35);
   });
 
   it("fails closed on OOR value after merge", () => {

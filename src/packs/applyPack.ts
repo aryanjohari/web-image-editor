@@ -1,7 +1,8 @@
-import type { Effect, Recipe } from "../recipe/types";
+import type { Effect, Recipe, RegionalGrade } from "../recipe/types";
 import { validateRecipe } from "../recipe/validate";
 import { getPack } from "./catalog";
-import type { Pack } from "./types";
+import { emptyRegional } from "./regionalSliders";
+import type { Pack, PackRegionalDefaults } from "./types";
 
 function deepClone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
@@ -72,6 +73,10 @@ export function applyPackData(
 
   main.effects = scaleEffectsByIntensity(pack.mainEffects, intensity);
 
+  if (main.maskRef && pack.regionalDefaults) {
+    main.regional = scaleRegionalDefaults(pack.regionalDefaults, intensity);
+  }
+
   if (pack.overlay) {
     const overlay = candidate.objects.find(
       (o) => o.kind === "image" && o.role === "overlay",
@@ -89,6 +94,20 @@ export function applyPackData(
   candidate.packId = pack.id;
   candidate.packVersion = pack.version;
   return validateRecipe(candidate);
+}
+
+function scaleRegionalDefaults(
+  defaults: PackRegionalDefaults,
+  intensity: number,
+): RegionalGrade {
+  const base = emptyRegional();
+  if (defaults.subject?.length) {
+    base.subject.effects = scaleEffectsByIntensity(defaults.subject, intensity);
+  }
+  if (defaults.background?.length) {
+    base.background.effects = scaleEffectsByIntensity(defaults.background, intensity);
+  }
+  return base;
 }
 
 /** Clear main effects + pack provenance; keep assets/text. */

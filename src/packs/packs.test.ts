@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { attachPersonMask } from "../masks/segment";
 import { recipeWithMain, identityOverlayImage } from "../recipe/identityRecipe";
 import { applyPathPatch } from "../recipe/pathPatch";
 import { validateRecipe } from "../recipe/validate";
@@ -8,6 +9,7 @@ import {
   getPack,
   listPacks,
   PACK_IDS,
+  readRegionalSliderValue,
   resetLook,
   scaleEffectsByIntensity,
 } from "./index";
@@ -87,6 +89,27 @@ describe("applyPack", () => {
     expect(main && main.kind === "image" && main.effects).toEqual([]);
     expect(reset.packId).toBeNull();
     expect(reset.packVersion).toBeNull();
+  });
+
+  it("seeds regional stacks from pack regionalDefaults when mask active", () => {
+    const masked = attachPersonMask(recipeWithMain("m1"), "mask-1");
+    const next = applyPack(masked, "warm-film", { intensity: 1 });
+    expect(readRegionalSliderValue(next, "bg_mute")).toBeCloseTo(-0.7);
+    expect(readRegionalSliderValue(next, "bg_fade")).toBeCloseTo(0.3);
+    expect(readRegionalSliderValue(next, "subject_chroma")).toBeCloseTo(0.1);
+    expect(next.packId).toBe("warm-film");
+  });
+
+  it("does not seed regional when no mask", () => {
+    const next = applyPack(recipeWithMain("m1"), "warm-film");
+    const main = next.objects.find((o) => o.kind === "image" && o.role === "main");
+    expect(main && main.kind === "image" && main.regional).toBeUndefined();
+  });
+
+  it("lerps regionalDefaults by intensity", () => {
+    const masked = attachPersonMask(recipeWithMain("m1"), "mask-1");
+    const half = applyPack(masked, "warm-film", { intensity: 0.5 });
+    expect(readRegionalSliderValue(half, "bg_mute")).toBeCloseTo(-0.35);
   });
 });
 

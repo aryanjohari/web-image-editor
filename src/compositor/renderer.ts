@@ -1,5 +1,5 @@
 import type { AssetRecord } from "../assets/types";
-import type { BlendMode, Effect, Recipe, RecipeObject, Transform2D } from "../recipe/types";
+import type { BlendMode, Effect, ImageObject, Recipe, RecipeObject, Transform2D } from "../recipe/types";
 import {
   createFullscreenQuad,
   createGL,
@@ -51,6 +51,24 @@ type GradeUniforms = {
   duotoneShadow: [number, number, number];
   duotoneHighlight: [number, number, number];
 };
+
+type GradeDrawState = {
+  grade: GradeUniforms;
+  regional: boolean;
+  subject: GradeUniforms;
+  background: GradeUniforms;
+  maskTex: UploadedTexture | null;
+};
+
+function gradeDrawState(
+  grade: GradeUniforms,
+  regional = false,
+  subject: GradeUniforms = IDENTITY_GRADE,
+  background: GradeUniforms = IDENTITY_GRADE,
+  maskTex: UploadedTexture | null = null,
+): GradeDrawState {
+  return { grade, regional, subject, background, maskTex };
+}
 
 const IDENTITY_GRADE: GradeUniforms = {
   enable: false,
@@ -261,31 +279,139 @@ export class Compositor {
     return uploaded;
   }
 
+  private async resolveMaskTexture(
+    maskRef: ImageObject["maskRef"],
+    assetsById: Map<string, AssetRecord>,
+  ): Promise<UploadedTexture> {
+    if (!maskRef) {
+      throw {
+        code: "MISSING_MASK",
+        message: "maskRef missing on main",
+      } satisfies CompositorError;
+    }
+    if (maskRef.type === "id") {
+      const rec = assetsById.get(maskRef.assetId);
+      if (!rec) {
+        throw {
+          code: "MISSING_MASK",
+          message: `mask asset "${maskRef.assetId}" missing — regenerate or re-upload`,
+          assetId: maskRef.assetId,
+        } satisfies CompositorError;
+      }
+      const key = `mask:${maskRef.assetId}`;
+      const cached = this.textureCache.get(key);
+      if (cached) return cached;
+      const bitmap = await decodeImageBitmap(rec.blob);
+      const uploaded = uploadImageBitmap(this.gl, bitmap);
+      bitmap.close();
+      this.textureCache.set(key, uploaded);
+      return uploaded;
+    }
+    const key = `mask:url:${maskRef.url}`;
+    const cached = this.textureCache.get(key);
+    if (cached) return cached;
+    const res = await fetch(maskRef.url);
+    if (!res.ok) {
+      throw {
+        code: "MISSING_MASK",
+        message: `failed to fetch mask url ${maskRef.url}`,
+      } satisfies CompositorError;
+    }
+    const blob = await res.blob();
+    const bitmap = await decodeImageBitmap(blob);
+    const uploaded = uploadImageBitmap(this.gl, bitmap);
+    bitmap.close();
+    this.textureCache.set(key, uploaded);
+    return uploaded;
+  }
 
-  private setGradeUniforms(prog: WebGLProgram, grade: GradeUniforms): void {
+  private mainGradeState(
+    obj: ImageObject,
+  ): { regional: boolean; grade: GradeUniforms; subject: GradeUniforms; background: GradeUniforms } {
+    const useRegional = obj.role === "main" && !!obj.maskRef && !!obj.regional;
+    if (useRegional && obj.regional) {
+      return {
+        regional: true,
+        grade: IDENTITY_GRADE,
+        subject: gradeFromEffects(obj.regional.subject.effects, true),
+        background: gradeFromEffects(obj.regional.background.effects, true),
+      };
+    }
+    return {
+      regional: false,
+      grade: gradeFromEffects(obj.effects, obj.role === "main"),
+      subject: IDENTITY_GRADE,
+      background: IDENTITY_GRADE,
+    };
+  }
+
+  private setGradeUniforms(prog: WebGLProgram, grade: GradeUniforms, prefix = "u_"): void {
     const gl = this.gl;
-    gl.uniform1i(gl.getUniformLocation(prog, "u_enableGrade"), grade.enable ? 1 : 0);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_exposure"), grade.exposure);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_contrast"), grade.contrast);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_saturation"), grade.saturation);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_temperature"), grade.temperature);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_fade"), grade.fade);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_duotone"), grade.duotone);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_vignette"), grade.vignette);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_grain"), grade.grain);
-    gl.uniform1f(gl.getUniformLocation(prog, "u_grainSeed"), grade.grainSeed);
+    const p = (name: string) => gl.getUniformLocation(prog, `${prefix}${name}`);
+    if (prefix === "u_") {
+      gl.uniform1i(gl.getUniformLocation(prog, "u_enableGrade"), grade.enable ? 1 : 0);
+    }
+    gl.uniform1f(p("exposure"), grade.exposure);
+    gl.uniform1f(p("contrast"), grade.contrast);
+    gl.uniform1f(p("saturation"), grade.saturation);
+    gl.uniform1f(p("temperature"), grade.temperature);
+    gl.uniform1f(p("fade"), grade.fade);
+    gl.uniform1f(p("duotone"), grade.duotone);
+    gl.uniform1f(p("vignette"), grade.vignette);
+    gl.uniform1f(p("grain"), grade.grain);
+    gl.uniform1f(p("grainSeed"), grade.grainSeed);
     gl.uniform3f(
-      gl.getUniformLocation(prog, "u_duotoneShadow"),
+      p("duotoneShadow"),
       grade.duotoneShadow[0],
       grade.duotoneShadow[1],
       grade.duotoneShadow[2],
     );
     gl.uniform3f(
-      gl.getUniformLocation(prog, "u_duotoneHighlight"),
+      p("duotoneHighlight"),
       grade.duotoneHighlight[0],
       grade.duotoneHighlight[1],
       grade.duotoneHighlight[2],
     );
+  }
+
+  private setRegionalGradeUniforms(
+    prog: WebGLProgram,
+    subject: GradeUniforms,
+    background: GradeUniforms,
+    enabled: boolean,
+  ): void {
+    const gl = this.gl;
+    gl.uniform1i(gl.getUniformLocation(prog, "u_regionalGrade"), enabled ? 1 : 0);
+    this.setGradeUniforms(prog, IDENTITY_GRADE);
+    this.setGradeUniforms(prog, subject, "u_subject_");
+    this.setGradeUniforms(prog, background, "u_background_");
+  }
+
+  private bindGradeDrawState(state: GradeDrawState): void {
+    if (state.regional) {
+      this.setRegionalGradeUniforms(
+        this.texturedProg,
+        state.subject,
+        state.background,
+        true,
+      );
+    } else {
+      this.setRegionalGradeUniforms(
+        this.texturedProg,
+        IDENTITY_GRADE,
+        IDENTITY_GRADE,
+        false,
+      );
+      this.setGradeUniforms(this.texturedProg, state.grade);
+    }
+    const gl = this.gl;
+    gl.activeTexture(gl.TEXTURE1);
+    if (state.maskTex) {
+      gl.bindTexture(gl.TEXTURE_2D, state.maskTex.texture);
+    } else {
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    gl.uniform1i(gl.getUniformLocation(this.texturedProg, "u_mask"), 1);
   }
 
   private drawTextured(
@@ -297,7 +423,7 @@ export class Compositor {
     isBase: boolean,
     viewW: number,
     viewH: number,
-    grade: GradeUniforms = IDENTITY_GRADE,
+    drawState: GradeDrawState = gradeDrawState(IDENTITY_GRADE),
   ): void {
     const gl = this.gl;
     gl.bindFramebuffer(gl.FRAMEBUFFER, target);
@@ -322,7 +448,7 @@ export class Compositor {
     gl.uniform1f(locOpacity, opacity);
     gl.uniform1i(locBlend, blendModeIndex(blend));
     gl.uniform1i(locBase, isBase ? 1 : 0);
-    this.setGradeUniforms(this.texturedProg, grade);
+    this.bindGradeDrawState(drawState);
 
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, tex.texture);
@@ -341,7 +467,7 @@ export class Compositor {
     blend: BlendMode,
     viewW: number,
     viewH: number,
-    grade: GradeUniforms = IDENTITY_GRADE,
+    drawState: GradeDrawState = gradeDrawState(IDENTITY_GRADE),
   ): void {
     const gl = this.gl;
     // Blit dst → write, then premul source-over the layer (blend modes ≠ normal
@@ -361,7 +487,7 @@ export class Compositor {
     gl.uniform1f(gl.getUniformLocation(this.texturedProg, "u_opacity"), opacity);
     gl.uniform1i(gl.getUniformLocation(this.texturedProg, "u_blendMode"), blendModeIndex(blend));
     gl.uniform1i(gl.getUniformLocation(this.texturedProg, "u_isBase"), blend === "normal" ? 1 : 0);
-    this.setGradeUniforms(this.texturedProg, grade);
+    this.bindGradeDrawState(drawState);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, srcTex.texture);
     gl.uniform1i(gl.getUniformLocation(this.texturedProg, "u_tex"), 0);
@@ -439,7 +565,18 @@ export class Compositor {
     for (const obj of layers) {
       if (obj.kind === "image") {
         const tex = await this.resolveTexture(obj, input.assetsById);
-        const grade = gradeFromEffects(obj.effects, obj.role === "main");
+        const gradeState = this.mainGradeState(obj);
+        let drawState = gradeDrawState(gradeState.grade);
+        if (gradeState.regional) {
+          const maskTex = await this.resolveMaskTexture(obj.maskRef, input.assetsById);
+          drawState = gradeDrawState(
+            gradeState.grade,
+            true,
+            gradeState.subject,
+            gradeState.background,
+            maskTex,
+          );
+        }
         if (!hasContent) {
           gl.bindFramebuffer(gl.FRAMEBUFFER, curRead.framebuffer);
           gl.clearColor(0.08, 0.09, 0.11, 1);
@@ -453,7 +590,7 @@ export class Compositor {
             true,
             viewW,
             viewH,
-            grade,
+            drawState,
           );
           hasContent = true;
         } else {
@@ -466,7 +603,7 @@ export class Compositor {
             obj.blend,
             viewW,
             viewH,
-            grade,
+            drawState,
           );
           const tmp = curRead;
           curRead = curWrite;
@@ -578,6 +715,9 @@ export class Compositor {
     for (const obj of input.recipe.objects) {
       if (!obj.visible || obj.kind !== "image") continue;
       await this.resolveTexture(obj, input.assetsById);
+      if (obj.role === "main" && obj.maskRef) {
+        await this.resolveMaskTexture(obj.maskRef, input.assetsById);
+      }
     }
 
     const fboA = this.createTempFbo(viewW, viewH);

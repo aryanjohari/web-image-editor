@@ -11,5 +11,12 @@
     { "id": "fade", "params": { "amount": 0.22 } },
     { "id": "grain", "params": { "amount": 0.35 } },
     { "id": "vignette", "params": { "amount": 0.4 } }
-  ]
+  ],
+  "regionalDefaults": {
+    "subject": [{ "id": "saturation", "params": { "amount": 0.1 } }],
+    "background": [
+      { "id": "saturation", "params": { "amount": -0.7 } },
+      { "id": "fade", "params": { "amount": 0.3 } }
+    ]
+  }
 }

@@ -16,6 +16,8 @@ const ALLOWLIST: RegExp[] = [
   /^\/objects\/([^/]+)\/source$/,
   /^\/objects\/([^/]+)\/text\/(content|fontFamily|fontWeight|fontSize|letterSpacing|lineHeight|color|align)$/,
   /^\/objects\/([^/]+)\/effects\/(\d+)\/params\/([A-Za-z0-9_]+)$/,
+  /^\/objects\/([^/]+)\/maskRef$/,
+  /^\/objects\/([^/]+)\/regional\/(subject|background)\/effects\/(\d+)\/params\/([A-Za-z0-9_]+)$/,
 ];
 
 export class PathPatchError extends Error {
@@ -93,9 +95,24 @@ function setAtPointer(root: Recipe, path: string, value: JsonValue): void {
       }
       const rec = cursor as Record<string, unknown>;
       if (!(t in rec)) {
-        // Allow creating nested param objects only under effects/params
-        if (t === "params" || /^\d+$/.test(t)) {
-          rec[t] = /^\d+$/.test(rest[i + 1] ?? "") ? [] : {};
+        if (
+          t === "params" ||
+          t === "regional" ||
+          t === "effects" ||
+          t === "subject" ||
+          t === "background" ||
+          /^\d+$/.test(t)
+        ) {
+          const next = rest[i + 1] ?? "";
+          if (t === "regional") {
+            rec[t] = { subject: { effects: [] }, background: { effects: [] } };
+          } else if (t === "subject" || t === "background") {
+            rec[t] = { effects: [] };
+          } else if (t === "effects") {
+            rec[t] = [];
+          } else {
+            rec[t] = /^\d+$/.test(next) ? [] : {};
+          }
         } else {
           throw new PathPatchError("PATH", path, `missing segment "${t}"`);
         }

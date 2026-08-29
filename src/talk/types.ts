@@ -1,6 +1,7 @@
-/** Talk request/response types (M03 §3). */
+/** Talk request/response types (M03 §3; M05 regional extension). */
 
 import type { PackId } from "../packs/types";
+import type { RegionalPresetId, RegionalRegion, RegionalSliderId } from "../packs/regionalSliders";
 import type { SemanticSliderId } from "../packs/sliders";
 
 export type TalkErrorCode =
@@ -20,7 +21,8 @@ export type TalkErrorCode =
   | "VALIDATE"
   | "REFUSE_GENERATIVE"
   | "MISSING_KEY"
-  | "RATE_LIMIT";
+  | "RATE_LIMIT"
+  | "NO_MASK";
 
 export type RecipeContextSliders = {
   exposure: number;
@@ -33,11 +35,21 @@ export type RecipeContextSliders = {
   duotone?: number;
 };
 
+export type RecipeContextRegionalSliders = {
+  bg_mute: number;
+  bg_fade: number;
+  subject_pop: number;
+  subject_chroma: number;
+};
+
 export type RecipeContext = {
   packId: string | null;
   packVersion: string | null;
   sliders: RecipeContextSliders;
   mainEffectIds?: string[];
+  /** True when main.maskRef is present (Tier B). */
+  hasMask?: boolean;
+  regionalSliders?: RecipeContextRegionalSliders;
 };
 
 export type TalkRequest = {
@@ -63,7 +75,29 @@ export type TalkDeltaSlider = {
   delta?: number;
 };
 
-export type TalkPatch = TalkSetSlider | TalkDeltaSlider;
+export type TalkSetRegionalSlider = {
+  op: "set_regional_slider";
+  region: RegionalRegion;
+  sliderId: RegionalSliderId;
+  value: number;
+};
+
+export type TalkDeltaRegionalSlider = {
+  op: "delta_regional_slider";
+  region: RegionalRegion;
+  sliderId: RegionalSliderId;
+  delta?: number;
+};
+
+export type TalkApplyRegionalPreset = {
+  presetId: RegionalPresetId;
+};
+
+export type TalkPatch =
+  | TalkSetSlider
+  | TalkDeltaSlider
+  | TalkSetRegionalSlider
+  | TalkDeltaRegionalSlider;
 
 export type TalkRefuse = {
   code: string;
@@ -73,6 +107,9 @@ export type TalkRefuse = {
 export type TalkResponse = {
   applyPack?: TalkApplyPack;
   patches?: TalkPatch[];
+  applyRegionalPreset?: TalkApplyRegionalPreset;
+  /** Host action: Lab runs client mask worker; not a recipe field. */
+  regenerateMask?: boolean;
   say?: string;
   refuse?: TalkRefuse;
 };
@@ -100,6 +137,20 @@ export const TALK_SLIDER_IDS = [
   "vignette",
   "duotone",
 ] as const satisfies readonly SemanticSliderId[];
+
+export const TALK_REGIONAL_SLIDER_IDS = [
+  "bg_mute",
+  "bg_fade",
+  "subject_pop",
+  "subject_chroma",
+] as const satisfies readonly RegionalSliderId[];
+
+export const TALK_REGIONAL_REGIONS = ["subject", "background"] as const satisfies readonly RegionalRegion[];
+
+export const TALK_REGIONAL_PRESET_IDS = [
+  "muted_background",
+  "subject_pop",
+] as const satisfies readonly RegionalPresetId[];
 
 /** Fraction of slider span when model omits delta magnitude. */
 export const DEFAULT_DELTA_FRACTION = 0.1;

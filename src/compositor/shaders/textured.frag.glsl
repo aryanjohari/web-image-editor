@@ -3,12 +3,15 @@ precision highp float;
 
 in vec2 v_uv;
 uniform sampler2D u_tex;
+uniform sampler2D u_mask;
 uniform float u_opacity;
 // 0=normal, 1=multiply, 2=screen, 3=overlay (approx without dst sample)
 uniform int u_blendMode;
 uniform int u_isBase;
 /** 1 = apply Tier A grade chain (main only). */
 uniform int u_enableGrade;
+/** 1 = dual regional grade with u_mask mix (main + maskRef). */
+uniform int u_regionalGrade;
 
 uniform float u_exposure;
 uniform float u_contrast;
@@ -21,6 +24,30 @@ uniform float u_grain;
 uniform float u_grainSeed;
 uniform vec3 u_duotoneShadow;
 uniform vec3 u_duotoneHighlight;
+
+uniform float u_subject_exposure;
+uniform float u_subject_contrast;
+uniform float u_subject_saturation;
+uniform float u_subject_temperature;
+uniform float u_subject_fade;
+uniform float u_subject_duotone;
+uniform float u_subject_vignette;
+uniform float u_subject_grain;
+uniform float u_subject_grainSeed;
+uniform vec3 u_subject_duotoneShadow;
+uniform vec3 u_subject_duotoneHighlight;
+
+uniform float u_background_exposure;
+uniform float u_background_contrast;
+uniform float u_background_saturation;
+uniform float u_background_temperature;
+uniform float u_background_fade;
+uniform float u_background_duotone;
+uniform float u_background_vignette;
+uniform float u_background_grain;
+uniform float u_background_grainSeed;
+uniform vec3 u_background_duotoneShadow;
+uniform vec3 u_background_duotoneHighlight;
 
 out vec4 outColor;
 
@@ -44,67 +71,128 @@ float luma709(vec3 c) {
   return dot(c, vec3(0.2126, 0.7152, 0.0722));
 }
 
-// Stable UV hash (no u_time) — optional u_grainSeed folds in (M04 X7).
 float hash21(vec2 p) {
   vec3 p3 = fract(vec3(p.xyx) * 0.1031);
   p3 += dot(p3, p3.yzx + 33.33);
   return fract((p3.x + p3.y) * p3.z);
 }
 
-vec3 applyGrade(vec3 rgb, vec2 uv) {
-  // exposure → contrast → saturation → temperature → fade|duotone → vignette → grain
-  if (abs(u_exposure) > 1e-5) {
-    rgb *= pow(2.0, u_exposure);
+vec3 applyGradeParams(
+  vec3 rgb,
+  vec2 uv,
+  float exposure,
+  float contrast,
+  float saturation,
+  float temperature,
+  float fade,
+  float duotone,
+  float vignette,
+  float grain,
+  float grainSeed,
+  vec3 duotoneShadow,
+  vec3 duotoneHighlight
+) {
+  if (abs(exposure) > 1e-5) {
+    rgb *= pow(2.0, exposure);
   }
 
-  if (abs(u_contrast) > 1e-5) {
-    rgb = mix(vec3(0.5), rgb, 1.0 + u_contrast);
+  if (abs(contrast) > 1e-5) {
+    rgb = mix(vec3(0.5), rgb, 1.0 + contrast);
   }
 
-  if (abs(u_saturation) > 1e-5) {
+  if (abs(saturation) > 1e-5) {
     float y = luma709(rgb);
-    rgb = mix(vec3(y), rgb, 1.0 + u_saturation);
+    rgb = mix(vec3(y), rgb, 1.0 + saturation);
   }
 
-  if (abs(u_temperature) > 1e-5) {
-    rgb.r += u_temperature * 0.12;
-    rgb.b -= u_temperature * 0.12;
+  if (abs(temperature) > 1e-5) {
+    rgb.r += temperature * 0.12;
+    rgb.b -= temperature * 0.12;
   }
 
-  if (u_fade > 1e-5) {
-    // OPEN fade default: lift toward light gray (soft blacks).
-    rgb = mix(rgb, vec3(0.92), u_fade * 0.35) + u_fade * 0.04;
+  if (fade > 1e-5) {
+    rgb = mix(rgb, vec3(0.92), fade * 0.35) + fade * 0.04;
   }
 
-  if (u_duotone > 1e-5) {
+  if (duotone > 1e-5) {
     float y = clamp(luma709(rgb), 0.0, 1.0);
-    vec3 mapped = mix(u_duotoneShadow, u_duotoneHighlight, y);
-    rgb = mix(rgb, mapped, u_duotone);
+    vec3 mapped = mix(duotoneShadow, duotoneHighlight, y);
+    rgb = mix(rgb, mapped, duotone);
   }
 
-  if (u_vignette > 1e-5) {
+  if (vignette > 1e-5) {
     vec2 d = uv - vec2(0.5);
     float r = length(d) * 1.41421356;
     float falloff = smoothstep(0.35, 1.05, r);
-    rgb *= 1.0 - falloff * u_vignette;
+    rgb *= 1.0 - falloff * vignette;
   }
 
-  if (u_grain > 1e-5) {
-    float n = hash21(uv * vec2(1024.0, 768.0) + vec2(u_grainSeed * 17.0, u_grainSeed * 31.0)) - 0.5;
-    rgb += n * u_grain * 0.22;
+  if (grain > 1e-5) {
+    float n = hash21(uv * vec2(1024.0, 768.0) + vec2(grainSeed * 17.0, grainSeed * 31.0)) - 0.5;
+    rgb += n * grain * 0.22;
   }
 
   return clamp(rgb, 0.0, 1.0);
 }
 
+vec3 applyGlobalGrade(vec3 rgb, vec2 uv) {
+  return applyGradeParams(
+    rgb,
+    uv,
+    u_exposure,
+    u_contrast,
+    u_saturation,
+    u_temperature,
+    u_fade,
+    u_duotone,
+    u_vignette,
+    u_grain,
+    u_grainSeed,
+    u_duotoneShadow,
+    u_duotoneHighlight
+  );
+}
+
 void main() {
-  // Top-left image/canvas uploads → flip V for WebGL's bottom-left texel origin.
   vec2 uv = vec2(v_uv.x, 1.0 - v_uv.y);
   vec4 src = texture(u_tex, uv);
   vec3 straight = src.rgb;
 
-  if (u_enableGrade == 1 && src.a > 0.0) {
-    straight = applyGrade(straight, uv);
+  if (u_regionalGrade == 1 && src.a > 0.0) {
+    float w = texture(u_mask, uv).r;
+    vec3 gSub = applyGradeParams(
+      straight,
+      uv,
+      u_subject_exposure,
+      u_subject_contrast,
+      u_subject_saturation,
+      u_subject_temperature,
+      u_subject_fade,
+      u_subject_duotone,
+      u_subject_vignette,
+      u_subject_grain,
+      u_subject_grainSeed,
+      u_subject_duotoneShadow,
+      u_subject_duotoneHighlight
+    );
+    vec3 gBg = applyGradeParams(
+      straight,
+      uv,
+      u_background_exposure,
+      u_background_contrast,
+      u_background_saturation,
+      u_background_temperature,
+      u_background_fade,
+      u_background_duotone,
+      u_background_vignette,
+      u_background_grain,
+      u_background_grainSeed,
+      u_background_duotoneShadow,
+      u_background_duotoneHighlight
+    );
+    straight = mix(gBg, gSub, w);
+  } else if (u_enableGrade == 1 && src.a > 0.0) {
+    straight = applyGlobalGrade(straight, uv);
   }
 
   float a = src.a * u_opacity;

@@ -1,4 +1,4 @@
-export type { Pack, PackId, PackOverlayDefaults } from "./types";
+export type { Pack, PackId, PackOverlayDefaults, PackRegionalDefaults } from "./types";
 export {
   PackError,
   PACK_IDS,
@@ -26,3 +26,20 @@ export {
   readSliderValue,
 } from "./sliders";
 export type { SemanticSliderId, SliderSpec } from "./sliders";
+export {
+  REGIONAL_SLIDERS,
+  REGIONAL_PRESET_VALUES,
+  applyRegionalPreset,
+  applyRegionalSlider,
+  defaultDeltaForRegionalSlider,
+  emptyRegional,
+  ensureRegionalEffect,
+  mainHasMask,
+  readRegionalSliderValue,
+} from "./regionalSliders";
+export type {
+  RegionalPresetId,
+  RegionalRegion,
+  RegionalSliderId,
+  RegionalSliderSpec,
+} from "./regionalSliders";
