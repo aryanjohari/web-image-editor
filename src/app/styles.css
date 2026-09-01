@@ -23,7 +23,7 @@ body {
 }
 
 .app {
-  max-width: 1100px;
+  max-width: 1280px;
   margin: 0 auto;
   padding: 1.5rem;
 }
@@ -61,14 +61,29 @@ h1 {
   align-items: start;
 }
 
+.lab-stage {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: grid;
+  gap: 0.75rem;
+}
+
+.lab-rail {
+  position: relative;
+  z-index: 2;
+}
+
 @media (min-width: 860px) {
   .lab {
-    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
   }
 
-  .panel {
+  .lab-rail {
     position: sticky;
     top: 1rem;
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
   }
 }
 
@@ -77,16 +92,7 @@ h1 {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 6px;
-  padding: 1rem;
-  display: grid;
-  gap: 0.85rem;
-  z-index: 2;
-}
-
-.lab-preview {
-  position: relative;
-  z-index: 1;
-  min-width: 0;
+  padding: 0.85rem;
   display: grid;
   gap: 0.75rem;
 }
@@ -100,20 +106,21 @@ h1 {
 
 .panel input[type="file"],
 .panel input[type="text"],
-.panel textarea {
+.panel textarea,
+.panel select {
   width: 100%;
   color: var(--fg);
   background: #16171a;
   border: 1px solid var(--border);
   border-radius: 4px;
-  padding: 0.45rem 0.55rem;
+  padding: 0.4rem 0.5rem;
 }
 
 .canvas-wrap {
   position: relative;
   z-index: 0;
   width: 100%;
-  height: min(360px, 52vh);
+  height: min(640px, 72vh);
   background: #0e0f12;
   border: 1px solid var(--border);
   border-radius: 6px;
@@ -131,8 +138,73 @@ h1 {
   max-width: 100%;
   max-height: 100%;
   display: block;
-  /* Prevent intrinsic bitmap size from affecting layout */
   object-fit: contain;
+  pointer-events: none;
+}
+
+.canvas-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  cursor: default;
+  touch-action: none;
+}
+
+.selection-box {
+  position: absolute;
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, #000 40%, transparent);
+  pointer-events: none;
+}
+
+.selection-handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  margin: -5px;
+  background: var(--fg);
+  border: 1px solid var(--accent);
+  border-radius: 1px;
+  pointer-events: auto;
+  cursor: nwse-resize;
+}
+
+.selection-handle[data-handle="ne"],
+.selection-handle[data-handle="sw"] {
+  cursor: nesw-resize;
+}
+
+.rail-assets {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rail-collapse {
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  justify-self: start;
+  padding: 0.25rem 0.45rem;
+}
+
+.compact-file {
+  font-size: 0.8rem;
+}
+
+.mask-block.compact {
+  gap: 0.35rem;
+}
+
+.inspector-block,
+.inspector-fields,
+.inspector-empty {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.rail-meta {
+  font-size: 0.75rem;
 }
 
 button {
@@ -141,8 +213,9 @@ button {
   background: #30323a;
   color: var(--fg);
   border-radius: 4px;
-  padding: 0.45rem 0.7rem;
+  padding: 0.4rem 0.65rem;
   cursor: pointer;
+  font-size: 0.85rem;
 }
 
 button:hover {
@@ -150,8 +223,8 @@ button:hover {
 }
 
 .panel-heading {
-  margin: 0.25rem 0 0;
-  font-size: 0.8rem;
+  margin: 0.15rem 0 0;
+  font-size: 0.75rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--muted);
@@ -161,7 +234,7 @@ button:hover {
 .slider-block,
 .talk-block {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 
 .talk-status {
@@ -172,7 +245,18 @@ button:hover {
 .pack-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
+  gap: 0.35rem;
+}
+
+.pack-family {
+  margin-top: 0.25rem;
+}
+
+.pack-family-label {
+  margin: 0.1rem 0 0.15rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .pack-row button.active {
@@ -192,7 +276,7 @@ button:hover {
 
 .recipe-peek pre {
   margin: 0.4rem 0 0;
-  max-height: 180px;
+  max-height: 140px;
   overflow: auto;
   padding: 0.5rem;
   background: #16171a;
@@ -203,14 +287,13 @@ button:hover {
   word-break: break-word;
 }
 
-
 .export-block {
   display: grid;
-  gap: 0.55rem;
+  gap: 0.5rem;
 }
 
 .honesty {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .reconnect {
@@ -229,7 +312,7 @@ button:hover {
   color: #ffd5d5;
   font-size: 0.9rem;
   pointer-events: none;
-  z-index: 2;
+  z-index: 4;
 }
 
 .hero {

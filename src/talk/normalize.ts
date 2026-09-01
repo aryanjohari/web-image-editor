@@ -21,12 +21,18 @@ import {
 import type { PackId } from "../packs/types";
 import {
   DEFAULT_DELTA_FRACTION,
+  DEFAULT_TRANSFORM_NUDGE_SCALE,
+  DEFAULT_TRANSFORM_NUDGE_XY,
   TALK_PACK_IDS,
   TALK_REGIONAL_PRESET_IDS,
   TALK_REGIONAL_REGIONS,
   TALK_REGIONAL_SLIDER_IDS,
   TALK_SLIDER_IDS,
+  TALK_TEXT_POSITIONS,
+  TALK_TRANSFORM_TARGETS,
+  TALK_TYPE_PRESETS,
   type RecipeContext,
+  type RecipeContextTransform,
   type TalkApplyPack,
   type TalkApplyRegionalPreset,
   type TalkDeltaRegionalSlider,
@@ -37,7 +43,13 @@ import {
   type TalkResponse,
   type TalkSetRegionalSlider,
   type TalkSetSlider,
+  type TalkSetTextContent,
+  type TalkSetTextHint,
+  type TalkSetTransform,
+  type TalkTransformTarget,
 } from "./types";
+import type { TextPositionHint, TypePresetId } from "../packs/types";
+import { clampTransform } from "../canvas/pointerToTransform";
 
 export type NormalizeOk = {
   ok: true;
@@ -120,8 +132,12 @@ function currentSliderAmount(
       return s.fade;
     case "grain":
       return s.grain;
+    case "grain_size":
+      return s.grain_size ?? 0.5;
     case "vignette":
       return s.vignette;
+    case "blur":
+      return s.blur ?? 0;
     case "duotone":
       return s.duotone ?? 0;
     default:
@@ -190,6 +206,203 @@ function parseApplyRegionalPreset(
     };
   }
   return { presetId: rec.presetId };
+}
+
+function parseSetTextHint(raw: unknown): TalkSetTextHint | NormalizeErr {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, code: "SCHEMA", message: "setTextHint must be an object" };
+  }
+  const rec = raw as Record<string, unknown>;
+  const out: TalkSetTextHint = {};
+  if (rec.position !== undefined) {
+    if (
+      typeof rec.position !== "string" ||
+      !(TALK_TEXT_POSITIONS as readonly string[]).includes(rec.position)
+    ) {
+      return { ok: false, code: "SCHEMA", message: `invalid text position "${String(rec.position)}"` };
+    }
+    out.position = rec.position as TextPositionHint;
+  }
+  if (rec.typePreset !== undefined) {
+    if (
+      typeof rec.typePreset !== "string" ||
+      !(TALK_TYPE_PRESETS as readonly string[]).includes(rec.typePreset)
+    ) {
+      return {
+        ok: false,
+        code: "SCHEMA",
+        message: `invalid typePreset "${String(rec.typePreset)}"`,
+      };
+    }
+    out.typePreset = rec.typePreset as TypePresetId;
+  }
+  if (!out.position && !out.typePreset) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: "setTextHint requires position and/or typePreset",
+    };
+  }
+  return out;
+}
+
+function isTransformTarget(id: unknown): id is TalkTransformTarget {
+  return typeof id === "string" && (TALK_TRANSFORM_TARGETS as readonly string[]).includes(id);
+}
+
+function parseSetTextContent(raw: unknown): TalkSetTextContent | NormalizeErr {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, code: "SCHEMA", message: "setTextContent must be an object" };
+  }
+  const rec = raw as Record<string, unknown>;
+  if (typeof rec.content !== "string") {
+    return { ok: false, code: "SCHEMA", message: "setTextContent.content must be a string" };
+  }
+  const content = rec.content.slice(0, 200);
+  return { content };
+}
+
+function currentTargetTransform(
+  ctx: RecipeContext,
+  target: TalkTransformTarget,
+): RecipeContextTransform {
+  if (target === "text") {
+    return ctx.textTransform ?? { x: 0, y: -0.35, scaleX: 1, scaleY: 1 };
+  }
+  return ctx.overlayTransform ?? { x: 0, y: 0, scaleX: 1, scaleY: 1 };
+}
+
+function parseSetTransform(raw: unknown): TalkSetTransform | NormalizeErr {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, code: "SCHEMA", message: "setTransform must be an object" };
+  }
+  const rec = raw as Record<string, unknown>;
+  if (!isTransformTarget(rec.target)) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: `setTransform.target must be text or overlay`,
+    };
+  }
+  const out: TalkSetTransform = { target: rec.target };
+  for (const key of ["x", "y", "scaleX", "scaleY"] as const) {
+    if (rec[key] === undefined) continue;
+    if (typeof rec[key] !== "number" || !Number.isFinite(rec[key])) {
+      return { ok: false, code: "SCHEMA", message: `setTransform.${key} must be a finite number` };
+    }
+    out[key] = rec[key];
+  }
+  if (
+    out.x === undefined &&
+    out.y === undefined &&
+    out.scaleX === undefined &&
+    out.scaleY === undefined
+  ) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: "setTransform requires at least one of x,y,scaleX,scaleY",
+    };
+  }
+  const clamped = clampTransform({
+    x: out.x ?? 0,
+    y: out.y ?? 0,
+    scaleX: out.scaleX ?? 1,
+    scaleY: out.scaleY ?? out.scaleX ?? 1,
+    rotation: 0,
+  });
+  if (out.x !== undefined) out.x = clamped.x;
+  if (out.y !== undefined) out.y = clamped.y;
+  if (out.scaleX !== undefined) out.scaleX = clamped.scaleX;
+  if (out.scaleY !== undefined) out.scaleY = clamped.scaleY;
+  return out;
+}
+
+function parseNudgeTransform(
+  raw: unknown,
+  ctx: RecipeContext,
+): TalkSetTransform | NormalizeErr {
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    return { ok: false, code: "SCHEMA", message: "nudgeTransform must be an object" };
+  }
+  const rec = raw as Record<string, unknown>;
+  if (!isTransformTarget(rec.target)) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: "nudgeTransform.target must be text or overlay",
+    };
+  }
+
+  const readDelta = (
+    key: "dx" | "dy" | "dScale",
+    defaultMag: number,
+  ): { ok: true; value: number | undefined } | NormalizeErr => {
+    if (!(key in rec) || rec[key] === undefined) {
+      return { ok: true, value: undefined };
+    }
+    if (rec[key] === null) {
+      return { ok: true, value: defaultMag };
+    }
+    if (typeof rec[key] !== "number" || !Number.isFinite(rec[key])) {
+      return {
+        ok: false,
+        code: "SCHEMA",
+        message: `nudgeTransform.${key} must be a finite number`,
+      };
+    }
+    return { ok: true, value: rec[key] as number };
+  };
+
+  const dxR = readDelta("dx", DEFAULT_TRANSFORM_NUDGE_XY);
+  if ("code" in dxR) return dxR;
+  const dyR = readDelta("dy", DEFAULT_TRANSFORM_NUDGE_XY);
+  if ("code" in dyR) return dyR;
+  const dsR = readDelta("dScale", DEFAULT_TRANSFORM_NUDGE_SCALE);
+  if ("code" in dsR) return dsR;
+
+  if (dxR.value === undefined && dyR.value === undefined && dsR.value === undefined) {
+    return {
+      ok: false,
+      code: "SCHEMA",
+      message: "nudgeTransform requires dx, dy, and/or dScale",
+    };
+  }
+
+  const cur = currentTargetTransform(ctx, rec.target);
+  const dx = dxR.value ?? 0;
+  const dy = dyR.value ?? 0;
+  const dScale = dsR.value ?? 0;
+  const next = clampTransform({
+    x: cur.x + dx,
+    y: cur.y + dy,
+    scaleX: cur.scaleX + dScale,
+    scaleY: cur.scaleY + dScale,
+    rotation: 0,
+  });
+
+  const out: TalkSetTransform = { target: rec.target };
+  if (dxR.value !== undefined) out.x = next.x;
+  if (dyR.value !== undefined) out.y = next.y;
+  if (dsR.value !== undefined) {
+    out.scaleX = next.scaleX;
+    out.scaleY = next.scaleY;
+  }
+  return out;
+}
+
+function mergeSetTransform(
+  base: TalkSetTransform | undefined,
+  next: TalkSetTransform,
+): TalkSetTransform {
+  if (!base || base.target !== next.target) return next;
+  return {
+    target: next.target,
+    x: next.x ?? base.x,
+    y: next.y ?? base.y,
+    scaleX: next.scaleX ?? base.scaleX,
+    scaleY: next.scaleY ?? base.scaleY,
+  };
 }
 
 function parseGlobalPatch(
@@ -376,6 +589,7 @@ function updateCtxAfterPatch(ctx: RecipeContext, patch: TalkPatch): RecipeContex
       regionalSliders: {
         bg_mute: ctx.regionalSliders?.bg_mute ?? 0,
         bg_fade: ctx.regionalSliders?.bg_fade ?? 0,
+        bg_blur: ctx.regionalSliders?.bg_blur ?? 0,
         subject_pop: ctx.regionalSliders?.subject_pop ?? 0,
         subject_chroma: ctx.regionalSliders?.subject_chroma ?? 0,
         [patch.sliderId]: patch.value,
@@ -409,6 +623,16 @@ export function normalizeTalkResponse(
     regionalSliders: recipeContext.regionalSliders
       ? { ...recipeContext.regionalSliders }
       : undefined,
+    hasOverlay: recipeContext.hasOverlay,
+    hasText: recipeContext.hasText,
+    textContent: recipeContext.textContent,
+    textTransform: recipeContext.textTransform
+      ? { ...recipeContext.textTransform }
+      : undefined,
+    overlayTransform: recipeContext.overlayTransform
+      ? { ...recipeContext.overlayTransform }
+      : undefined,
+    selection: recipeContext.selection,
   };
 
   if ("refuse" in rec && rec.refuse !== undefined && rec.refuse !== null) {
@@ -435,6 +659,38 @@ export function normalizeTalkResponse(
     const preset = parseApplyRegionalPreset(rec.applyRegionalPreset, ctx);
     if ("ok" in preset && preset.ok === false) return preset;
     out.applyRegionalPreset = preset as TalkApplyRegionalPreset;
+  }
+
+  if ("setTextHint" in rec && rec.setTextHint !== undefined && rec.setTextHint !== null) {
+    const hint = parseSetTextHint(rec.setTextHint);
+    if ("ok" in hint && hint.ok === false) return hint;
+    out.setTextHint = hint as TalkSetTextHint;
+  }
+
+  if (
+    "setTextContent" in rec &&
+    rec.setTextContent !== undefined &&
+    rec.setTextContent !== null
+  ) {
+    const content = parseSetTextContent(rec.setTextContent);
+    if ("ok" in content && content.ok === false) return content;
+    out.setTextContent = content as TalkSetTextContent;
+  }
+
+  if ("setTransform" in rec && rec.setTransform !== undefined && rec.setTransform !== null) {
+    const tf = parseSetTransform(rec.setTransform);
+    if ("ok" in tf && tf.ok === false) return tf;
+    out.setTransform = tf as TalkSetTransform;
+  }
+
+  if (
+    "nudgeTransform" in rec &&
+    rec.nudgeTransform !== undefined &&
+    rec.nudgeTransform !== null
+  ) {
+    const nudged = parseNudgeTransform(rec.nudgeTransform, ctx);
+    if ("ok" in nudged && nudged.ok === false) return nudged;
+    out.setTransform = mergeSetTransform(out.setTransform, nudged as TalkSetTransform);
   }
 
   if ("regenerateMask" in rec && rec.regenerateMask !== undefined && rec.regenerateMask !== null) {
@@ -470,13 +726,17 @@ export function normalizeTalkResponse(
     !out.applyPack &&
     !out.patches?.length &&
     !out.applyRegionalPreset &&
+    !out.setTextHint &&
+    !out.setTextContent &&
+    !out.setTransform &&
     !out.regenerateMask &&
     !out.refuse
   ) {
     return {
       ok: false,
       code: "SCHEMA",
-      message: "TalkResponse empty: need applyPack, patches, applyRegionalPreset, regenerateMask, or refuse",
+      message:
+        "TalkResponse empty: need applyPack, patches, applyRegionalPreset, setTextHint, setTextContent, setTransform/nudgeTransform, regenerateMask, or refuse",
     };
   }
 

@@ -1,14 +1,15 @@
 {
   "id": "editorial-bw",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "label": "Editorial B&W",
   "summary": "Desaturated print look with fade and paper grain",
+  "family": "editorial",
   "axes": ["contrast", "chroma", "fade", "grain"],
   "mainEffects": [
     { "id": "saturation", "params": { "amount": -0.95 } },
-    { "id": "contrast", "params": { "amount": 0.4 } },
-    { "id": "fade", "params": { "amount": 0.18 } },
-    { "id": "grain", "params": { "amount": 0.28 } }
+    { "id": "contrast", "params": { "amount": 0.42 } },
+    { "id": "fade", "params": { "amount": 0.2 } },
+    { "id": "grain", "params": { "amount": 0.3, "size": 0.45 } }
   ],
   "overlay": {
     "opacity": 0.9,

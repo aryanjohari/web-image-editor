@@ -1,0 +1,24 @@
+{
+  "id": "dusk-grain",
+  "version": "1.0.0",
+  "label": "Dusk Grain",
+  "summary": "Moody dusk grade: warm lift, heavy grain, muted deep bg",
+  "family": "film",
+  "axes": ["warmth", "fade", "grain", "grain_size", "vignette", "bg_mute", "bg_blur"],
+  "mainEffects": [
+    { "id": "temperature", "params": { "amount": 0.25 } },
+    { "id": "contrast", "params": { "amount": 0.2 } },
+    { "id": "saturation", "params": { "amount": -0.15 } },
+    { "id": "fade", "params": { "amount": 0.28 } },
+    { "id": "grain", "params": { "amount": 0.55, "size": 0.65 } },
+    { "id": "vignette", "params": { "amount": 0.5 } }
+  ],
+  "regionalDefaults": {
+    "subject": [{ "id": "saturation", "params": { "amount": 0.08 } }],
+    "background": [
+      { "id": "saturation", "params": { "amount": -0.75 } },
+      { "id": "fade", "params": { "amount": 0.4 } },
+      { "id": "blur", "params": { "amount": 0.4 } }
+    ]
+  }
+}

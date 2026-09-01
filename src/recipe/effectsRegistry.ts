@@ -55,9 +55,17 @@ export const TIER_A_EFFECTS: Record<string, EffectSpec> = {
       amount: { type: "number", min: 0, max: 1 },
       /** Folded into UV hash; omit → 0 (M04 X7). */
       seed: { type: "number", min: 0, max: 1e9, optional: true },
+      /** Grain character / clump size; omit → 0.5 mid (M06). */
+      size: { type: "number", min: 0, max: 1, optional: true },
     },
   },
   vignette: {
+    kinds: ["image"],
+    roles: ["main"],
+    params: { amount: { type: "number", min: 0, max: 1 } },
+  },
+  /** Neighborhood soft blur — ping-pong after pointwise grade (M06 §4.3). */
+  blur: {
     kinds: ["image"],
     roles: ["main"],
     params: { amount: { type: "number", min: 0, max: 1 } },

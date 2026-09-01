@@ -1,0 +1,23 @@
+{
+  "id": "flash-raw",
+  "version": "1.0.0",
+  "label": "Flash Raw",
+  "summary": "Brat / disposable flash punch — contrast, chroma, grit",
+  "family": "portrait-split",
+  "axes": ["exposure", "contrast", "chroma", "grain", "grain_size"],
+  "mainEffects": [
+    { "id": "exposure", "params": { "amount": 0.35 } },
+    { "id": "contrast", "params": { "amount": 0.55 } },
+    { "id": "saturation", "params": { "amount": 0.25 } },
+    { "id": "fade", "params": { "amount": 0 } },
+    { "id": "grain", "params": { "amount": 0.4, "size": 0.55 } },
+    { "id": "vignette", "params": { "amount": 0.25 } }
+  ],
+  "regionalDefaults": {
+    "subject": [
+      { "id": "contrast", "params": { "amount": 0.15 } },
+      { "id": "saturation", "params": { "amount": 0.1 } }
+    ],
+    "background": [{ "id": "saturation", "params": { "amount": -0.2 } }]
+  }
+}

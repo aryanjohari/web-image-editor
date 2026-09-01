@@ -1,0 +1,13 @@
+C4Context
+  title System Context — Prism
+  Person(photographer, "Photographer / designer", "Uploads stills, tunes looks, exports PNG + recipe")
+  System(prism, "Prism", "Browser lab + WebGL compositor + optional talk router")
+  System_Ext(gemini, "Gemini API", "Structured JSON patch on closed schema")
+  System_Ext(idb, "Browser IndexedDB", "Local asset blobs (main, overlay, mask)")
+  System_Ext(embedSite, "Your site", "Quiet hero from same recipe JSON")
+
+  Rel(photographer, prism, "Upload, sliders/talk, export")
+  Rel(prism, gemini, "POST /api/talk when key set", "HTTPS")
+  Rel(prism, idb, "put/get assets", "same origin")
+  Rel(prism, embedSite, "Exports recipe + PNG")
+  Rel(photographer, embedSite, "Reuses exported look")

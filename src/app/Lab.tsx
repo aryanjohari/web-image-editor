@@ -1,24 +1,34 @@
 import { useEffect, useRef, useState } from "react";
 import { getAsset, listAssets, putAsset } from "../assets/idb";
-import type { AssetRecord } from "../assets/types";
 import { AssetStoreError } from "../assets/errors";
+import type { AssetRecord } from "../assets/types";
+import type { CanvasSelection, SizePx } from "../canvas";
 import { Compositor } from "../compositor/renderer";
 import {
   applyPack,
   applyRegionalSlider,
   applySemanticSlider,
+  applyTextLayout,
   DUOTONE_SLIDER,
   listPacks,
   mainHasDuotone,
   mainHasMask,
+  PACK_FAMILIES,
   PACK_IDS,
   readRegionalSliderValue,
   readSliderValue,
   REGIONAL_SLIDERS,
+  regionalSlidersForAxes,
   resetLook,
   SEMANTIC_SLIDERS,
+  slidersForAxes,
+  TEXT_POSITIONS,
+  TYPE_PRESETS,
+  tryGetPack,
   type RegionalSliderId,
   type SemanticSliderId,
+  type TextPositionHint,
+  type TypePresetId,
 } from "../packs";
 import { attachPersonMask, segmentPersonMask } from "../masks";
 import {
@@ -28,9 +38,10 @@ import {
   recipeWithMain,
 } from "../recipe/identityRecipe";
 import { applyPathPatch } from "../recipe/pathPatch";
-import type { Recipe } from "../recipe/types";
+import type { BlendMode, Recipe, Transform2D } from "../recipe/types";
 import { validateRecipe } from "../recipe/validate";
 import { ErrorBanner } from "./ErrorBanner";
+import { CanvasOverlay } from "./CanvasOverlay";
 import {
   downloadPng,
   downloadRecipeJson,
@@ -44,11 +55,13 @@ import {
   applyTalk,
   buildRecipeContext,
   normalizeTalkResponse,
+  patchObjectTransform,
   postTalk,
   TalkClientError,
 } from "../talk";
 
 const RECIPE_KEY = "prism.recipe.v1";
+const BLEND_OPTIONS: BlendMode[] = ["normal", "multiply", "screen", "overlay"];
 
 function loadRecipeFromStorage(): Recipe {
   try {
@@ -164,13 +177,41 @@ export function Lab() {
   );
   const [maskBanner, setMaskBanner] = useState<string | null>(null);
   const [reconnectMaskId, setReconnectMaskId] = useState<string | null>(null);
+  const [selection, setSelection] = useState<CanvasSelection | null>(null);
+  const [overlaySize, setOverlaySize] = useState<SizePx | null>(null);
+  const [assetsCollapsed, setAssetsCollapsed] = useState(false);
 
   recipeRef.current = recipe;
   const packs = listPacks();
-  const sliderSpecs = mainHasDuotone(recipe)
-    ? [...SEMANTIC_SLIDERS, DUOTONE_SLIDER]
-    : [...SEMANTIC_SLIDERS];
+  const activePack = recipe.packId ? tryGetPack(recipe.packId) : null;
+  const packAxes = activePack?.axes ?? null;
+  const sliderSpecs = (() => {
+    if (packAxes) {
+      const fromAxes = slidersForAxes(packAxes);
+      if (mainHasDuotone(recipe) && !fromAxes.some((s) => s.id === "duotone")) {
+        return [...fromAxes, DUOTONE_SLIDER];
+      }
+      return fromAxes.length > 0 ? fromAxes : [...SEMANTIC_SLIDERS];
+    }
+    return mainHasDuotone(recipe)
+      ? [...SEMANTIC_SLIDERS, DUOTONE_SLIDER]
+      : [...SEMANTIC_SLIDERS];
+  })();
+  const regionalSpecs = packAxes
+    ? regionalSlidersForAxes(packAxes)
+    : [...REGIONAL_SLIDERS];
+  const showAllRegionalFallback = regionalSpecs.length === 0 && !!packAxes;
+  const regionalSliderList = showAllRegionalFallback
+    ? [...REGIONAL_SLIDERS]
+    : regionalSpecs.length > 0
+      ? regionalSpecs
+      : [...REGIONAL_SLIDERS];
   const maskReady = maskStatus === "ready" && mainHasMask(recipe);
+
+  const textObj = recipe.objects.find((o) => o.kind === "text");
+  const overlayObj = recipe.objects.find((o) => o.kind === "image" && o.role === "overlay");
+  const hasText = !!(textObj && textObj.kind === "text");
+  const hasOverlay = !!(overlayObj && overlayObj.kind === "image");
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -275,6 +316,41 @@ export function Lab() {
     };
   }, [recipe]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!overlayObj || overlayObj.kind !== "image" || overlayObj.source.type !== "id") {
+        setOverlaySize(null);
+        return;
+      }
+      try {
+        const rec = await getAsset(overlayObj.source.assetId);
+        if (cancelled) return;
+        if (rec.width && rec.height) {
+          setOverlaySize({ width: rec.width, height: rec.height });
+          return;
+        }
+        const bmp = await createImageBitmap(rec.blob);
+        if (cancelled) {
+          bmp.close();
+          return;
+        }
+        setOverlaySize({ width: bmp.width, height: bmp.height });
+        bmp.close();
+      } catch {
+        if (!cancelled) setOverlaySize({ width: 1024, height: 1024 });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [overlayObj]);
+
+  useEffect(() => {
+    if (selection === "text" && !hasText) setSelection(null);
+    if (selection === "overlay" && !hasOverlay) setSelection(null);
+  }, [selection, hasText, hasOverlay]);
+
   async function generateMaskForMain(
     file: File,
     baseRecipe: Recipe,
@@ -313,11 +389,10 @@ export function Lab() {
       const assetId = reconnectMainId ?? newAssetId("main");
       await putAsset(assetId, file, { name: file.name });
       if (reconnectMainId) {
-        // FILTR reconnect: keep shared recipe, fill expected asset id
         setReconnectMainId(null);
         setError(null);
         setToast(`Reconnected main asset "${assetId}"`);
-        setRecipe({ ...recipe }); // trigger redraw with same recipe
+        setRecipe({ ...recipe });
         return;
       }
       const overlay = recipe.objects.find((o) => o.kind === "image" && o.role === "overlay");
@@ -345,6 +420,7 @@ export function Lab() {
       );
       const objects = [...withoutOverlay, identityOverlayImage(assetId)];
       setRecipe(validateRecipe({ ...recipe, objects }));
+      setSelection("overlay");
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -366,7 +442,110 @@ export function Lab() {
 
   function onTextCommit() {
     try {
-      setRecipe(ensureTextObject(textDraft));
+      const next = ensureTextObject(textDraft);
+      setRecipe(next);
+      setSelection("text");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onAddText() {
+    try {
+      if (hasText) {
+        setSelection("text");
+        return;
+      }
+      const next = validateRecipe({
+        ...recipe,
+        objects: [...recipe.objects, identityText(textDraft || "Prism")],
+      });
+      setRecipe(next);
+      setSelection("text");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onTextPosition(position: TextPositionHint) {
+    try {
+      const withContent = ensureTextObject(textDraft);
+      setRecipe(applyTextLayout(withContent, { position }));
+      setSelection("text");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onTypePreset(typePreset: TypePresetId) {
+    try {
+      const withContent = ensureTextObject(textDraft);
+      setRecipe(applyTextLayout(withContent, { typePreset }));
+      setSelection("text");
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onFontSize(fontSize: number) {
+    try {
+      const withContent = ensureTextObject(textDraft);
+      setRecipe(
+        applyPathPatch(withContent, [
+          { path: "/objects/text/text/fontSize", value: fontSize },
+        ]),
+      );
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onOverlayOpacity(opacity: number) {
+    try {
+      if (!hasOverlay) return;
+      setRecipe(
+        applyPathPatch(recipe, [{ path: "/objects/overlay/opacity", value: opacity }]),
+      );
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onOverlayBlend(blend: BlendMode) {
+    try {
+      if (!hasOverlay) return;
+      setRecipe(applyPathPatch(recipe, [{ path: "/objects/overlay/blend", value: blend }]));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onOverlayScale(scale: number) {
+    try {
+      if (!hasOverlay || !overlayObj || overlayObj.kind !== "image") return;
+      setRecipe(
+        patchObjectTransform(recipe, "overlay", {
+          ...overlayObj.transform,
+          scaleX: scale,
+          scaleY: scale,
+        }),
+      );
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function onCanvasTransform(target: CanvasSelection, transform: Transform2D) {
+    try {
+      setRecipe(patchObjectTransform(recipeRef.current, target, transform));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -379,6 +558,7 @@ export function Lab() {
     setIntensity(1);
     setMaskStatus("idle");
     setMaskBanner(null);
+    setSelection(null);
     setError(null);
   }
 
@@ -392,7 +572,10 @@ export function Lab() {
         setRecipe(resetLook(recipe));
         setIntensity(1);
       } else {
-        setRecipe(applyPack(recipe, packId, { intensity }));
+        const next = applyPack(recipe, packId, { intensity });
+        setRecipe(next);
+        const t = next.objects.find((o) => o.kind === "text");
+        if (t && t.kind === "text") setTextDraft(t.text.content);
       }
       setError(null);
     } catch (e) {
@@ -467,7 +650,9 @@ export function Lab() {
     setTalkBusy(true);
     setTalkStatus(null);
     try {
-      const recipeContext = buildRecipeContext(recipe);
+      const recipeContext = buildRecipeContext(recipe, {
+        selection: selection ?? "none",
+      });
       const raw = await postTalk({ text, recipeContext });
       const normalized = normalizeTalkResponse(raw, recipeContext);
       if (!normalized.ok) {
@@ -480,6 +665,8 @@ export function Lab() {
         return;
       }
       setRecipe(applied.recipe);
+      const t = applied.recipe.objects.find((o) => o.kind === "text");
+      if (t && t.kind === "text") setTextDraft(t.text.content);
       setError(null);
       if (applied.regenerateMask) {
         await onRegenerateMask();
@@ -501,8 +688,6 @@ export function Lab() {
       setTalkBusy(false);
     }
   }
-
-
 
   useEffect(() => {
     let cancelled = false;
@@ -586,52 +771,191 @@ export function Lab() {
 
   return (
     <div className="lab">
-      <aside className="panel">
-        <label>
-          Main image
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => void onMainFile(e.target.files?.[0] ?? null)}
+      <div className="lab-stage">
+        <ErrorBanner message={error} />
+        <div
+          className={`canvas-wrap${reconnectMainId || reconnectMaskId ? " canvas-blocked" : ""}`}
+          ref={wrapRef}
+        >
+          <canvas ref={canvasRef} width={640} height={480} />
+          <CanvasOverlay
+            recipe={recipe}
+            selection={selection}
+            onSelect={setSelection}
+            onTransformLive={onCanvasTransform}
+            overlaySize={overlaySize}
+            disabled={!!reconnectMainId || !!reconnectMaskId}
           />
-        </label>
-        <div className="mask-block">
-          <p className="panel-heading">
-            Mask{" "}
-            <span className={`mask-chip mask-${maskStatus}`}>{maskStatus}</span>
-          </p>
-          {maskBanner && <p className="muted mask-banner">{maskBanner}</p>}
+        </div>
+        <p className="muted canvas-hint">
+          {selection
+            ? `Selected ${selection} — drag to move, corners to scale, Esc to clear`
+            : "Click text or overlay on canvas to select · Preview grey until main upload"}
+        </p>
+      </div>
+
+      <aside className="lab-rail panel">
+        <div className="rail-assets">
           <button
             type="button"
-            disabled={!hasMain(recipe) || maskStatus === "generating"}
-            onClick={() => void onRegenerateMask()}
+            className="rail-collapse"
+            onClick={() => setAssetsCollapsed((v) => !v)}
           >
-            {maskStatus === "generating" ? "Generating mask…" : "Regenerate mask"}
+            {assetsCollapsed ? "Assets ▸" : "Assets ▾"}
           </button>
+          {!assetsCollapsed && (
+            <>
+              <label className="compact-file">
+                Main
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => void onMainFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+              <div className="mask-block compact">
+                <p className="panel-heading">
+                  Mask{" "}
+                  <span className={`mask-chip mask-${maskStatus}`}>{maskStatus}</span>
+                </p>
+                {maskBanner && <p className="muted mask-banner">{maskBanner}</p>}
+                <button
+                  type="button"
+                  disabled={!hasMain(recipe) || maskStatus === "generating"}
+                  onClick={() => void onRegenerateMask()}
+                >
+                  {maskStatus === "generating" ? "Generating…" : "Regen mask"}
+                </button>
+              </div>
+              <label className="compact-file">
+                Overlay
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => void onOverlayFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            </>
+          )}
         </div>
-        <label>
-          Overlay image
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => void onOverlayFile(e.target.files?.[0] ?? null)}
-          />
-        </label>
-        <label>
-          Text
-          <input
-            type="text"
-            value={textDraft}
-            onChange={(e) => setTextDraft(e.target.value)}
-            onBlur={onTextCommit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") onTextCommit();
-            }}
-          />
-        </label>
-        <button type="button" onClick={onTextCommit}>
-          Apply text
-        </button>
+
+        <div className="inspector-block">
+          <p className="panel-heading">Inspector</p>
+          {!selection && (
+            <div className="inspector-empty">
+              <p className="muted">Select text or overlay on canvas.</p>
+              {!hasText && (
+                <button type="button" onClick={onAddText}>
+                  Add text
+                </button>
+              )}
+            </div>
+          )}
+          {selection === "text" && (
+            <div className="inspector-fields">
+              {!hasText ? (
+                <button type="button" onClick={onAddText}>
+                  Add text
+                </button>
+              ) : (
+                <>
+                  <label>
+                    Content
+                    <input
+                      type="text"
+                      value={textDraft}
+                      onChange={(e) => setTextDraft(e.target.value)}
+                      onBlur={onTextCommit}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") onTextCommit();
+                      }}
+                    />
+                  </label>
+                  <label>
+                    Size{" "}
+                    {textObj && textObj.kind === "text"
+                      ? textObj.text.fontSize
+                      : 48}
+                    <input
+                      type="range"
+                      min={16}
+                      max={160}
+                      step={1}
+                      value={
+                        textObj && textObj.kind === "text" ? textObj.text.fontSize : 48
+                      }
+                      onChange={(e) => onFontSize(Number(e.target.value))}
+                    />
+                  </label>
+                  <div className="pack-row">
+                    {TEXT_POSITIONS.map((pos) => (
+                      <button
+                        key={pos}
+                        type="button"
+                        onClick={() => onTextPosition(pos)}
+                      >
+                        {pos}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="pack-row">
+                    {TYPE_PRESETS.map((preset) => (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => onTypePreset(preset)}
+                      >
+                        {preset}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          {selection === "overlay" && hasOverlay && overlayObj && overlayObj.kind === "image" && (
+            <div className="inspector-fields">
+              <label>
+                Opacity {overlayObj.opacity.toFixed(2)}
+                <input
+                  type="range"
+                  min={0}
+                  max={1}
+                  step={0.01}
+                  value={overlayObj.opacity}
+                  onChange={(e) => onOverlayOpacity(Number(e.target.value))}
+                />
+              </label>
+              <label>
+                Blend
+                <select
+                  value={overlayObj.blend}
+                  onChange={(e) => onOverlayBlend(e.target.value as BlendMode)}
+                >
+                  {BLEND_OPTIONS.map((b) => (
+                    <option key={b} value={b}>
+                      {b}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Scale {overlayObj.transform.scaleX.toFixed(2)}
+                <input
+                  type="range"
+                  min={0.15}
+                  max={4}
+                  step={0.01}
+                  value={overlayObj.transform.scaleX}
+                  onChange={(e) => onOverlayScale(Number(e.target.value))}
+                />
+              </label>
+            </div>
+          )}
+          {selection === "overlay" && !hasOverlay && (
+            <p className="muted">Upload an overlay image first.</p>
+          )}
+        </div>
 
         <div className="talk-block">
           <p className="panel-heading">Talk</p>
@@ -641,7 +965,7 @@ export function Lab() {
               type="text"
               value={talkText}
               disabled={talkBusy}
-              placeholder="e.g. warm film, less grain…"
+              placeholder="warm film, mute bg, move title up…"
               onChange={(e) => setTalkText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") void onTalkSend();
@@ -666,20 +990,31 @@ export function Lab() {
               className={recipe.packId === null ? "active" : undefined}
               onClick={() => onPack(null)}
             >
-              None / identity
+              None
             </button>
-            {packs.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                className={recipe.packId === p.id ? "active" : undefined}
-                onClick={() => onPack(p.id)}
-                title={p.summary}
-              >
-                {p.label}
-              </button>
-            ))}
           </div>
+          {PACK_FAMILIES.map((family) => {
+            const familyPacks = packs.filter((p) => p.family === family);
+            if (familyPacks.length === 0) return null;
+            return (
+              <div key={family} className="pack-family">
+                <p className="muted pack-family-label">{family}</p>
+                <div className="pack-row">
+                  {familyPacks.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={recipe.packId === p.id ? "active" : undefined}
+                      onClick={() => onPack(p.id)}
+                      title={p.summary}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
           <label>
             Intensity {intensity.toFixed(2)}
             <input
@@ -695,7 +1030,9 @@ export function Lab() {
         </div>
 
         <div className="slider-block">
-          <p className="panel-heading">Sliders</p>
+          <p className="panel-heading">
+            {activePack ? `Axes · ${activePack.label}` : "Sliders"}
+          </p>
           {sliderSpecs.map((spec) => (
             <label key={spec.id}>
               {spec.label} {readSliderValue(recipe, spec.id).toFixed(2)}
@@ -713,11 +1050,11 @@ export function Lab() {
         </div>
 
         <div className="slider-block regional-block">
-          <p className="panel-heading">Regional sliders</p>
+          <p className="panel-heading">Regional</p>
           {!maskReady && (
             <p className="muted">Enabled when person mask is ready.</p>
           )}
-          {REGIONAL_SLIDERS.map((spec) => (
+          {regionalSliderList.map((spec) => (
             <label key={spec.id}>
               {spec.label} {readRegionalSliderValue(recipe, spec.id).toFixed(2)}
               <input
@@ -741,36 +1078,34 @@ export function Lab() {
               disabled={!hasMain(recipe) || exportBusy}
               onClick={() => void onDownloadPng()}
             >
-              {exportBusy ? "Exporting…" : "Download PNG"}
+              {exportBusy ? "Exporting…" : "PNG"}
             </button>
             <button type="button" onClick={onDownloadRecipe}>
-              Download recipe
+              Recipe
             </button>
             <button type="button" onClick={() => void onCopyLink()}>
-              Copy share link
+              Link
             </button>
             <button
               type="button"
               disabled={!hasMain(recipe) || exportBusy}
               onClick={() => void onDownloadBoth()}
             >
-              PNG + recipe
+              Both
             </button>
           </div>
           <p className="muted honesty">
-            PNG matches lab preview (blends are approximate).
+            PNG matches lab preview (handles never export).
           </p>
           {toast && <p className="muted">{toast}</p>}
           {reconnectMainId && (
             <p className="reconnect">
-              Main asset <code>{reconnectMainId}</code> missing — re-upload main to
-              reconnect this shared recipe.
+              Main asset <code>{reconnectMainId}</code> missing — re-upload main.
             </p>
           )}
           {reconnectMaskId && (
             <p className="reconnect">
-              Mask asset <code>{reconnectMaskId}</code> missing — regenerate mask or
-              re-upload main.
+              Mask asset <code>{reconnectMaskId}</code> missing — regen or re-upload.
             </p>
           )}
         </div>
@@ -778,27 +1113,15 @@ export function Lab() {
         <button type="button" onClick={onReset}>
           Reset recipe
         </button>
-        <p className="muted">Asset library: {libraryCount} blob(s) in IndexedDB</p>
-        <p className="muted">Catalog: {PACK_IDS.join(", ")}</p>
-        {!glReady && <p className="muted">Starting WebGL…</p>}
+        <p className="muted rail-meta">
+          IDB {libraryCount} · {!glReady ? "Starting WebGL…" : PACK_IDS.length + " packs"}
+        </p>
 
         <details className="recipe-peek">
           <summary>Recipe peek</summary>
           <pre>{recipePeek(recipe)}</pre>
         </details>
       </aside>
-      <div className="lab-preview">
-        <ErrorBanner message={error} />
-        <div
-          className={`canvas-wrap${reconnectMainId || reconnectMaskId ? " canvas-blocked" : ""}`}
-          ref={wrapRef}
-        >
-          <canvas ref={canvasRef} width={640} height={480} />
-        </div>
-        <p className="muted canvas-hint">
-          Preview stays grey until you upload a main image — that is expected.
-        </p>
-      </div>
     </div>
   );
 }

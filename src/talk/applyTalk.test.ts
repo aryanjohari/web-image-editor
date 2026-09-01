@@ -121,4 +121,51 @@ describe("applyTalk", () => {
     expect(result.recipe.packId).toBe("warm-film");
     expect(readSliderValue(result.recipe, "grain")).toBeCloseTo(0.3);
   });
+
+  it("setTextContent creates text and writes content", () => {
+    const recipe = recipeWithMain("main-asset");
+    const result = applyTalk(recipe, {
+      setTextContent: { content: "SHOW" },
+    });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    const t = result.recipe.objects.find((o) => o.kind === "text");
+    expect(t && t.kind === "text" && t.text.content).toBe("SHOW");
+  });
+
+  it("setTransform moves text via PathPatch (talk≡canvas)", () => {
+    const recipe = applyTalk(recipeWithMain("main-asset"), {
+      setTextContent: { content: "T" },
+    });
+    expect(recipe.ok).toBe(true);
+    if (!recipe.ok) return;
+    const moved = applyTalk(recipe.recipe, {
+      setTransform: { target: "text", y: 0.2 },
+    });
+    expect(moved.ok).toBe(true);
+    if (!moved.ok) return;
+    const t = moved.recipe.objects.find((o) => o.kind === "text");
+    expect(t && t.kind === "text" && t.transform.y).toBeCloseTo(0.2);
+  });
+
+  it("normalize+apply nudge title up matches PathPatch y", () => {
+    const withText = applyTalk(recipeWithMain("main-asset"), {
+      setTextContent: { content: "Title" },
+      setTransform: { target: "text", x: 0, y: -0.35, scaleX: 1, scaleY: 1 },
+    });
+    expect(withText.ok).toBe(true);
+    if (!withText.ok) return;
+    const ctx = buildRecipeContext(withText.recipe, { selection: "text" });
+    const norm = normalizeTalkResponse(
+      { nudgeTransform: { target: "text", dy: 0.08 } },
+      ctx,
+    );
+    expect(norm.ok).toBe(true);
+    if (!norm.ok) return;
+    const applied = applyTalk(withText.recipe, norm.response);
+    expect(applied.ok).toBe(true);
+    if (!applied.ok) return;
+    const t = applied.recipe.objects.find((o) => o.kind === "text");
+    expect(t && t.kind === "text" && t.transform.y).toBeCloseTo(-0.27);
+  });
 });

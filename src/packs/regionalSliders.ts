@@ -9,6 +9,7 @@ export type RegionalRegion = "subject" | "background";
 export type RegionalSliderId =
   | "bg_mute"
   | "bg_fade"
+  | "bg_blur"
   | "subject_pop"
   | "subject_chroma";
 
@@ -27,7 +28,7 @@ function clampRegionalValue(spec: RegionalSliderSpec, value: number): number {
   return Math.min(spec.max, Math.max(spec.min, value));
 }
 
-/** Tier B regional semantic axes (M05 §2.D). */
+/** Tier B regional semantic axes (M05 §2.D + M06 bg_blur). */
 export const REGIONAL_SLIDERS: readonly RegionalSliderSpec[] = [
   {
     id: "bg_mute",
@@ -44,6 +45,16 @@ export const REGIONAL_SLIDERS: readonly RegionalSliderSpec[] = [
     label: "Background fade",
     region: "background",
     effectId: "fade",
+    paramKey: "amount",
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  {
+    id: "bg_blur",
+    label: "Background blur",
+    region: "background",
+    effectId: "blur",
     paramKey: "amount",
     min: 0,
     max: 1,
@@ -190,3 +201,9 @@ export function defaultDeltaForRegionalSlider(sliderId: RegionalSliderId): numbe
   if (!spec) throw new Error(`unknown regional slider ${sliderId}`);
   return DEFAULT_DELTA_FRACTION * (spec.max - spec.min);
 }
+
+/** Regional axes listed on a pack (pack-first Lab). */
+export function regionalSlidersForAxes(axes: string[]): RegionalSliderSpec[] {
+  return REGIONAL_SLIDERS.filter((s) => axes.includes(s.id));
+}
+

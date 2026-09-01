@@ -6,6 +6,9 @@ export type RasterizedText = {
   height: number;
 };
 
+export { typePresetStyle } from "../packs/textPresets";
+export type { TypePresetStyle } from "../packs/textPresets";
+
 /**
  * Rasterize TextSource to a transparent canvas (premul-friendly RGBA).
  * Size is CSS-px intent; export scale policy is later (M00 C9).

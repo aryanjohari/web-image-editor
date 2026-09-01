@@ -1,8 +1,23 @@
 import { TIER_A_EFFECTS, isKnownEffectId } from "../recipe/effectsRegistry";
 import type { BlendMode, Effect } from "../recipe/types";
+import cleanEditorial from "./clean-editorial.json";
+import coolChrome from "./cool-chrome.json";
+import duskGrain from "./dusk-grain.json";
 import editorialBw from "./editorial-bw.json";
+import flashRaw from "./flash-raw.json";
+import mutedSplit from "./muted-split.json";
 import posterPunch from "./poster-punch.json";
-import type { Pack, PackId, PackOverlayDefaults, PackRegionalDefaults } from "./types";
+import type {
+  Pack,
+  PackFamily,
+  PackId,
+  PackOverlayDefaults,
+  PackRegionalDefaults,
+  PackTextHints,
+  TextPositionHint,
+  TypePresetId,
+} from "./types";
+import { PACK_FAMILIES, TEXT_POSITIONS, TYPE_PRESETS } from "./types";
 import warmFilm from "./warm-film.json";
 
 export class PackError extends Error {
@@ -16,6 +31,9 @@ export class PackError extends Error {
 }
 
 const BLENDS = new Set(["normal", "multiply", "screen", "overlay"]);
+const FAMILY_SET = new Set<string>(PACK_FAMILIES);
+const POSITION_SET = new Set<string>(TEXT_POSITIONS);
+const PRESET_SET = new Set<string>(TYPE_PRESETS);
 
 function expectString(v: unknown, path: string): string {
   if (typeof v !== "string" || !v) {
@@ -129,6 +147,26 @@ function validateRegionalDefaults(raw: unknown, path: string): PackRegionalDefau
   return out;
 }
 
+function validateTextHints(raw: unknown, path: string): PackTextHints | undefined {
+  if (raw === undefined) return undefined;
+  if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+    throw new PackError("TYPE", `${path} must be an object`);
+  }
+  const rec = raw as Record<string, unknown>;
+  const position = expectString(rec.position, `${path}.position`);
+  if (!POSITION_SET.has(position)) {
+    throw new PackError("TEXT_HINT", `${path}.position invalid`);
+  }
+  const typePreset = expectString(rec.typePreset, `${path}.typePreset`);
+  if (!PRESET_SET.has(typePreset)) {
+    throw new PackError("TEXT_HINT", `${path}.typePreset invalid`);
+  }
+  return {
+    position: position as TextPositionHint,
+    typePreset: typePreset as TypePresetId,
+  };
+}
+
 export function validatePack(raw: unknown): Pack {
   if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
     throw new PackError("TYPE", "pack must be an object");
@@ -139,6 +177,11 @@ export function validatePack(raw: unknown): Pack {
   const label = expectString(rec.label, "label");
   const summary =
     rec.summary === undefined ? undefined : expectString(rec.summary, "summary");
+  const familyRaw = expectString(rec.family, "family");
+  if (!FAMILY_SET.has(familyRaw)) {
+    throw new PackError("FAMILY", `family "${familyRaw}" invalid`);
+  }
+  const family = familyRaw as PackFamily;
   if (!Array.isArray(rec.axes)) {
     throw new PackError("TYPE", "axes must be an array");
   }
@@ -149,19 +192,31 @@ export function validatePack(raw: unknown): Pack {
   const mainEffects = rec.mainEffects.map((e, i) => validateEffect(e, `mainEffects[${i}]`));
   const overlay = validateOverlay(rec.overlay, "overlay");
   const regionalDefaults = validateRegionalDefaults(rec.regionalDefaults, "regionalDefaults");
+  const textHints = validateTextHints(rec.textHints, "textHints");
   return {
     id,
     version,
     label,
     summary,
+    family,
     axes,
     mainEffects,
     overlay,
     ...(regionalDefaults ? { regionalDefaults } : {}),
+    ...(textHints ? { textHints } : {}),
   };
 }
 
-const RAW_PACKS: unknown[] = [editorialBw, warmFilm, posterPunch];
+const RAW_PACKS: unknown[] = [
+  warmFilm,
+  duskGrain,
+  flashRaw,
+  coolChrome,
+  editorialBw,
+  cleanEditorial,
+  mutedSplit,
+  posterPunch,
+];
 
 const CATALOG: Map<string, Pack> = new Map();
 for (const raw of RAW_PACKS) {
@@ -173,13 +228,22 @@ for (const raw of RAW_PACKS) {
 }
 
 export const PACK_IDS: readonly PackId[] = [
-  "editorial-bw",
   "warm-film",
+  "dusk-grain",
+  "flash-raw",
+  "cool-chrome",
+  "editorial-bw",
+  "clean-editorial",
+  "muted-split",
   "poster-punch",
 ] as const;
 
 export function listPacks(): Pack[] {
   return PACK_IDS.map((id) => CATALOG.get(id)!);
+}
+
+export function listPacksByFamily(family: PackFamily): Pack[] {
+  return listPacks().filter((p) => p.family === family);
 }
 
 export function getPack(packId: string): Pack {

@@ -1,0 +1,28 @@
+%% C4 Containers — Prism
+%% IDs: prism-lab, talk-api, compositor (browser)
+
+C4Container
+  title Containers — Prism
+  Person(photographer, "Photographer / designer", "Uploads stills, tunes looks, exports")
+
+  System_Boundary(prism, "Prism") {
+    Container(labSpa, "Lab SPA", "Vite, React, TypeScript", "Routes / and /hero; pack/slider/talk UI; canvas overlay; export buttons")
+    Container(compositor, "WebGL compositor", "WebGL2, GLSL", "Recipe to uniforms; grade chain; blur ping-pong; export FBO")
+    Container(talkApi, "Talk API", "Vercel serverless + Vite dev middleware", "POST /api/talk; Gemini structured JSON; normalize fail closed")
+    Container(assetStore, "IndexedDB assets", "Browser IDB", "Main, overlay, mask PNG blobs")
+    Container(maskWorker, "MediaPipe worker", "Web Worker + tasks-vision", "Person segmentation; mask texture upload")
+  }
+
+  System_Ext(gemini, "Gemini API", "generateContent JSON schema")
+  System_Ext(embedSite, "Your site", "Hero-lite recipe embed")
+
+  Rel(photographer, labSpa, "Uses in browser")
+  Rel(labSpa, compositor, "Recipe + asset resolve each frame")
+  Rel(labSpa, assetStore, "put/get on upload")
+  Rel(labSpa, maskWorker, "segmentPersonMask on portrait upload")
+  Rel(labSpa, talkApi, "POST /api/talk", "HTTPS")
+  Rel(maskWorker, assetStore, "Writes mask blob")
+  Rel(compositor, assetStore, "Texture upload from blobs")
+  Rel(talkApi, gemini, "Structured patch", "HTTPS")
+  Rel(labSpa, embedSite, "Exports recipe JSON / #r= hash")
+  Rel(labSpa, photographer, "PNG + recipe download")

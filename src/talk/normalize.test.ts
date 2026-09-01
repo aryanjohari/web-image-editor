@@ -138,4 +138,84 @@ describe("normalizeTalkResponse", () => {
   it("default Δ for exposure is 0.1 of span (0.4)", () => {
     expect(defaultDeltaForSlider("exposure")).toBeCloseTo(0.4);
   });
+
+  it("accepts new M06 packs and blur / grain_size sliders", () => {
+    const r = normalizeTalkResponse(
+      {
+        applyPack: { packId: "muted-split" },
+        patches: [
+          { op: "set_slider", sliderId: "blur", value: 0.3 },
+          { op: "set_slider", sliderId: "grain_size", value: 0.6 },
+        ],
+      },
+      baseCtx(),
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.response.applyPack?.packId).toBe("muted-split");
+    expect(r.response.patches).toHaveLength(2);
+  });
+
+  it("normalizes setTextHint", () => {
+    const r = normalizeTalkResponse(
+      { setTextHint: { position: "center", typePreset: "condensed" } },
+      baseCtx(),
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.response.setTextHint).toEqual({
+      position: "center",
+      typePreset: "condensed",
+    });
+  });
+
+  it("normalizes setTextContent", () => {
+    const r = normalizeTalkResponse(
+      { setTextContent: { content: "Hello" } },
+      baseCtx(),
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.response.setTextContent).toEqual({ content: "Hello" });
+  });
+
+  it("folds nudgeTransform dy into setTransform (move title up)", () => {
+    const ctx = {
+      ...baseCtx(),
+      hasText: true,
+      textTransform: { x: 0, y: -0.35, scaleX: 1, scaleY: 1 },
+      selection: "text" as const,
+    };
+    const r = normalizeTalkResponse(
+      { nudgeTransform: { target: "text", dy: 0.08 } },
+      ctx,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.response.setTransform).toEqual({
+      target: "text",
+      y: expect.closeTo(-0.27, 5),
+    });
+  });
+
+  it("multi-intent: pack + setTextContent + nudge", () => {
+    const ctx = {
+      ...baseCtx(),
+      hasText: true,
+      textTransform: { x: 0, y: 0, scaleX: 1, scaleY: 1 },
+    };
+    const r = normalizeTalkResponse(
+      {
+        applyPack: { packId: "poster-punch" },
+        setTextContent: { content: "SHOW" },
+        nudgeTransform: { target: "text", dy: 0.1 },
+      },
+      ctx,
+    );
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.response.applyPack?.packId).toBe("poster-punch");
+    expect(r.response.setTextContent?.content).toBe("SHOW");
+    expect(r.response.setTransform?.y).toBeCloseTo(0.1);
+  });
 });

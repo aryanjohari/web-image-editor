@@ -10,7 +10,9 @@ export type SemanticSliderId =
   | "chroma"
   | "fade"
   | "grain"
+  | "grain_size"
   | "vignette"
+  | "blur"
   | "duotone";
 
 export type SliderSpec = {
@@ -24,7 +26,7 @@ export type SliderSpec = {
   step: number;
 };
 
-/** Tier A semantic slider set (M02 §5). */
+/** Tier A + M06 semantic slider set. */
 export const SEMANTIC_SLIDERS: readonly SliderSpec[] = [
   {
     id: "exposure",
@@ -81,9 +83,27 @@ export const SEMANTIC_SLIDERS: readonly SliderSpec[] = [
     step: 0.01,
   },
   {
+    id: "grain_size",
+    label: "Grain size",
+    effectId: "grain",
+    paramKey: "size",
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  {
     id: "vignette",
     label: "Vignette",
     effectId: "vignette",
+    paramKey: "amount",
+    min: 0,
+    max: 1,
+    step: 0.01,
+  },
+  {
+    id: "blur",
+    label: "Blur",
+    effectId: "blur",
     paramKey: "amount",
     min: 0,
     max: 1,
@@ -109,7 +129,13 @@ export function defaultEffectParams(effectId: string): Effect["params"] {
   }
   const params: Effect["params"] = {};
   for (const [key, pspec] of Object.entries(spec.params)) {
-    if (pspec.optional) continue;
+    if (pspec.optional) {
+      // grain.size defaults to mid character when ensureEffect inserts grain
+      if (effectId === "grain" && key === "size") {
+        params[key] = 0.5;
+      }
+      continue;
+    }
     if (pspec.type === "number") {
       params[key] = 0;
     } else if (pspec.type === "boolean") {
@@ -163,6 +189,11 @@ export function clampSliderValue(spec: SliderSpec, value: number): number {
   return Math.min(spec.max, Math.max(spec.min, value));
 }
 
+function sliderSpecFor(sliderId: SemanticSliderId): SliderSpec | undefined {
+  if (sliderId === "duotone") return DUOTONE_SLIDER;
+  return SEMANTIC_SLIDERS.find((s) => s.id === sliderId);
+}
+
 /**
  * Set a semantic slider on main via PathPatch (M02 §5).
  * Clamps UI value pre-emit; validator still rejects OOR.
@@ -172,10 +203,7 @@ export function applySemanticSlider(
   sliderId: SemanticSliderId,
   value: number,
 ): Recipe {
-  const spec =
-    sliderId === "duotone"
-      ? DUOTONE_SLIDER
-      : SEMANTIC_SLIDERS.find((s) => s.id === sliderId);
+  const spec = sliderSpecFor(sliderId);
   if (!spec) {
     throw new Error(`unknown slider "${sliderId}"`);
   }
@@ -190,23 +218,35 @@ export function applySemanticSlider(
   return applyPathPatch(withEffect, patch);
 }
 
-/** Read current numeric amount for a slider from main effects (or identity 0). */
+/** Read current numeric amount for a slider from main effects (or identity). */
 export function readSliderValue(recipe: Recipe, sliderId: SemanticSliderId): number {
-  const spec =
-    sliderId === "duotone"
-      ? DUOTONE_SLIDER
-      : SEMANTIC_SLIDERS.find((s) => s.id === sliderId);
+  const spec = sliderSpecFor(sliderId);
   if (!spec) return 0;
   const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
-  if (!main || main.kind !== "image") return 0;
+  if (!main || main.kind !== "image") return sliderId === "grain_size" ? 0.5 : 0;
   const ef = main.effects.find((e) => e.id === spec.effectId);
-  if (!ef) return 0;
+  if (!ef) return sliderId === "grain_size" ? 0.5 : 0;
   const v = ef.params[spec.paramKey];
-  return typeof v === "number" ? v : 0;
+  if (typeof v === "number") return v;
+  return sliderId === "grain_size" ? 0.5 : 0;
 }
 
 export function mainHasDuotone(recipe: Recipe): boolean {
   const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
   if (!main || main.kind !== "image") return false;
   return main.effects.some((e) => e.id === "duotone");
+}
+
+/** Resolve Lab slider list for a pack's axes (pack-first UX). */
+export function slidersForAxes(axes: string[]): SliderSpec[] {
+  const out: SliderSpec[] = [];
+  for (const id of axes) {
+    if (id === "duotone") {
+      out.push(DUOTONE_SLIDER);
+      continue;
+    }
+    const spec = SEMANTIC_SLIDERS.find((s) => s.id === id);
+    if (spec) out.push(spec);
+  }
+  return out;
 }

@@ -158,6 +158,22 @@ describe("validateRecipe", () => {
     }
   });
 
+  it("admits blur and grain.size in range", () => {
+    const raw = recipeWithMain("a");
+    raw.objects[0]!.effects = [
+      { id: "blur", params: { amount: 0.4 } },
+      { id: "grain", params: { amount: 0.3, size: 0.6 } },
+    ];
+    const r = validateRecipe(raw);
+    expect(r.objects[0]?.effects).toHaveLength(2);
+  });
+
+  it("rejects blur OOR", () => {
+    const raw = recipeWithMain("a");
+    raw.objects[0]!.effects = [{ id: "blur", params: { amount: 2 } }];
+    expect(() => validateRecipe(raw)).toThrow(/out of range/i);
+  });
+
   it("round-trips JSON", () => {
     const r = validateRecipe(recipeWithMain("x"));
     const again = validateRecipe(JSON.parse(JSON.stringify(r)));

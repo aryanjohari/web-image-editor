@@ -1,8 +1,9 @@
 {
   "id": "poster-punch",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "label": "Poster Punch",
   "summary": "High-key contrast, chroma, vignette, and duotone accent",
+  "family": "poster",
   "axes": ["contrast", "chroma", "vignette", "duotone"],
   "mainEffects": [
     { "id": "contrast", "params": { "amount": 0.55 } },
@@ -20,5 +21,9 @@
   "overlay": {
     "opacity": 0.35,
     "blend": "screen"
+  },
+  "textHints": {
+    "position": "bottom-left",
+    "typePreset": "sans-bold"
   }
 }

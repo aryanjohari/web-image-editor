@@ -22,6 +22,7 @@ uniform float u_duotone;
 uniform float u_vignette;
 uniform float u_grain;
 uniform float u_grainSeed;
+uniform float u_grainSize;
 uniform vec3 u_duotoneShadow;
 uniform vec3 u_duotoneHighlight;
 
@@ -34,6 +35,7 @@ uniform float u_subject_duotone;
 uniform float u_subject_vignette;
 uniform float u_subject_grain;
 uniform float u_subject_grainSeed;
+uniform float u_subject_grainSize;
 uniform vec3 u_subject_duotoneShadow;
 uniform vec3 u_subject_duotoneHighlight;
 
@@ -46,6 +48,7 @@ uniform float u_background_duotone;
 uniform float u_background_vignette;
 uniform float u_background_grain;
 uniform float u_background_grainSeed;
+uniform float u_background_grainSize;
 uniform vec3 u_background_duotoneShadow;
 uniform vec3 u_background_duotoneHighlight;
 
@@ -89,6 +92,7 @@ vec3 applyGradeParams(
   float vignette,
   float grain,
   float grainSeed,
+  float grainSize,
   vec3 duotoneShadow,
   vec3 duotoneHighlight
 ) {
@@ -128,7 +132,9 @@ vec3 applyGradeParams(
   }
 
   if (grain > 1e-5) {
-    float n = hash21(uv * vec2(1024.0, 768.0) + vec2(grainSeed * 17.0, grainSeed * 31.0)) - 0.5;
+    // size 0 → fine (~2048), size 1 → coarse (~256); default mid ≈ 0.5
+    float gScale = mix(2048.0, 256.0, clamp(grainSize, 0.0, 1.0));
+    float n = hash21(uv * vec2(gScale, gScale * 0.75) + vec2(grainSeed * 17.0, grainSeed * 31.0)) - 0.5;
     rgb += n * grain * 0.22;
   }
 
@@ -148,6 +154,7 @@ vec3 applyGlobalGrade(vec3 rgb, vec2 uv) {
     u_vignette,
     u_grain,
     u_grainSeed,
+    u_grainSize,
     u_duotoneShadow,
     u_duotoneHighlight
   );
@@ -172,6 +179,7 @@ void main() {
       u_subject_vignette,
       u_subject_grain,
       u_subject_grainSeed,
+      u_subject_grainSize,
       u_subject_duotoneShadow,
       u_subject_duotoneHighlight
     );
@@ -187,6 +195,7 @@ void main() {
       u_background_vignette,
       u_background_grain,
       u_background_grainSeed,
+      u_background_grainSize,
       u_background_duotoneShadow,
       u_background_duotoneHighlight
     );

@@ -1,0 +1,23 @@
+{
+  "id": "clean-editorial",
+  "version": "1.0.0",
+  "label": "Clean Editorial",
+  "summary": "Quiet magazine: soft contrast, mild mute",
+  "family": "editorial",
+  "axes": ["contrast", "chroma", "fade", "bg_mute"],
+  "mainEffects": [
+    { "id": "contrast", "params": { "amount": 0.12 } },
+    { "id": "saturation", "params": { "amount": -0.22 } },
+    { "id": "fade", "params": { "amount": 0.14 } },
+    { "id": "temperature", "params": { "amount": -0.05 } },
+    { "id": "grain", "params": { "amount": 0.08 } },
+    { "id": "vignette", "params": { "amount": 0.15 } }
+  ],
+  "regionalDefaults": {
+    "subject": [],
+    "background": [
+      { "id": "saturation", "params": { "amount": -0.35 } },
+      { "id": "fade", "params": { "amount": 0.15 } }
+    ]
+  }
+}

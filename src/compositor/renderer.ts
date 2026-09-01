@@ -16,6 +16,8 @@ import {
 import vertSrc from "./shaders/quad.vert.glsl";
 import texturedFrag from "./shaders/textured.frag.glsl";
 import blitFrag from "./shaders/blit.frag.glsl";
+import blurFrag from "./shaders/blur.frag.glsl";
+import mixMaskFrag from "./shaders/mixMask.frag.glsl";
 
 export type CompositorError = {
   code: string;
@@ -48,6 +50,8 @@ type GradeUniforms = {
   vignette: number;
   grain: number;
   grainSeed: number;
+  grainSize: number;
+  blur: number;
   duotoneShadow: [number, number, number];
   duotoneHighlight: [number, number, number];
 };
@@ -81,6 +85,8 @@ const IDENTITY_GRADE: GradeUniforms = {
   vignette: 0,
   grain: 0,
   grainSeed: 0,
+  grainSize: 0.5,
+  blur: 0,
   duotoneShadow: [0.1, 0.06, 0.19],
   duotoneHighlight: [0.95, 0.9, 0.78],
 };
@@ -106,6 +112,36 @@ function grainSeedOf(effects: Effect[]): number {
   return typeof v === "number" ? v : 0;
 }
 
+function grainSizeOf(effects: Effect[]): number {
+  const ef = effects.find((e) => e.id === "grain");
+  if (!ef) return 0.5;
+  const v = ef.params.size;
+  return typeof v === "number" ? v : 0.5;
+}
+
+/**
+ * Merge global + regional stacks: regional overrides same effect id;
+ * global ops not in regional pass through (M06 pack craft / warm-film+mask).
+ */
+export function mergeEffectStacks(base: Effect[], overlay: Effect[]): Effect[] {
+  const byId = new Map<string, Effect>();
+  const order: string[] = [];
+  for (const e of base) {
+    if (!byId.has(e.id)) order.push(e.id);
+    byId.set(e.id, { id: e.id, params: { ...e.params } });
+  }
+  for (const e of overlay) {
+    if (!byId.has(e.id)) order.push(e.id);
+    const prev = byId.get(e.id);
+    if (!prev) {
+      byId.set(e.id, { id: e.id, params: { ...e.params } });
+      continue;
+    }
+    byId.set(e.id, { id: e.id, params: { ...prev.params, ...e.params } });
+  }
+  return order.map((id) => byId.get(id)!);
+}
+
 function gradeFromEffects(effects: Effect[], enable: boolean): GradeUniforms {
   if (!enable) return IDENTITY_GRADE;
   const duo = effects.find((e) => e.id === "duotone");
@@ -128,6 +164,8 @@ function gradeFromEffects(effects: Effect[], enable: boolean): GradeUniforms {
     vignette: amountOf(effects, "vignette"),
     grain: amountOf(effects, "grain"),
     grainSeed: grainSeedOf(effects),
+    grainSize: grainSizeOf(effects),
+    blur: amountOf(effects, "blur"),
     duotoneShadow: shadow,
     duotoneHighlight: highlight,
   };
@@ -179,8 +217,12 @@ export class Compositor {
   private readonly quadBuffer: WebGLBuffer;
   private readonly texturedProg: WebGLProgram;
   private readonly blitProg: WebGLProgram;
+  private readonly blurProg: WebGLProgram;
+  private readonly mixMaskProg: WebGLProgram;
   private fboA: Fbo | null = null;
   private fboB: Fbo | null = null;
+  /** Extra RT for sharp retain during regional bg blur. */
+  private fboC: Fbo | null = null;
   private textureCache = new Map<string, UploadedTexture>();
   private textTex: UploadedTexture | null = null;
   private textKey = "";
@@ -194,6 +236,8 @@ export class Compositor {
     this.quadBuffer = quad.buffer;
     this.texturedProg = linkProgram(this.gl, vertSrc, texturedFrag);
     this.blitProg = linkProgram(this.gl, vertSrc, blitFrag);
+    this.blurProg = linkProgram(this.gl, vertSrc, blurFrag);
+    this.mixMaskProg = linkProgram(this.gl, vertSrc, mixMaskFrag);
   }
 
   getError(): CompositorError | null {
@@ -236,6 +280,7 @@ export class Compositor {
     };
     this.fboA = rebuild(this.fboA);
     this.fboB = rebuild(this.fboB);
+    this.fboC = rebuild(this.fboC);
   }
 
   private async resolveTexture(
@@ -330,11 +375,18 @@ export class Compositor {
   ): { regional: boolean; grade: GradeUniforms; subject: GradeUniforms; background: GradeUniforms } {
     const useRegional = obj.role === "main" && !!obj.maskRef && !!obj.regional;
     if (useRegional && obj.regional) {
+      const globalFx = obj.effects;
       return {
         regional: true,
         grade: IDENTITY_GRADE,
-        subject: gradeFromEffects(obj.regional.subject.effects, true),
-        background: gradeFromEffects(obj.regional.background.effects, true),
+        subject: gradeFromEffects(
+          mergeEffectStacks(globalFx, obj.regional.subject.effects),
+          true,
+        ),
+        background: gradeFromEffects(
+          mergeEffectStacks(globalFx, obj.regional.background.effects),
+          true,
+        ),
       };
     }
     return {
@@ -360,6 +412,7 @@ export class Compositor {
     gl.uniform1f(p("vignette"), grade.vignette);
     gl.uniform1f(p("grain"), grade.grain);
     gl.uniform1f(p("grainSeed"), grade.grainSeed);
+    gl.uniform1f(p("grainSize"), grade.grainSize);
     gl.uniform3f(
       p("duotoneShadow"),
       grade.duotoneShadow[0],
@@ -516,6 +569,121 @@ export class Compositor {
     gl.drawArrays(gl.TRIANGLES, 0, 6);
   }
 
+  /** One separable blur pass (horizontal or vertical). */
+  private blurPass(
+    srcTex: WebGLTexture,
+    target: WebGLFramebuffer,
+    viewW: number,
+    viewH: number,
+    texel: [number, number],
+    radiusPx: number,
+  ): void {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target);
+    gl.viewport(0, 0, viewW, viewH);
+    gl.useProgram(this.blurProg);
+    gl.bindVertexArray(this.vao);
+    gl.uniform2f(gl.getUniformLocation(this.blurProg, "u_scale"), 1, 1);
+    gl.uniform2f(gl.getUniformLocation(this.blurProg, "u_offset"), 0, 0);
+    gl.uniform1f(gl.getUniformLocation(this.blurProg, "u_rotation"), 0);
+    gl.uniform2f(gl.getUniformLocation(this.blurProg, "u_texel"), texel[0], texel[1]);
+    gl.uniform1f(gl.getUniformLocation(this.blurProg, "u_radius"), radiusPx);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, srcTex);
+    gl.uniform1i(gl.getUniformLocation(this.blurProg, "u_tex"), 0);
+    gl.disable(gl.BLEND);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  /**
+   * Separable H+V blur via ping-pong. Returns FBO holding blurred result.
+   * Uses src as read; tmp as intermediate; may write back to src.
+   */
+  private applySeparableBlur(
+    src: Fbo,
+    tmp: Fbo,
+    viewW: number,
+    viewH: number,
+    amount: number,
+  ): Fbo {
+    const radiusPx = Math.max(0, amount) * 16;
+    if (radiusPx < 0.5) return src;
+    this.blurPass(src.texture, tmp.framebuffer, viewW, viewH, [1 / viewW, 0], radiusPx);
+    this.blurPass(tmp.texture, src.framebuffer, viewW, viewH, [0, 1 / viewH], radiusPx);
+    return src;
+  }
+
+  /** mix(blurred, sharp, mask) — subject stays sharp (M06 §4.3). */
+  private mixSharpBlurred(
+    sharpTex: WebGLTexture,
+    blurredTex: WebGLTexture,
+    maskTex: WebGLTexture,
+    target: WebGLFramebuffer,
+    viewW: number,
+    viewH: number,
+  ): void {
+    const gl = this.gl;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target);
+    gl.viewport(0, 0, viewW, viewH);
+    gl.useProgram(this.mixMaskProg);
+    gl.bindVertexArray(this.vao);
+    gl.uniform2f(gl.getUniformLocation(this.mixMaskProg, "u_scale"), 1, 1);
+    gl.uniform2f(gl.getUniformLocation(this.mixMaskProg, "u_offset"), 0, 0);
+    gl.uniform1f(gl.getUniformLocation(this.mixMaskProg, "u_rotation"), 0);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, sharpTex);
+    gl.uniform1i(gl.getUniformLocation(this.mixMaskProg, "u_sharp"), 0);
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, blurredTex);
+    gl.uniform1i(gl.getUniformLocation(this.mixMaskProg, "u_blurred"), 1);
+    gl.activeTexture(gl.TEXTURE2);
+    gl.bindTexture(gl.TEXTURE_2D, maskTex);
+    gl.uniform1i(gl.getUniformLocation(this.mixMaskProg, "u_mask"), 2);
+    gl.disable(gl.BLEND);
+    gl.drawArrays(gl.TRIANGLES, 0, 6);
+  }
+
+  /**
+   * After pointwise grade on main: optional blur before overlay/text.
+   * Regional: blur full then mix sharp subject. Global: blur full.
+   */
+  private applyMainBlurIfNeeded(
+    curRead: Fbo,
+    curWrite: Fbo,
+    scratch: Fbo,
+    viewW: number,
+    viewH: number,
+    gradeState: {
+      regional: boolean;
+      grade: GradeUniforms;
+      subject: GradeUniforms;
+      background: GradeUniforms;
+    },
+    maskTex: UploadedTexture | null,
+  ): Fbo {
+    const blurAmount = gradeState.regional
+      ? gradeState.background.blur
+      : gradeState.grade.blur;
+    if (blurAmount < 1e-4) return curRead;
+
+    if (gradeState.regional && maskTex) {
+      // Retain sharp graded main in scratch.
+      this.blitTexture(curRead.texture, scratch.framebuffer, viewW, viewH);
+      const blurred = this.applySeparableBlur(curRead, curWrite, viewW, viewH, blurAmount);
+      this.mixSharpBlurred(
+        scratch.texture,
+        blurred.texture,
+        maskTex.texture,
+        curWrite.framebuffer,
+        viewW,
+        viewH,
+      );
+      return curWrite;
+    }
+
+    return this.applySeparableBlur(curRead, curWrite, viewW, viewH, blurAmount);
+  }
+
   private async ensureTextTexture(
     obj: RecipeObject & { kind: "text" },
     textScale: number,
@@ -547,6 +715,7 @@ export class Compositor {
     viewW: number,
     viewH: number,
     textScale: number,
+    scratch?: Fbo | null,
   ): Promise<Fbo> {
     const gl = this.gl;
     const layers = [...input.recipe.objects]
@@ -567,8 +736,9 @@ export class Compositor {
         const tex = await this.resolveTexture(obj, input.assetsById);
         const gradeState = this.mainGradeState(obj);
         let drawState = gradeDrawState(gradeState.grade);
+        let maskTex: UploadedTexture | null = null;
         if (gradeState.regional) {
-          const maskTex = await this.resolveMaskTexture(obj.maskRef, input.assetsById);
+          maskTex = await this.resolveMaskTexture(obj.maskRef, input.assetsById);
           drawState = gradeDrawState(
             gradeState.grade,
             true,
@@ -608,6 +778,23 @@ export class Compositor {
           const tmp = curRead;
           curRead = curWrite;
           curWrite = tmp;
+        }
+
+        // Blur after pointwise grade on main, before overlay/text (M06 §4.3).
+        if (obj.role === "main" && scratch) {
+          const afterBlur = this.applyMainBlurIfNeeded(
+            curRead,
+            curWrite,
+            scratch,
+            viewW,
+            viewH,
+            gradeState,
+            maskTex,
+          );
+          if (afterBlur !== curRead) {
+            curWrite = curRead;
+            curRead = afterBlur;
+          }
         }
       } else if (obj.kind === "text") {
         const textTex = await this.ensureTextTexture(obj, textScale);
@@ -722,6 +909,7 @@ export class Compositor {
 
     const fboA = this.createTempFbo(viewW, viewH);
     const fboB = this.createTempFbo(viewW, viewH);
+    const fboC = this.createTempFbo(viewW, viewH);
     try {
       const finalFbo = await this.composeToFbos(
         input,
@@ -730,6 +918,7 @@ export class Compositor {
         viewW,
         viewH,
         textScale,
+        fboC,
       );
       gl.bindFramebuffer(gl.FRAMEBUFFER, finalFbo.framebuffer);
       const pixels = new Uint8Array(viewW * viewH * 4);
@@ -755,6 +944,7 @@ export class Compositor {
     } finally {
       this.deleteFbo(fboA);
       this.deleteFbo(fboB);
+      this.deleteFbo(fboC);
       this.textKey = "";
       if (this.textTex) {
         gl.deleteTexture(this.textTex.texture);
@@ -770,7 +960,7 @@ export class Compositor {
     const viewW = this.canvas.width;
     const viewH = this.canvas.height;
     this.ensureFbos(viewW, viewH);
-    if (!this.fboA || !this.fboB) return false;
+    if (!this.fboA || !this.fboB || !this.fboC) return false;
 
     try {
       const finalFbo = await this.composeToFbos(
@@ -780,6 +970,7 @@ export class Compositor {
         viewW,
         viewH,
         1,
+        this.fboC,
       );
       this.blitTexture(finalFbo.texture, null, viewW, viewH);
       return true;
@@ -815,8 +1006,14 @@ export class Compositor {
       gl.deleteFramebuffer(this.fboB.framebuffer);
       gl.deleteTexture(this.fboB.texture);
     }
+    if (this.fboC) {
+      gl.deleteFramebuffer(this.fboC.framebuffer);
+      gl.deleteTexture(this.fboC.texture);
+    }
     gl.deleteProgram(this.texturedProg);
     gl.deleteProgram(this.blitProg);
+    gl.deleteProgram(this.blurProg);
+    gl.deleteProgram(this.mixMaskProg);
     gl.deleteBuffer(this.quadBuffer);
     gl.deleteVertexArray(this.vao);
   }

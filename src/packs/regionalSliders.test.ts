@@ -25,12 +25,17 @@ describe("regionalSliders", () => {
     expect(readRegionalSliderValue(next, "subject_pop")).toBe(0.35);
   });
 
-  it("covers all four slider ids", () => {
-    expect(REGIONAL_SLIDERS).toHaveLength(4);
+  it("covers all five regional slider ids", () => {
+    expect(REGIONAL_SLIDERS).toHaveLength(5);
     for (const spec of REGIONAL_SLIDERS) {
       const next = applyRegionalSlider(base, spec.id, spec.min);
       expect(readRegionalSliderValue(next, spec.id)).toBe(spec.min);
     }
+  });
+
+  it("maps bg_blur to background blur amount", () => {
+    const next = applyRegionalSlider(base, "bg_blur", 0.45);
+    expect(readRegionalSliderValue(next, "bg_blur")).toBe(0.45);
   });
 });
 

@@ -1,5 +1,7 @@
 # Prism — border vision (draft)
 
+**Status:** v1 shipped on `rewrite/v1-styling` — see [`STATUS.md`](STATUS.md).
+
 A personal **lab + sometimes-used tool** for still-image **parametric** looks (image-as-matrix math on the GPU). Built for Aryan. Frequency: sometimes — ADA is the daily system.
 
 Blank-slate redesign on `rewrite/v1-styling`.

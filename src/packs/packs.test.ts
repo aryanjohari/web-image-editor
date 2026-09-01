@@ -10,17 +10,29 @@ import {
   listPacks,
   PACK_IDS,
   readRegionalSliderValue,
+  readSliderValue,
   resetLook,
   scaleEffectsByIntensity,
 } from "./index";
 
 describe("packs catalog", () => {
-  it("loads exactly 3 Tier A packs validated against registry", () => {
+  it("loads exactly 8 M06 packs validated against registry", () => {
     const packs = listPacks();
+    expect(packs).toHaveLength(8);
     expect(packs.map((p) => p.id).sort()).toEqual([...PACK_IDS].sort());
     for (const id of PACK_IDS) {
       expect(getPack(id).mainEffects.length).toBeGreaterThan(0);
+      expect(getPack(id).family).toBeTruthy();
     }
+  });
+
+  it("F3: blur ships in dusk-grain and muted-split defaults", () => {
+    const dusk = getPack("dusk-grain");
+    const muted = getPack("muted-split");
+    const duskBlur = dusk.regionalDefaults?.background?.some((e) => e.id === "blur");
+    const mutedBlur = muted.regionalDefaults?.background?.some((e) => e.id === "blur");
+    expect(duskBlur).toBe(true);
+    expect(mutedBlur).toBe(true);
   });
 
   it("F5: any two packs differ in at least one mainEffects param", () => {
@@ -64,9 +76,11 @@ describe("applyPack", () => {
     expect(main && main.kind === "image").toBe(true);
     if (main && main.kind === "image") {
       for (const ef of main.effects) {
-        for (const v of Object.values(ef.params)) {
-          if (typeof v === "number") expect(v).toBe(0);
-          else expect(typeof v).toBe("string");
+        for (const [key, v] of Object.entries(ef.params)) {
+          if (typeof v === "number") {
+            if (ef.id === "grain" && key === "size") expect(v).toBe(0.5);
+            else expect(v).toBe(0);
+          } else expect(typeof v).toBe("string");
         }
       }
     }
@@ -111,6 +125,16 @@ describe("applyPack", () => {
     const half = applyPack(masked, "warm-film", { intensity: 0.5 });
     expect(readRegionalSliderValue(half, "bg_mute")).toBeCloseTo(-0.35);
   });
+
+  it("applies textHints on poster-punch (creates text if missing)", () => {
+    const next = applyPack(recipeWithMain("m1"), "poster-punch");
+    const text = next.objects.find((o) => o.kind === "text");
+    expect(text && text.kind === "text").toBe(true);
+    if (text && text.kind === "text") {
+      expect(text.transform.y).toBeLessThan(0);
+      expect(text.text.fontWeight).toBe(700);
+    }
+  });
 });
 
 describe("semantic sliders", () => {
@@ -123,6 +147,17 @@ describe("semantic sliders", () => {
       const contrast = main.effects.find((e) => e.id === "contrast");
       expect(contrast?.params.amount).toBeCloseTo(0.42);
     }
+  });
+
+  it("blur and grain_size PathPatch identity", () => {
+    let r = applySemanticSlider(recipeWithMain("m1"), "blur", 0.4);
+    expect(readSliderValue(r, "blur")).toBeCloseTo(0.4);
+    r = applySemanticSlider(r, "grain_size", 0.7);
+    expect(readSliderValue(r, "grain_size")).toBeCloseTo(0.7);
+    const main = r.objects.find((o) => o.kind === "image" && o.role === "main");
+    expect(main && main.kind === "image" && main.effects.some((e) => e.id === "blur")).toBe(
+      true,
+    );
   });
 
   it("F4: illegal PathPatch / OOR rejected", () => {

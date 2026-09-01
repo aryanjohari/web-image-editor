@@ -1,0 +1,24 @@
+{
+  "id": "muted-split",
+  "version": "1.0.0",
+  "label": "Muted Split",
+  "summary": "Subject chroma alive; background muted + soft",
+  "family": "portrait-split",
+  "axes": ["chroma", "contrast", "bg_mute", "bg_fade", "bg_blur", "subject_chroma"],
+  "mainEffects": [
+    { "id": "contrast", "params": { "amount": 0.12 } },
+    { "id": "saturation", "params": { "amount": -0.05 } },
+    { "id": "fade", "params": { "amount": 0.08 } }
+  ],
+  "regionalDefaults": {
+    "subject": [
+      { "id": "saturation", "params": { "amount": 0.1 } },
+      { "id": "contrast", "params": { "amount": 0.2 } }
+    ],
+    "background": [
+      { "id": "saturation", "params": { "amount": -0.85 } },
+      { "id": "fade", "params": { "amount": 0.35 } },
+      { "id": "blur", "params": { "amount": 0.45 } }
+    ]
+  }
+}

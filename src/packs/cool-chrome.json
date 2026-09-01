@@ -1,0 +1,16 @@
+{
+  "id": "cool-chrome",
+  "version": "1.0.0",
+  "label": "Cool Chrome",
+  "summary": "Cool Y2K punch (parametric, not foil)",
+  "family": "film",
+  "axes": ["warmth", "chroma", "contrast", "fade"],
+  "mainEffects": [
+    { "id": "temperature", "params": { "amount": -0.35 } },
+    { "id": "contrast", "params": { "amount": 0.4 } },
+    { "id": "saturation", "params": { "amount": 0.35 } },
+    { "id": "fade", "params": { "amount": 0.05 } },
+    { "id": "grain", "params": { "amount": 0.12, "size": 0.3 } },
+    { "id": "vignette", "params": { "amount": 0.2 } }
+  ]
+}

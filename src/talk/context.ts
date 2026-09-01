@@ -11,7 +11,15 @@ import {
   type SemanticSliderId,
 } from "../packs";
 import type { Recipe } from "../recipe/types";
-import type { RecipeContext, RecipeContextRegionalSliders, RecipeContextSliders } from "./types";
+import type {
+  RecipeContext,
+  RecipeContextRegionalSliders,
+  RecipeContextSelection,
+  RecipeContextSliders,
+  RecipeContextTransform,
+} from "./types";
+
+const TEXT_CONTENT_MAX = 80;
 
 function mainEffectIds(recipe: Recipe): string[] {
   const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
@@ -27,7 +35,28 @@ function readRegionalSliders(recipe: Recipe): RecipeContextRegionalSliders {
   return out;
 }
 
-export function buildRecipeContext(recipe: Recipe): RecipeContext {
+function compactTransform(t: {
+  x: number;
+  y: number;
+  scaleX: number;
+  scaleY: number;
+}): RecipeContextTransform {
+  return {
+    x: t.x,
+    y: t.y,
+    scaleX: t.scaleX,
+    scaleY: t.scaleY,
+  };
+}
+
+export type BuildRecipeContextOptions = {
+  selection?: RecipeContextSelection;
+};
+
+export function buildRecipeContext(
+  recipe: Recipe,
+  options: BuildRecipeContextOptions = {},
+): RecipeContext {
   const sliders: RecipeContextSliders = {
     exposure: readSliderValue(recipe, "exposure"),
     contrast: readSliderValue(recipe, "contrast"),
@@ -35,12 +64,19 @@ export function buildRecipeContext(recipe: Recipe): RecipeContext {
     chroma: readSliderValue(recipe, "chroma"),
     fade: readSliderValue(recipe, "fade"),
     grain: readSliderValue(recipe, "grain"),
+    grain_size: readSliderValue(recipe, "grain_size"),
     vignette: readSliderValue(recipe, "vignette"),
+    blur: readSliderValue(recipe, "blur"),
   };
   if (mainHasDuotone(recipe)) {
     sliders.duotone = readSliderValue(recipe, "duotone");
   }
   const hasMask = mainHasMask(recipe);
+  const overlay = recipe.objects.find((o) => o.kind === "image" && o.role === "overlay");
+  const text = recipe.objects.find((o) => o.kind === "text");
+  const hasOverlay = !!(overlay && overlay.kind === "image");
+  const hasText = !!(text && text.kind === "text");
+
   return {
     packId: recipe.packId,
     packVersion: recipe.packVersion,
@@ -49,6 +85,18 @@ export function buildRecipeContext(recipe: Recipe): RecipeContext {
     ...(hasMask
       ? { hasMask: true, regionalSliders: readRegionalSliders(recipe) }
       : {}),
+    hasOverlay,
+    hasText,
+    ...(hasText && text && text.kind === "text"
+      ? {
+          textContent: text.text.content.slice(0, TEXT_CONTENT_MAX),
+          textTransform: compactTransform(text.transform),
+        }
+      : {}),
+    ...(hasOverlay && overlay && overlay.kind === "image"
+      ? { overlayTransform: compactTransform(overlay.transform) }
+      : {}),
+    selection: options.selection ?? "none",
   };
 }
 

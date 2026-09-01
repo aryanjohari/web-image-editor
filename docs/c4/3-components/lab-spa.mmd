@@ -1,0 +1,27 @@
+%% C3 Components — lab-spa (Prism Lab SPA)
+
+C4Component
+  title Components — Lab SPA
+  Container_Boundary(labSpa, "prism-lab") {
+    Component(routes, "Route switch", "App.tsx", "/ Lab; /hero hero-lite")
+    Component(labUi, "Lab shell", "Lab.tsx, styles.css", "Pack picker, sliders, talk, export, inspector")
+    Component(canvasOverlay, "Canvas overlay", "CanvasOverlay.tsx, canvas/*", "DOM handles; drag/resize text; hit-test")
+    Component(packs, "Pack catalog", "src/packs/*", "8 named packs; applyPack; axes-first sliders")
+    Component(regional, "Regional sliders", "regionalSliders.ts", "Subject/background grade when mask active")
+    Component(exportUi, "Export actions", "src/export/*", "PNG FBO; recipe JSON; #r= hash encode/decode")
+    Component(recipeStore, "Recipe persistence", "localStorage + validate", "prism.recipe.v1; boot from #r=")
+    Component(assetUi, "Asset upload", "Lab + idb", "Main, overlay; auto mask trigger")
+    Component(talkClient, "Talk client", "src/talk/*", "buildRecipeContext; postTalk; applyTalk")
+  }
+
+  Rel(routes, labUi, "Renders at /")
+  Rel(routes, routes, "Hero at /hero")
+  Rel(labUi, packs, "applyPack / resetLook")
+  Rel(labUi, regional, "applyRegionalSlider")
+  Rel(labUi, recipeStore, "validate + save")
+  Rel(labUi, assetUi, "putAsset / getAsset")
+  Rel(labUi, canvasOverlay, "Selection + PathPatch transforms")
+  Rel(labUi, exportUi, "downloadPng / hash")
+  Rel(labUi, talkClient, "Optional intent")
+  Rel(talkClient, packs, "Same helpers as UI sliders")
+  Rel(talkClient, regional, "Regional talk tools")

@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "defaultLevel": "context",
+  "context": { "path": "docs/c4/1-context.mmd" },
+  "containers": { "path": "docs/c4/2-containers.mmd" },
+  "zoom": [
+    {
+      "id": "prism",
+      "label": "Prism",
+      "fromLevel": "context",
+      "toLevel": "containers",
+      "matchLabels": ["Prism", "Prism Lab"],
+      "componentsPath": "docs/c4/2-containers.mmd"
+    },
+    {
+      "id": "prism-lab",
+      "label": "Lab SPA",
+      "fromLevel": "containers",
+      "toLevel": "components",
+      "matchLabels": ["Lab SPA", "prism-lab"],
+      "componentsPath": "docs/c4/3-components/lab-spa.mmd"
+    },
+    {
+      "id": "talk-api",
+      "label": "Talk API",
+      "fromLevel": "containers",
+      "toLevel": "components",
+      "matchLabels": ["Talk API", "talk-api"],
+      "componentsPath": "docs/c4/3-components/talk-api.mmd"
+    },
+    {
+      "id": "compositor",
+      "label": "WebGL compositor",
+      "fromLevel": "containers",
+      "toLevel": "components",
+      "matchLabels": ["WebGL compositor", "compositor"],
+      "componentsPath": "docs/c4/3-components/compositor.mmd"
+    }
+  ],
+  "componentZooms": [
+    {
+      "id": "prism-lab",
+      "label": "Lab SPA",
+      "path": "docs/c4/3-components/lab-spa.mmd",
+      "markdownPath": "docs/c4/3-components/lab-spa.md"
+    },
+    {
+      "id": "talk-api",
+      "label": "Talk API",
+      "path": "docs/c4/3-components/talk-api.mmd",
+      "markdownPath": "docs/c4/3-components/talk-api.md"
+    },
+    {
+      "id": "compositor",
+      "label": "WebGL compositor",
+      "path": "docs/c4/3-components/compositor.mmd",
+      "markdownPath": "docs/c4/3-components/compositor.md"
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+title: Prism
+slug: prism
+summary: Parametric still-photo styling in the browser — closed look packs, semantic sliders, optional Gemini talk router, WebGL2 compositor, PNG + recipe export.
+description: >
+  Prism is a personal lab for deterministic photo looks: upload a still, pick one of eight named packs
+  (film, editorial, poster, portrait-split), tune semantic and regional sliders, optionally describe intent
+  via talk (structured JSON patch — not generative pixels), and export PNG plus a serializable recipe.
+  The same recipe powers a quiet hero-lite embed at /hero. Recipe is truth; GPU does the math; talk and
+  sliders write the same document. Not Stage, not Canva, not inpaint.
+stack:
+  - TypeScript
+  - React
+  - Vite
+  - WebGL2
+  - GLSL
+  - Gemini API
+  - MediaPipe
+  - IndexedDB
+  - fflate
+status: shipped
+# Canonical visitor diagram = C2 containers. Zoom index for Context→Containers→Components:
+diagram: docs/c4/2-containers.mmd
+# c4: docs/c4/portfolio-map.json   # prefer this when the portfolio site supports it
+docs: https://github.com/aryanjohari/web-image-editor/blob/rewrite/v1-styling/docs/c4/README.md
+links:
+  github: https://github.com/aryanjohari/web-image-editor
+  demo: https://image.arkhives.nz
+  docs: https://github.com/aryanjohari/web-image-editor/blob/rewrite/v1-styling/docs/c4/README.md

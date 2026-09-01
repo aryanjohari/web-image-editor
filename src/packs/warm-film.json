@@ -1,15 +1,16 @@
 {
   "id": "warm-film",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "label": "Warm Film",
   "summary": "Scanner warmth, soft blacks, edge falloff, grain",
+  "family": "film",
   "axes": ["warmth", "fade", "grain", "vignette"],
   "mainEffects": [
     { "id": "temperature", "params": { "amount": 0.35 } },
     { "id": "contrast", "params": { "amount": 0.15 } },
     { "id": "saturation", "params": { "amount": -0.1 } },
     { "id": "fade", "params": { "amount": 0.22 } },
-    { "id": "grain", "params": { "amount": 0.35 } },
+    { "id": "grain", "params": { "amount": 0.35, "size": 0.4 } },
     { "id": "vignette", "params": { "amount": 0.4 } }
   ],
   "regionalDefaults": {

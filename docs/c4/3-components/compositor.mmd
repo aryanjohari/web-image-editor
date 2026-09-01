@@ -1,0 +1,20 @@
+%% C3 Components — compositor (WebGL2)
+
+C4Component
+  title Components — WebGL compositor
+  Container_Boundary(compositor, "compositor") {
+    Component(glHost, "GL context", "src/compositor/gl.ts", "WebGL2 context; FBO pool")
+    Component(renderer, "Compositor renderer", "renderer.ts", "composeToFbos; preview + export paths")
+    Component(gradeShader, "Grade shader", "textured.frag.glsl", "exposure through grain; mask regional mix")
+    Component(blurPass, "Blur ping-pong", "blur.frag.glsl, mixMask.frag.glsl", "Regional bg blur after grade")
+    Component(textRaster, "Text raster", "textRaster.ts", "Canvas2D to texture; export height scale")
+    Component(textureUpload, "Texture upload", "textureUpload.ts", "IDB blobs and url refs to GL")
+    Component(exportFbo, "Export FBO", "renderer + export/png.ts", "Native main resolution readback")
+  }
+
+  Rel(renderer, glHost, "FBO bind / draw")
+  Rel(renderer, textureUpload, "Asset resolve")
+  Rel(renderer, gradeShader, "Main + overlay + text composite")
+  Rel(renderer, blurPass, "When blur effect active")
+  Rel(renderer, textRaster, "Text object to sampler")
+  Rel(exportFbo, renderer, "composeToFbos at export size")
