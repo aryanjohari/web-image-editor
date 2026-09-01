@@ -3,9 +3,9 @@
  * Used by Vite middleware and Vercel serverless route.
  */
 
-import { normalizeTalkResponse } from "../src/talk/normalize";
-import type { TalkRequest } from "../src/talk/types";
-import type { TalkResponse } from "../src/talk/types";
+import { normalizeTalkResponse } from "../../src/talk/normalize";
+import type { TalkRequest } from "../../src/talk/types";
+import type { TalkResponse } from "../../src/talk/types";
 import {
   getGeminiApiKey,
   RATE_LIMIT_MAX,

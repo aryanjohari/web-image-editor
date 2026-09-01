@@ -24,6 +24,7 @@ Prism v1 proves the loop: **pack → sliders (+ regional) → optional talk → 
 ## Known limits
 
 - Talk is a **router**, not vision or co-pilot; refinement can be imperfect
+- **Hotfix (2026-09-01):** Vercel `/api/talk` required talk core under `api/_lib/` (not `server/`) for serverless bundling — redeploy after merge; smoke `POST /api/talk` or Lab “more grain” with `GEMINI_API_KEY` set
 - One **person mask** on main; no multi-mask or overlay masks
 - **Eight packs** only; no free effect UI or LUT catalog
 - **Minimal text** — one text object; 3 positions, 2 type presets; not Canva

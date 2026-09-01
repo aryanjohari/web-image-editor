@@ -4,8 +4,8 @@
  */
 
 import { GoogleGenAI } from "@google/genai";
-import { TALK_RESPONSE_SCHEMA, TALK_SYSTEM_PROMPT } from "../src/talk/schema";
-import type { TalkRequest } from "../src/talk/types";
+import { TALK_RESPONSE_SCHEMA, TALK_SYSTEM_PROMPT } from "../../src/talk/schema";
+import type { TalkRequest } from "../../src/talk/types";
 import { GEMINI_MODEL_ID } from "./env";
 
 export type GeminiTalkResult =

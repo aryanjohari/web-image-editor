@@ -1,10 +1,10 @@
 /**
  * Vercel serverless POST /api/talk (I3b).
- * Reuses server/talkCore — same contract as dev Vite middleware.
+ * Reuses api/_lib/talkCore — same contract as dev Vite middleware.
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { clientIpFromForwarded, processTalk } from "../server/talkCore";
+import { clientIpFromForwarded, processTalk } from "./_lib/talkCore.js";
 
 type VercelRequest = IncomingMessage & {
   method?: string;

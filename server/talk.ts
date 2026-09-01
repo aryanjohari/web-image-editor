@@ -3,7 +3,7 @@
  */
 
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { clientIpFromForwarded, processTalk } from "./talkCore";
+import { clientIpFromForwarded, processTalk } from "../api/_lib/talkCore.js";
 
 function clientIp(req: IncomingMessage): string {
   return clientIpFromForwarded(

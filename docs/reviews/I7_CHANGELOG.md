@@ -16,6 +16,7 @@
 | 2026-09-01 | S8 | DONE | `docs/demo/README.md`, `docs/demo/.gitkeep` | Screenshot checklist |
 | 2026-09-01 | S9 | DONE | `docs/VISION.md`, `docs/modules/README.md` | Cross-links |
 | 2026-09-01 | hotfix | DONE | `src/packs/regionalSliders.ts` | `readRegionalSliderValue` no longer throws on empty recipe |
+| 2026-09-01 | hotfix | DONE | `api/_lib/*`, `api/talk.ts`, `server/talk.ts` | Vercel `/api/talk`: colocate talk core under `api/_lib` so serverless bundle includes `processTalk` (fixes `ERR_MODULE_NOT_FOUND` for `server/talkCore`) |
 
 ## Portfolio ingest checklist
 
