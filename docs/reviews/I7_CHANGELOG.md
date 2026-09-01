@@ -15,6 +15,7 @@
 | 2026-09-01 | S7 | DONE | `docs/archive/STAGE_ON_MAIN.md` | Stage legacy pointer |
 | 2026-09-01 | S8 | DONE | `docs/demo/README.md`, `docs/demo/.gitkeep` | Screenshot checklist |
 | 2026-09-01 | S9 | DONE | `docs/VISION.md`, `docs/modules/README.md` | Cross-links |
+| 2026-09-01 | hotfix | DONE | `src/packs/regionalSliders.ts` | `readRegionalSliderValue` no longer throws on empty recipe |
 
 ## Portfolio ingest checklist
 

@@ -92,14 +92,6 @@ function deepClone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v)) as T;
 }
 
-function mainImage(recipe: Recipe) {
-  const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
-  if (!main || main.kind !== "image") {
-    throw new Error("ensureRegionalEffect: no main image object");
-  }
-  return main;
-}
-
 /**
  * Ensure main.regional[region] has effect `effectId`.
  * Requires maskRef + regional on main (validated after merge).
@@ -159,7 +151,8 @@ export function readRegionalSliderValue(
 ): number {
   const spec = REGIONAL_SLIDERS.find((s) => s.id === sliderId);
   if (!spec) return 0;
-  const main = mainImage(recipe);
+  const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
+  if (!main || main.kind !== "image") return 0;
   const stack = main.regional?.[spec.region]?.effects;
   if (!stack) return 0;
   const ef = stack.find((e: Effect) => e.id === spec.effectId);

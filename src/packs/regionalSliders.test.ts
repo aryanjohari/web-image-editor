@@ -5,11 +5,19 @@ import {
   readRegionalSliderValue,
   REGIONAL_SLIDERS,
 } from "./regionalSliders";
-import { recipeWithMain } from "../recipe/identityRecipe";
+import { identityRecipe, recipeWithMain } from "../recipe/identityRecipe";
 import { applyPathPatch } from "../recipe/pathPatch";
 
 describe("regionalSliders", () => {
   const base = attachPersonMask(recipeWithMain("photo-1"), "mask-1");
+
+  it("returns 0 for every regional slider on empty recipe (no main)", () => {
+    const empty = identityRecipe();
+    expect(empty.objects).toEqual([]);
+    for (const spec of REGIONAL_SLIDERS) {
+      expect(readRegionalSliderValue(empty, spec.id)).toBe(0);
+    }
+  });
 
   it("maps bg_mute to background saturation path", () => {
     const next = applyRegionalSlider(base, "bg_mute", -0.85);

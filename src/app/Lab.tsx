@@ -1056,13 +1056,19 @@ export function Lab() {
           )}
           {regionalSliderList.map((spec) => (
             <label key={spec.id}>
-              {spec.label} {readRegionalSliderValue(recipe, spec.id).toFixed(2)}
+              {spec.label}{" "}
+              {(hasMain(recipe)
+                ? readRegionalSliderValue(recipe, spec.id)
+                : 0
+              ).toFixed(2)}
               <input
                 type="range"
                 min={spec.min}
                 max={spec.max}
                 step={spec.step}
-                value={readRegionalSliderValue(recipe, spec.id)}
+                value={
+                  hasMain(recipe) ? readRegionalSliderValue(recipe, spec.id) : 0
+                }
                 disabled={!maskReady}
                 onChange={(e) => onRegionalSlider(spec.id, Number(e.target.value))}
               />
