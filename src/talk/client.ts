@@ -69,7 +69,10 @@ export async function postTalk(
     try {
       body = await res.json();
     } catch {
-      throw new TalkClientError("SCHEMA", "response was not JSON");
+      throw new TalkClientError(
+        "SCHEMA",
+        `response was not JSON (status ${res.status})`,
+      );
     }
 
     if (!res.ok) {

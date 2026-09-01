@@ -9,7 +9,7 @@
     }
   ],
   "functions": {
-    "api/talk.ts": {
+    "api/talk.js": {
       "maxDuration": 15
     }
   }

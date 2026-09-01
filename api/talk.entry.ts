@@ -1,5 +1,5 @@
 /**
- * Vercel serverless POST /api/talk (I3b).
+ * Vercel serverless POST /api/talk (I3b) — esbuild entry (bundled → api/talk.js).
  * Reuses api/_lib/talkCore — same contract as dev Vite middleware.
  */
 
