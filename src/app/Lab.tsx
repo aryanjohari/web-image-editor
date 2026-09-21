@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { getAsset, listAssets, putAsset } from "../assets/idb";
+import { useEffect, useRef, useState, type DragEvent } from "react";
+import { getAsset, putAsset } from "../assets/idb";
 import { AssetStoreError } from "../assets/errors";
 import type { AssetRecord } from "../assets/types";
 import type { CanvasSelection, SizePx } from "../canvas";
@@ -14,7 +14,6 @@ import {
   mainHasDuotone,
   mainHasMask,
   PACK_FAMILIES,
-  PACK_IDS,
   readRegionalSliderValue,
   readSliderValue,
   REGIONAL_SLIDERS,
@@ -129,6 +128,12 @@ function hasMain(recipe: Recipe): boolean {
   return recipe.objects.some((o) => o.kind === "image" && o.role === "main");
 }
 
+function takeImageFile(files: FileList | null): File | null {
+  const file = files?.[0];
+  if (!file || !file.type.startsWith("image/")) return null;
+  return file;
+}
+
 function recipePeek(recipe: Recipe): string {
   const main = recipe.objects.find((o) => o.kind === "image" && o.role === "main");
   const effects = main && main.kind === "image" ? main.effects : [];
@@ -166,7 +171,6 @@ export function Lab() {
     const t = recipeRef.current.objects.find((o) => o.kind === "text");
     return t && t.kind === "text" ? t.text.content : "Prism";
   });
-  const [libraryCount, setLibraryCount] = useState(0);
   const [glReady, setGlReady] = useState(false);
   const [intensity, setIntensity] = useState(1);
   const [talkText, setTalkText] = useState("");
@@ -179,7 +183,7 @@ export function Lab() {
   const [reconnectMaskId, setReconnectMaskId] = useState<string | null>(null);
   const [selection, setSelection] = useState<CanvasSelection | null>(null);
   const [overlaySize, setOverlaySize] = useState<SizePx | null>(null);
-  const [assetsCollapsed, setAssetsCollapsed] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
 
   recipeRef.current = recipe;
   const packs = listPacks();
@@ -212,6 +216,7 @@ export function Lab() {
   const overlayObj = recipe.objects.find((o) => o.kind === "image" && o.role === "overlay");
   const hasText = !!(textObj && textObj.kind === "text");
   const hasOverlay = !!(overlayObj && overlayObj.kind === "image");
+  const photoReady = hasMain(recipe);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -304,17 +309,6 @@ export function Lab() {
       cancelled = true;
     };
   }, [recipe, glReady]);
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const list = await listAssets();
-      if (!cancelled) setLibraryCount(list.length);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [recipe]);
 
   useEffect(() => {
     let cancelled = false;
@@ -753,9 +747,9 @@ export function Lab() {
   async function onCopyLink() {
     try {
       const hash = encodeRecipeHash(recipe);
-      const url = `${window.location.origin}${window.location.pathname}${hash}`;
+      const url = `${window.location.origin}/lab${hash}`;
       await navigator.clipboard.writeText(url);
-      window.history.replaceState(null, "", hash);
+      window.history.replaceState(null, "", `/lab${hash}`);
       setToast("Share link copied (recipe only — photos reconnect locally)");
       setError(null);
     } catch (e) {
@@ -769,364 +763,446 @@ export function Lab() {
     }
   }
 
+  function onMainInput(files: FileList | null) {
+    const file = takeImageFile(files);
+    if (file) void onMainFile(file);
+  }
+
+  function onCanvasDragOver(e: DragEvent<HTMLDivElement>) {
+    if (photoReady) return;
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function onCanvasDragLeave(e: DragEvent<HTMLDivElement>) {
+    if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+    setDragOver(false);
+  }
+
+  function onCanvasDrop(e: DragEvent<HTMLDivElement>) {
+    if (photoReady) return;
+    e.preventDefault();
+    setDragOver(false);
+    onMainInput(e.dataTransfer.files);
+  }
+
   return (
     <div className="lab">
       <div className="lab-stage">
         <ErrorBanner message={error} />
         <div
-          className={`canvas-wrap${reconnectMainId || reconnectMaskId ? " canvas-blocked" : ""}`}
+          className={`canvas-wrap${reconnectMainId || reconnectMaskId ? " canvas-blocked" : ""}${
+            !photoReady ? " canvas-empty" : ""
+          }${dragOver ? " is-dragover" : ""}`}
           ref={wrapRef}
+          onDragOver={onCanvasDragOver}
+          onDragLeave={onCanvasDragLeave}
+          onDrop={onCanvasDrop}
         >
           <canvas ref={canvasRef} width={640} height={480} />
-          <CanvasOverlay
-            recipe={recipe}
-            selection={selection}
-            onSelect={setSelection}
-            onTransformLive={onCanvasTransform}
-            overlaySize={overlaySize}
-            disabled={!!reconnectMainId || !!reconnectMaskId}
-          />
+          {photoReady && (
+            <CanvasOverlay
+              recipe={recipe}
+              selection={selection}
+              onSelect={setSelection}
+              onTransformLive={onCanvasTransform}
+              overlaySize={overlaySize}
+              disabled={!!reconnectMainId || !!reconnectMaskId}
+            />
+          )}
+          {!photoReady && (
+            <label className="canvas-drop">
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  onMainInput(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+              <span className="canvas-drop-title">Drop a still, or choose a photo</span>
+              <span className="muted">PNG, JPEG, or WebP — stays in this browser</span>
+            </label>
+          )}
         </div>
-        <p className="muted canvas-hint">
-          {selection
-            ? `Selected ${selection} — drag to move, corners to scale, Esc to clear`
-            : "Click text or overlay on canvas to select · Preview grey until main upload"}
-        </p>
+        {photoReady && (
+          <p className="muted canvas-hint">
+            {selection
+              ? `Selected ${selection} — drag to move, corners to scale, Esc to clear`
+              : "Click text or overlay on canvas to select"}
+          </p>
+        )}
+        {!glReady && <p className="muted canvas-hint">Starting WebGL…</p>}
       </div>
 
       <aside className="lab-rail panel">
-        <div className="rail-assets">
-          <button
-            type="button"
-            className="rail-collapse"
-            onClick={() => setAssetsCollapsed((v) => !v)}
-          >
-            {assetsCollapsed ? "Assets ▸" : "Assets ▾"}
-          </button>
-          {!assetsCollapsed && (
-            <>
-              <label className="compact-file">
-                Main
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => void onMainFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-              <div className="mask-block compact">
-                <p className="panel-heading">
-                  Mask{" "}
-                  <span className={`mask-chip mask-${maskStatus}`}>{maskStatus}</span>
-                </p>
-                {maskBanner && <p className="muted mask-banner">{maskBanner}</p>}
+        {!photoReady ? (
+          <>
+            <p className="panel-heading">Start here</p>
+            <p className="muted">Drop a still on the canvas, or choose a photo.</p>
+            <label className="button-primary file-button">
+              Choose a photo
+              <input
+                className="sr-only"
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  onMainInput(e.target.files);
+                  e.target.value = "";
+                }}
+              />
+            </label>
+            <ol className="lab-howto">
+              <li>Upload a still</li>
+              <li>Pick a look pack</li>
+              <li>Tune sliders, or type a mood</li>
+              <li>Export PNG + recipe</li>
+            </ol>
+          </>
+        ) : (
+          <>
+            <div className="pack-block">
+              <p className="panel-heading">Look</p>
+              <div className="pack-row">
                 <button
                   type="button"
-                  disabled={!hasMain(recipe) || maskStatus === "generating"}
-                  onClick={() => void onRegenerateMask()}
+                  className={recipe.packId === null ? "active" : undefined}
+                  onClick={() => onPack(null)}
                 >
-                  {maskStatus === "generating" ? "Generating…" : "Regen mask"}
+                  None
                 </button>
               </div>
-              <label className="compact-file">
-                Overlay
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={(e) => void onOverlayFile(e.target.files?.[0] ?? null)}
-                />
-              </label>
-            </>
-          )}
-        </div>
-
-        <div className="inspector-block">
-          <p className="panel-heading">Inspector</p>
-          {!selection && (
-            <div className="inspector-empty">
-              <p className="muted">Select text or overlay on canvas.</p>
-              {!hasText && (
-                <button type="button" onClick={onAddText}>
-                  Add text
-                </button>
-              )}
-            </div>
-          )}
-          {selection === "text" && (
-            <div className="inspector-fields">
-              {!hasText ? (
-                <button type="button" onClick={onAddText}>
-                  Add text
-                </button>
-              ) : (
-                <>
-                  <label>
-                    Content
-                    <input
-                      type="text"
-                      value={textDraft}
-                      onChange={(e) => setTextDraft(e.target.value)}
-                      onBlur={onTextCommit}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") onTextCommit();
-                      }}
-                    />
-                  </label>
-                  <label>
-                    Size{" "}
-                    {textObj && textObj.kind === "text"
-                      ? textObj.text.fontSize
-                      : 48}
-                    <input
-                      type="range"
-                      min={16}
-                      max={160}
-                      step={1}
-                      value={
-                        textObj && textObj.kind === "text" ? textObj.text.fontSize : 48
-                      }
-                      onChange={(e) => onFontSize(Number(e.target.value))}
-                    />
-                  </label>
-                  <div className="pack-row">
-                    {TEXT_POSITIONS.map((pos) => (
-                      <button
-                        key={pos}
-                        type="button"
-                        onClick={() => onTextPosition(pos)}
-                      >
-                        {pos}
-                      </button>
-                    ))}
+              {PACK_FAMILIES.map((family) => {
+                const familyPacks = packs.filter((p) => p.family === family);
+                if (familyPacks.length === 0) return null;
+                return (
+                  <div key={family} className="pack-family">
+                    <p className="muted pack-family-label">{family}</p>
+                    <div className="pack-row">
+                      {familyPacks.map((p) => (
+                        <button
+                          key={p.id}
+                          type="button"
+                          className={recipe.packId === p.id ? "active" : undefined}
+                          onClick={() => onPack(p.id)}
+                          title={p.summary}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="pack-row">
-                    {TYPE_PRESETS.map((preset) => (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => onTypePreset(preset)}
-                      >
-                        {preset}
-                      </button>
-                    ))}
-                  </div>
-                </>
-              )}
-            </div>
-          )}
-          {selection === "overlay" && hasOverlay && overlayObj && overlayObj.kind === "image" && (
-            <div className="inspector-fields">
+                );
+              })}
               <label>
-                Opacity {overlayObj.opacity.toFixed(2)}
+                Intensity {intensity.toFixed(2)}
                 <input
                   type="range"
                   min={0}
                   max={1}
                   step={0.01}
-                  value={overlayObj.opacity}
-                  onChange={(e) => onOverlayOpacity(Number(e.target.value))}
-                />
-              </label>
-              <label>
-                Blend
-                <select
-                  value={overlayObj.blend}
-                  onChange={(e) => onOverlayBlend(e.target.value as BlendMode)}
-                >
-                  {BLEND_OPTIONS.map((b) => (
-                    <option key={b} value={b}>
-                      {b}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Scale {overlayObj.transform.scaleX.toFixed(2)}
-                <input
-                  type="range"
-                  min={0.15}
-                  max={4}
-                  step={0.01}
-                  value={overlayObj.transform.scaleX}
-                  onChange={(e) => onOverlayScale(Number(e.target.value))}
+                  value={intensity}
+                  disabled={!recipe.packId}
+                  onChange={(e) => onIntensity(Number(e.target.value))}
                 />
               </label>
             </div>
-          )}
-          {selection === "overlay" && !hasOverlay && (
-            <p className="muted">Upload an overlay image first.</p>
-          )}
-        </div>
 
-        <div className="talk-block">
-          <p className="panel-heading">Talk</p>
-          <label>
-            Mood / refine
-            <input
-              type="text"
-              value={talkText}
-              disabled={talkBusy}
-              placeholder="warm film, mute bg, move title up…"
-              onChange={(e) => setTalkText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void onTalkSend();
-              }}
-            />
-          </label>
-          <button
-            type="button"
-            disabled={talkBusy || !talkText.trim()}
-            onClick={() => void onTalkSend()}
-          >
-            {talkBusy ? "Sending…" : "Send"}
-          </button>
-          {talkStatus && <p className="muted talk-status">{talkStatus}</p>}
-        </div>
+            <div className="slider-block">
+              <p className="panel-heading">
+                {activePack ? `Tune · ${activePack.label}` : "Tune"}
+              </p>
+              {!activePack ? (
+                <p className="muted">Pick a look pack first.</p>
+              ) : (
+                sliderSpecs.map((spec) => (
+                  <label key={spec.id}>
+                    {spec.label} {readSliderValue(recipe, spec.id).toFixed(2)}
+                    <input
+                      type="range"
+                      min={spec.min}
+                      max={spec.max}
+                      step={spec.step}
+                      value={readSliderValue(recipe, spec.id)}
+                      disabled={!hasMain(recipe)}
+                      onChange={(e) => onSlider(spec.id, Number(e.target.value))}
+                    />
+                  </label>
+                ))
+              )}
+            </div>
 
-        <div className="pack-block">
-          <p className="panel-heading">Packs</p>
-          <div className="pack-row">
-            <button
-              type="button"
-              className={recipe.packId === null ? "active" : undefined}
-              onClick={() => onPack(null)}
-            >
-              None
-            </button>
-          </div>
-          {PACK_FAMILIES.map((family) => {
-            const familyPacks = packs.filter((p) => p.family === family);
-            if (familyPacks.length === 0) return null;
-            return (
-              <div key={family} className="pack-family">
-                <p className="muted pack-family-label">{family}</p>
-                <div className="pack-row">
-                  {familyPacks.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={recipe.packId === p.id ? "active" : undefined}
-                      onClick={() => onPack(p.id)}
-                      title={p.summary}
-                    >
-                      {p.label}
-                    </button>
+            <div className="export-block">
+              <p className="panel-heading">Export</p>
+              <div className="pack-row">
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={!hasMain(recipe) || exportBusy}
+                  onClick={() => void onDownloadPng()}
+                >
+                  {exportBusy ? "Exporting…" : "PNG"}
+                </button>
+                <button type="button" onClick={onDownloadRecipe}>
+                  Recipe
+                </button>
+                <button type="button" onClick={() => void onCopyLink()}>
+                  Link
+                </button>
+                <button
+                  type="button"
+                  disabled={!hasMain(recipe) || exportBusy}
+                  onClick={() => void onDownloadBoth()}
+                >
+                  Both
+                </button>
+              </div>
+              <p className="muted honesty">
+                PNG matches lab preview (handles never export).
+              </p>
+              {toast && <p className="muted">{toast}</p>}
+              {reconnectMainId && (
+                <p className="reconnect">
+                  Main asset <code>{reconnectMainId}</code> missing — re-upload main.
+                </p>
+              )}
+              {reconnectMaskId && (
+                <p className="reconnect">
+                  Mask asset <code>{reconnectMaskId}</code> missing — regen or re-upload.
+                </p>
+              )}
+            </div>
+
+            <div className="talk-block">
+              <p className="panel-heading">Talk</p>
+              <label>
+                Mood / refine
+                <input
+                  type="text"
+                  value={talkText}
+                  disabled={talkBusy}
+                  placeholder="warm film, mute bg, move title up…"
+                  onChange={(e) => setTalkText(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") void onTalkSend();
+                  }}
+                />
+              </label>
+              <button
+                type="button"
+                disabled={talkBusy || !talkText.trim()}
+                onClick={() => void onTalkSend()}
+              >
+                {talkBusy ? "Sending…" : "Send"}
+              </button>
+              {talkStatus && <p className="muted talk-status">{talkStatus}</p>}
+            </div>
+
+            <details className="lab-more">
+              <summary>More</summary>
+              <div className="lab-more-body">
+                <label className="compact-file">
+                  Replace photo
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      onMainInput(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                <div className="mask-block compact">
+                  <p className="panel-heading">
+                    Mask{" "}
+                    <span className={`mask-chip mask-${maskStatus}`}>{maskStatus}</span>
+                  </p>
+                  {maskBanner && <p className="muted mask-banner">{maskBanner}</p>}
+                  <button
+                    type="button"
+                    disabled={!hasMain(recipe) || maskStatus === "generating"}
+                    onClick={() => void onRegenerateMask()}
+                  >
+                    {maskStatus === "generating" ? "Generating…" : "Regen mask"}
+                  </button>
+                </div>
+                <label className="compact-file">
+                  Overlay
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => void onOverlayFile(e.target.files?.[0] ?? null)}
+                  />
+                </label>
+
+                <div className="inspector-block">
+                  <p className="panel-heading">Inspector</p>
+                  {!selection && (
+                    <div className="inspector-empty">
+                      <p className="muted">Select text or overlay on canvas.</p>
+                      {!hasText && (
+                        <button type="button" onClick={onAddText}>
+                          Add text
+                        </button>
+                      )}
+                    </div>
+                  )}
+                  {selection === "text" && (
+                    <div className="inspector-fields">
+                      {!hasText ? (
+                        <button type="button" onClick={onAddText}>
+                          Add text
+                        </button>
+                      ) : (
+                        <>
+                          <label>
+                            Content
+                            <input
+                              type="text"
+                              value={textDraft}
+                              onChange={(e) => setTextDraft(e.target.value)}
+                              onBlur={onTextCommit}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") onTextCommit();
+                              }}
+                            />
+                          </label>
+                          <label>
+                            Size{" "}
+                            {textObj && textObj.kind === "text"
+                              ? textObj.text.fontSize
+                              : 48}
+                            <input
+                              type="range"
+                              min={16}
+                              max={160}
+                              step={1}
+                              value={
+                                textObj && textObj.kind === "text"
+                                  ? textObj.text.fontSize
+                                  : 48
+                              }
+                              onChange={(e) => onFontSize(Number(e.target.value))}
+                            />
+                          </label>
+                          <div className="pack-row">
+                            {TEXT_POSITIONS.map((pos) => (
+                              <button
+                                key={pos}
+                                type="button"
+                                onClick={() => onTextPosition(pos)}
+                              >
+                                {pos}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="pack-row">
+                            {TYPE_PRESETS.map((preset) => (
+                              <button
+                                key={preset}
+                                type="button"
+                                onClick={() => onTypePreset(preset)}
+                              >
+                                {preset}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  )}
+                  {selection === "overlay" &&
+                    hasOverlay &&
+                    overlayObj &&
+                    overlayObj.kind === "image" && (
+                      <div className="inspector-fields">
+                        <label>
+                          Opacity {overlayObj.opacity.toFixed(2)}
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.01}
+                            value={overlayObj.opacity}
+                            onChange={(e) => onOverlayOpacity(Number(e.target.value))}
+                          />
+                        </label>
+                        <label>
+                          Blend
+                          <select
+                            value={overlayObj.blend}
+                            onChange={(e) =>
+                              onOverlayBlend(e.target.value as BlendMode)
+                            }
+                          >
+                            {BLEND_OPTIONS.map((b) => (
+                              <option key={b} value={b}>
+                                {b}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          Scale {overlayObj.transform.scaleX.toFixed(2)}
+                          <input
+                            type="range"
+                            min={0.15}
+                            max={4}
+                            step={0.01}
+                            value={overlayObj.transform.scaleX}
+                            onChange={(e) => onOverlayScale(Number(e.target.value))}
+                          />
+                        </label>
+                      </div>
+                    )}
+                  {selection === "overlay" && !hasOverlay && (
+                    <p className="muted">Upload an overlay image first.</p>
+                  )}
+                </div>
+
+                <div className="slider-block regional-block">
+                  <p className="panel-heading">Regional</p>
+                  {!maskReady && (
+                    <p className="muted">Enabled when person mask is ready.</p>
+                  )}
+                  {regionalSliderList.map((spec) => (
+                    <label key={spec.id}>
+                      {spec.label}{" "}
+                      {(hasMain(recipe)
+                        ? readRegionalSliderValue(recipe, spec.id)
+                        : 0
+                      ).toFixed(2)}
+                      <input
+                        type="range"
+                        min={spec.min}
+                        max={spec.max}
+                        step={spec.step}
+                        value={
+                          hasMain(recipe)
+                            ? readRegionalSliderValue(recipe, spec.id)
+                            : 0
+                        }
+                        disabled={!maskReady}
+                        onChange={(e) =>
+                          onRegionalSlider(spec.id, Number(e.target.value))
+                        }
+                      />
+                    </label>
                   ))}
                 </div>
+
+                <details className="recipe-peek">
+                  <summary>Recipe peek</summary>
+                  <pre>{recipePeek(recipe)}</pre>
+                </details>
+                <button type="button" onClick={onReset}>
+                  Reset recipe
+                </button>
               </div>
-            );
-          })}
-          <label>
-            Intensity {intensity.toFixed(2)}
-            <input
-              type="range"
-              min={0}
-              max={1}
-              step={0.01}
-              value={intensity}
-              disabled={!recipe.packId}
-              onChange={(e) => onIntensity(Number(e.target.value))}
-            />
-          </label>
-        </div>
-
-        <div className="slider-block">
-          <p className="panel-heading">
-            {activePack ? `Axes · ${activePack.label}` : "Sliders"}
-          </p>
-          {sliderSpecs.map((spec) => (
-            <label key={spec.id}>
-              {spec.label} {readSliderValue(recipe, spec.id).toFixed(2)}
-              <input
-                type="range"
-                min={spec.min}
-                max={spec.max}
-                step={spec.step}
-                value={readSliderValue(recipe, spec.id)}
-                disabled={!hasMain(recipe)}
-                onChange={(e) => onSlider(spec.id, Number(e.target.value))}
-              />
-            </label>
-          ))}
-        </div>
-
-        <div className="slider-block regional-block">
-          <p className="panel-heading">Regional</p>
-          {!maskReady && (
-            <p className="muted">Enabled when person mask is ready.</p>
-          )}
-          {regionalSliderList.map((spec) => (
-            <label key={spec.id}>
-              {spec.label}{" "}
-              {(hasMain(recipe)
-                ? readRegionalSliderValue(recipe, spec.id)
-                : 0
-              ).toFixed(2)}
-              <input
-                type="range"
-                min={spec.min}
-                max={spec.max}
-                step={spec.step}
-                value={
-                  hasMain(recipe) ? readRegionalSliderValue(recipe, spec.id) : 0
-                }
-                disabled={!maskReady}
-                onChange={(e) => onRegionalSlider(spec.id, Number(e.target.value))}
-              />
-            </label>
-          ))}
-        </div>
-
-        <div className="export-block">
-          <p className="panel-heading">Export</p>
-          <div className="pack-row">
-            <button
-              type="button"
-              disabled={!hasMain(recipe) || exportBusy}
-              onClick={() => void onDownloadPng()}
-            >
-              {exportBusy ? "Exporting…" : "PNG"}
-            </button>
-            <button type="button" onClick={onDownloadRecipe}>
-              Recipe
-            </button>
-            <button type="button" onClick={() => void onCopyLink()}>
-              Link
-            </button>
-            <button
-              type="button"
-              disabled={!hasMain(recipe) || exportBusy}
-              onClick={() => void onDownloadBoth()}
-            >
-              Both
-            </button>
-          </div>
-          <p className="muted honesty">
-            PNG matches lab preview (handles never export).
-          </p>
-          {toast && <p className="muted">{toast}</p>}
-          {reconnectMainId && (
-            <p className="reconnect">
-              Main asset <code>{reconnectMainId}</code> missing — re-upload main.
-            </p>
-          )}
-          {reconnectMaskId && (
-            <p className="reconnect">
-              Mask asset <code>{reconnectMaskId}</code> missing — regen or re-upload.
-            </p>
-          )}
-        </div>
-
-        <button type="button" onClick={onReset}>
-          Reset recipe
-        </button>
-        <p className="muted rail-meta">
-          IDB {libraryCount} · {!glReady ? "Starting WebGL…" : PACK_IDS.length + " packs"}
-        </p>
-
-        <details className="recipe-peek">
-          <summary>Recipe peek</summary>
-          <pre>{recipePeek(recipe)}</pre>
-        </details>
+            </details>
+          </>
+        )}
       </aside>
     </div>
   );

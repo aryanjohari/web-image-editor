@@ -75,7 +75,7 @@ Declared in root [`portfolio.yaml`](../portfolio.yaml).
 
 Deployable pieces:
 
-1. **Lab SPA** — static Vite build; routes `/` and `/hero`.
+1. **Lab SPA** — static Vite build; routes `/` (cover), `/lab`, and `/hero`.
 2. **Talk API** — Vercel serverless `api/talk.ts` (+ Vite middleware in dev).
 3. **Compositor** — browser WebGL2 (`src/compositor/renderer.ts`).
 4. **IndexedDB** — local asset blobs (main, overlay, mask).
@@ -106,7 +106,9 @@ npm run build
 npm run dev
 ```
 
-**Lab loop:** upload portrait → pick pack → move sliders → optional talk with `GEMINI_API_KEY` → drag text → Download PNG / Recipe / Copy link.
+**Cover:** open `/` — briefing + framed compositor still; **Open the lab** → `/lab`. Share hashes on `/#r=` redirect to `/lab`.
+
+**Lab loop:** `/lab` → upload portrait → pick pack → move sliders → optional talk with `GEMINI_API_KEY` → drag text → Download PNG / Recipe / Copy link.
 
 **Mask:** portrait upload → auto mask → regional sliders (`muted-split` needs mask).
 

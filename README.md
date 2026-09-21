@@ -26,7 +26,7 @@ Prism is **not** Stage (animated hero martech, Jobs API, campaign packs), **not*
 ```bash
 npm install
 npm test
-npm run dev      # Lab → http://localhost:5173
+npm run dev      # Cover → http://localhost:5173  ·  Lab → /lab
 ```
 
 Copy [`.env.example`](.env.example) to `.env` and set `GEMINI_API_KEY` for talk (optional — packs/sliders/export work without it).
@@ -38,7 +38,8 @@ npm run preview
 
 | Path | Purpose |
 |------|---------|
-| `/` | **Lab** — upload, packs, sliders, talk, canvas, export |
+| `/` | **Cover** — what Prism is, how to use it, open the lab |
+| `/lab` | **Lab** — upload, packs, sliders, talk, canvas, export |
 | `/hero` | **Hero-lite** — same renderer, quiet background embed |
 
 ## Deploy (Vercel)
@@ -69,7 +70,7 @@ npm run preview
 
 | Area | Files |
 |------|--------|
-| Routes | `src/app/App.tsx`, `Lab.tsx`, `Hero.tsx`, `CanvasOverlay.tsx` |
+| Routes | `src/app/App.tsx`, `routes.ts`, `Cover.tsx`, `Lab.tsx`, `Hero.tsx`, `HeroStage.tsx`, `CanvasOverlay.tsx` |
 | Recipe | `src/recipe/*` |
 | Compositor | `src/compositor/*` |
 | Packs / sliders | `src/packs/*` |

@@ -22,7 +22,7 @@ Operator-captured Lab exports for README thumbnails, portfolio gallery, and M06 
 
 ## Capture procedure
 
-1. `npm run dev` → open `/`
+1. `npm run dev` → open `/lab`
 2. Upload a suitable portrait (for `muted-split`, wait for mask chip / regional sliders)
 3. Select pack from family group
 4. Adjust axes only if needed for readability at thumbnail size

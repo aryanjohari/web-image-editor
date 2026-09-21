@@ -6,7 +6,7 @@ Internals of the Prism Lab SPA (browser). One recipe document drives preview, ex
 
 | ID / label | Evidence | Role |
 |------------|----------|------|
-| Route switch | `src/app/App.tsx` | `/` → Lab; `/hero` → hero-lite (same compositor, no chrome) |
+| Route switch | `src/app/App.tsx` | `/` → cover; `/lab` → Lab; `/hero` → hero-lite (same compositor, no chrome). Cover `#r=` redirects to `/lab`. |
 | Lab shell | `src/app/Lab.tsx`, `styles.css` | Pack families, axis-first sliders, regional group, talk field, export buttons, inspector |
 | Canvas overlay | `src/app/CanvasOverlay.tsx`, `src/canvas/*` | DOM selection chrome over WebGL canvas; drag/resize → PathPatch on text transform |
 | Pack catalog | `src/packs/catalog.ts`, `*.json`, `applyPack.ts` | 8 packs (`warm-film` … `clean-editorial`); intensity lerp; `textHints` for poster |

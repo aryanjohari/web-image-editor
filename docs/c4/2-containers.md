@@ -6,7 +6,7 @@ Runnable pieces in this repo. Machine IDs: `prism-lab` (Lab SPA), `talk-api`, `c
 
 | ID | Technology | Responsibility | Evidence |
 |----|------------|----------------|----------|
-| `prism-lab` | Vite + React + TypeScript | `/` Lab UI; `/hero` hero-lite; packs, sliders, talk stub, canvas overlay, export | `src/app/App.tsx`, `Lab.tsx`, `Hero.tsx`, `CanvasOverlay.tsx` |
+| `prism-lab` | Vite + React + TypeScript | `/` cover; `/lab` Lab UI; `/hero` hero-lite; packs, sliders, talk stub, canvas overlay, export | `src/app/App.tsx`, `Cover.tsx`, `Lab.tsx`, `Hero.tsx`, `CanvasOverlay.tsx` |
 | `compositor` | WebGL2 + GLSL | Recipe → draw; grade chain; regional mask mix; blur ping-pong; export FBO readback | `src/compositor/renderer.ts`, `shaders/*.glsl` |
 | `talk-api` | Vercel serverless + Vite plugin | `POST /api/talk`; shared `server/talkCore.ts` | `api/talk.ts`, `server/vitePlugin.ts` |
 | `asset-store` | IndexedDB | `putAsset` / `getAsset` for main, overlay, mask | `src/assets/idb.ts` |

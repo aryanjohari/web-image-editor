@@ -3,7 +3,7 @@
 C4Component
   title Components — Lab SPA
   Container_Boundary(labSpa, "prism-lab") {
-    Component(routes, "Route switch", "App.tsx", "/ Lab; /hero hero-lite")
+    Component(routes, "Route switch", "App.tsx", "/ cover; /lab Lab; /hero hero-lite")
     Component(labUi, "Lab shell", "Lab.tsx, styles.css", "Pack picker, sliders, talk, export, inspector")
     Component(canvasOverlay, "Canvas overlay", "CanvasOverlay.tsx, canvas/*", "DOM handles; drag/resize text; hit-test")
     Component(packs, "Pack catalog", "src/packs/*", "8 named packs; applyPack; axes-first sliders")
@@ -14,8 +14,8 @@ C4Component
     Component(talkClient, "Talk client", "src/talk/*", "buildRecipeContext; postTalk; applyTalk")
   }
 
-  Rel(routes, labUi, "Renders at /")
-  Rel(routes, routes, "Hero at /hero")
+  Rel(routes, labUi, "Renders at /lab")
+  Rel(routes, routes, "Cover at /; hero-lite at /hero")
   Rel(labUi, packs, "applyPack / resetLook")
   Rel(labUi, regional, "applyRegionalSlider")
   Rel(labUi, recipeStore, "validate + save")

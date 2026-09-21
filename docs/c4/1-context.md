@@ -6,7 +6,7 @@
 
 | ID | Type | Role | Evidence |
 |----|------|------|----------|
-| `photographer` | Person | Uses Lab at `/`, exports PNG/recipe, optional `/hero` embed | `src/app/Lab.tsx`, `src/app/Hero.tsx` |
+| `photographer` | Person | Reads cover at `/`, uses Lab at `/lab`, exports PNG/recipe, optional `/hero` embed | `src/app/Cover.tsx`, `src/app/Lab.tsx`, `src/app/Hero.tsx` |
 | `prism` | Software system | This repository (SPA + talk API + compositor) | whole repo on `rewrite/v1-styling` |
 | `gemini` | External system | Intent → validated talk patch | `server/talkCore.ts`, `api/talk.ts` |
 | `idb` | External system | Browser asset store | `src/assets/idb.ts` |
