@@ -17,7 +17,7 @@ stack:
   - MediaPipe
   - IndexedDB
   - fflate
-status: shipped
+status: active
 # Canonical visitor diagram = C2 containers. Zoom index for Context→Containers→Components:
 diagram: docs/c4/2-containers.mmd
 # c4: docs/c4/portfolio-map.json   # prefer this when the portfolio site supports it
