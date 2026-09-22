@@ -27,9 +27,9 @@ export function App() {
   return (
     <main className="app">
       <header className="lab-header">
-        <div>
+        <div className="lab-header-brand">
           <p className="lab-kicker">Prism</p>
-          <h1>Lab</h1>
+          <p className="lab-title">Lab</p>
         </div>
         <p className="muted lab-loop">
           Upload → pack → tune → export

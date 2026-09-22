@@ -13,7 +13,6 @@ import {
   listPacks,
   mainHasDuotone,
   mainHasMask,
-  PACK_FAMILIES,
   readRegionalSliderValue,
   readSliderValue,
   REGIONAL_SLIDERS,
@@ -61,6 +60,13 @@ import {
 
 const RECIPE_KEY = "prism.recipe.v1";
 const BLEND_OPTIONS: BlendMode[] = ["normal", "multiply", "screen", "overlay"];
+const TALK_MOOD_CHIPS = [
+  "warm film",
+  "mute bg",
+  "make me pop",
+  "cooler",
+  "more grain",
+] as const;
 
 function loadRecipeFromStorage(): Recipe {
   try {
@@ -634,13 +640,14 @@ export function Lab() {
     }
   }
 
-  async function onTalkSend() {
-    const text = talkText.trim();
+  async function sendTalk(rawText: string) {
+    const text = rawText.trim();
     if (!text || talkBusy) return;
     if (!hasMain(recipe)) {
       setTalkStatus("upload a main image before talk");
       return;
     }
+    setTalkText(text);
     setTalkBusy(true);
     setTalkStatus(null);
     try {
@@ -681,6 +688,10 @@ export function Lab() {
     } finally {
       setTalkBusy(false);
     }
+  }
+
+  function onTalkSend() {
+    void sendTalk(talkText);
   }
 
   useEffect(() => {
@@ -821,8 +832,11 @@ export function Lab() {
                   e.target.value = "";
                 }}
               />
-              <span className="canvas-drop-title">Drop a still, or choose a photo</span>
-              <span className="muted">PNG, JPEG, or WebP — stays in this browser</span>
+              <span className="canvas-drop-title">Drop a still</span>
+              <span className="canvas-drop-choose">Choose photo</span>
+              <span className="muted canvas-drop-hint">
+                PNG, JPEG, or WebP — stays in this browser
+              </span>
             </label>
           )}
         </div>
@@ -836,66 +850,50 @@ export function Lab() {
         {!glReady && <p className="muted canvas-hint">Starting WebGL…</p>}
       </div>
 
-      <aside className="lab-rail panel">
+      <div className={`lab-bar panel${!photoReady ? " lab-bar-empty" : ""}`}>
         {!photoReady ? (
-          <>
-            <p className="panel-heading">Start here</p>
-            <p className="muted">Drop a still on the canvas, or choose a photo.</p>
-            <label className="button-primary file-button">
-              Choose a photo
-              <input
-                className="sr-only"
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  onMainInput(e.target.files);
-                  e.target.value = "";
-                }}
-              />
-            </label>
-            <ol className="lab-howto">
-              <li>Upload a still</li>
-              <li>Pick a look pack</li>
-              <li>Tune sliders, or type a mood</li>
-              <li>Export PNG + recipe</li>
-            </ol>
-          </>
+          <p className="muted lab-bar-loop">Upload → pack → tune → export</p>
         ) : (
           <>
             <div className="pack-block">
-              <p className="panel-heading">Look</p>
-              <div className="pack-row">
-                <button
-                  type="button"
-                  className={recipe.packId === null ? "active" : undefined}
-                  onClick={() => onPack(null)}
-                >
-                  None
-                </button>
+              <div className="pack-block-head">
+                <p className="panel-heading">Look</p>
+                <label className="replace-chip">
+                  Replace
+                  <input
+                    className="sr-only"
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      onMainInput(e.target.files);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
               </div>
-              {PACK_FAMILIES.map((family) => {
-                const familyPacks = packs.filter((p) => p.family === family);
-                if (familyPacks.length === 0) return null;
-                return (
-                  <div key={family} className="pack-family">
-                    <p className="muted pack-family-label">{family}</p>
-                    <div className="pack-row">
-                      {familyPacks.map((p) => (
-                        <button
-                          key={p.id}
-                          type="button"
-                          className={recipe.packId === p.id ? "active" : undefined}
-                          onClick={() => onPack(p.id)}
-                          title={p.summary}
-                        >
-                          {p.label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                );
-              })}
-              <label>
+              <div className="pack-strip">
+                <div className="pack-row">
+                  <button
+                    type="button"
+                    className={recipe.packId === null ? "active" : undefined}
+                    onClick={() => onPack(null)}
+                  >
+                    None
+                  </button>
+                  {packs.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className={recipe.packId === p.id ? "active" : undefined}
+                      onClick={() => onPack(p.id)}
+                      title={`${p.family} · ${p.summary}`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="intensity-label">
                 Intensity {intensity.toFixed(2)}
                 <input
                   type="range"
@@ -916,46 +914,98 @@ export function Lab() {
               {!activePack ? (
                 <p className="muted">Pick a look pack first.</p>
               ) : (
-                sliderSpecs.map((spec) => (
-                  <label key={spec.id}>
-                    {spec.label} {readSliderValue(recipe, spec.id).toFixed(2)}
-                    <input
-                      type="range"
-                      min={spec.min}
-                      max={spec.max}
-                      step={spec.step}
-                      value={readSliderValue(recipe, spec.id)}
-                      disabled={!hasMain(recipe)}
-                      onChange={(e) => onSlider(spec.id, Number(e.target.value))}
-                    />
-                  </label>
-                ))
+                <div className="slider-grid">
+                  {sliderSpecs.map((spec) => (
+                    <label key={spec.id}>
+                      {spec.label} {readSliderValue(recipe, spec.id).toFixed(2)}
+                      <input
+                        type="range"
+                        min={spec.min}
+                        max={spec.max}
+                        step={spec.step}
+                        value={readSliderValue(recipe, spec.id)}
+                        disabled={!hasMain(recipe)}
+                        onChange={(e) => onSlider(spec.id, Number(e.target.value))}
+                      />
+                    </label>
+                  ))}
+                </div>
               )}
             </div>
 
+            <div className="mask-block">
+              <div className="mask-row">
+                <p className="panel-heading">
+                  Mask{" "}
+                  <span className={`mask-chip mask-${maskStatus}`}>{maskStatus}</span>
+                </p>
+                <button
+                  type="button"
+                  disabled={!hasMain(recipe) || maskStatus === "generating"}
+                  onClick={() => void onRegenerateMask()}
+                >
+                  {maskStatus === "generating" ? "Generating…" : "Regen"}
+                </button>
+              </div>
+              {maskBanner && <p className="muted mask-banner">{maskBanner}</p>}
+            </div>
+
+            <div className="talk-block">
+              <p className="panel-heading">Talk</p>
+              <div className="talk-chips pack-strip">
+                <div className="pack-row">
+                  {TALK_MOOD_CHIPS.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      disabled={talkBusy || !hasMain(recipe)}
+                      onClick={() => void sendTalk(chip)}
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="talk-compose">
+                <label>
+                  Mood / refine
+                  <input
+                    type="text"
+                    value={talkText}
+                    disabled={talkBusy}
+                    placeholder="warm film, mute bg, move title up…"
+                    onChange={(e) => setTalkText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") onTalkSend();
+                    }}
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={talkBusy || !talkText.trim()}
+                  onClick={onTalkSend}
+                >
+                  {talkBusy ? "Sending…" : "Send"}
+                </button>
+              </div>
+              {talkStatus && <p className="muted talk-status">{talkStatus}</p>}
+            </div>
+
             <div className="export-block">
-              <p className="panel-heading">Export</p>
-              <div className="pack-row">
+              <div className="lab-bar-actions">
                 <button
                   type="button"
                   className="primary"
                   disabled={!hasMain(recipe) || exportBusy}
                   onClick={() => void onDownloadPng()}
                 >
-                  {exportBusy ? "Exporting…" : "PNG"}
+                  {exportBusy ? "Exporting…" : "Export PNG"}
                 </button>
                 <button type="button" onClick={onDownloadRecipe}>
                   Recipe
                 </button>
                 <button type="button" onClick={() => void onCopyLink()}>
                   Link
-                </button>
-                <button
-                  type="button"
-                  disabled={!hasMain(recipe) || exportBusy}
-                  onClick={() => void onDownloadBoth()}
-                >
-                  Both
                 </button>
               </div>
               <p className="muted honesty">
@@ -974,59 +1024,9 @@ export function Lab() {
               )}
             </div>
 
-            <div className="talk-block">
-              <p className="panel-heading">Talk</p>
-              <label>
-                Mood / refine
-                <input
-                  type="text"
-                  value={talkText}
-                  disabled={talkBusy}
-                  placeholder="warm film, mute bg, move title up…"
-                  onChange={(e) => setTalkText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") void onTalkSend();
-                  }}
-                />
-              </label>
-              <button
-                type="button"
-                disabled={talkBusy || !talkText.trim()}
-                onClick={() => void onTalkSend()}
-              >
-                {talkBusy ? "Sending…" : "Send"}
-              </button>
-              {talkStatus && <p className="muted talk-status">{talkStatus}</p>}
-            </div>
-
             <details className="lab-more">
               <summary>More</summary>
               <div className="lab-more-body">
-                <label className="compact-file">
-                  Replace photo
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => {
-                      onMainInput(e.target.files);
-                      e.target.value = "";
-                    }}
-                  />
-                </label>
-                <div className="mask-block compact">
-                  <p className="panel-heading">
-                    Mask{" "}
-                    <span className={`mask-chip mask-${maskStatus}`}>{maskStatus}</span>
-                  </p>
-                  {maskBanner && <p className="muted mask-banner">{maskBanner}</p>}
-                  <button
-                    type="button"
-                    disabled={!hasMain(recipe) || maskStatus === "generating"}
-                    onClick={() => void onRegenerateMask()}
-                  >
-                    {maskStatus === "generating" ? "Generating…" : "Regen mask"}
-                  </button>
-                </div>
                 <label className="compact-file">
                   Overlay
                   <input
@@ -1196,14 +1196,23 @@ export function Lab() {
                   <summary>Recipe peek</summary>
                   <pre>{recipePeek(recipe)}</pre>
                 </details>
-                <button type="button" onClick={onReset}>
-                  Reset recipe
-                </button>
+                <div className="lab-more-footer">
+                  <button
+                    type="button"
+                    disabled={!hasMain(recipe) || exportBusy}
+                    onClick={() => void onDownloadBoth()}
+                  >
+                    Export both
+                  </button>
+                  <button type="button" onClick={onReset}>
+                    Reset recipe
+                  </button>
+                </div>
               </div>
             </details>
           </>
         )}
-      </aside>
+      </div>
     </div>
   );
 }
