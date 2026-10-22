@@ -1,5 +1,7 @@
 # Prism
 
+> **Status: frozen.** Prism was a learning project and v1 is finished; it is no longer developed. Its ideas (typed look document, validated talk router) continue in a successor project, Phosphene (link to follow).
+
 **Parametric still-photo styling in the browser** — closed look packs, semantic sliders, optional Gemini talk router, WebGL2 compositor. **Recipe is truth; GPU does the math; talk and sliders write the same document.**
 
 Upload a photo → live grade → tune or describe intent → export **PNG + recipe JSON** (and optional `#r=` share hash). The same recipe powers a quiet hero at `/hero`.
