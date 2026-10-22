@@ -8,7 +8,7 @@
 |----|------|------|----------|
 | `photographer` | Person | Reads cover at `/`, uses Lab at `/lab`, exports PNG/recipe, optional `/hero` embed | `src/app/Cover.tsx`, `src/app/Lab.tsx`, `src/app/Hero.tsx` |
 | `prism` | Software system | This repository (SPA + talk API + compositor) | whole repo on `rewrite/v1-styling` |
-| `gemini` | External system | Intent → validated talk patch | `server/talkCore.ts`, `api/talk.ts` |
+| `gemini` | External system | Intent → validated talk patch | `api/_lib/talkCore.ts`, `api/talk.entry.ts` |
 | `idb` | External system | Browser asset store | `src/assets/idb.ts` |
 | `embedSite` | External system | Site that reuses recipe JSON behind HTML | `src/app/Hero.tsx`, `M04_EXPORT.md` |
 

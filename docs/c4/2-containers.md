@@ -8,7 +8,7 @@ Runnable pieces in this repo. Machine IDs: `prism-lab` (Lab SPA), `talk-api`, `c
 |----|------------|----------------|----------|
 | `prism-lab` | Vite + React + TypeScript | `/` cover; `/lab` Lab UI; `/hero` hero-lite; packs, sliders, talk stub, canvas overlay, export | `src/app/App.tsx`, `Cover.tsx`, `Lab.tsx`, `Hero.tsx`, `CanvasOverlay.tsx` |
 | `compositor` | WebGL2 + GLSL | Recipe → draw; grade chain; regional mask mix; blur ping-pong; export FBO readback | `src/compositor/renderer.ts`, `shaders/*.glsl` |
-| `talk-api` | Vercel serverless + Vite plugin | `POST /api/talk`; shared `server/talkCore.ts` | `api/talk.ts`, `server/vitePlugin.ts` |
+| `talk-api` | Vercel serverless + Vite plugin | `POST /api/talk`; shared `api/_lib/talkCore.ts` | `api/talk.entry.ts`, `server/vitePlugin.ts` |
 | `asset-store` | IndexedDB | `putAsset` / `getAsset` for main, overlay, mask | `src/assets/idb.ts` |
 | `mask-worker` | MediaPipe tasks-vision | Person mask in Web Worker; assets from `public/mediapipe/` | `src/masks/*`, `scripts/copy-mediapipe-assets.mjs` |
 
@@ -16,7 +16,7 @@ Runnable pieces in this repo. Machine IDs: `prism-lab` (Lab SPA), `talk-api`, `c
 
 | Label | Role | Evidence |
 |-------|------|----------|
-| Gemini API | Structured talk patch (`gemini-2.5-flash`) | `server/gemini.ts`, `GEMINI_API_KEY` |
+| Gemini API | Structured talk patch (`gemini-2.5-flash`) | `api/_lib/gemini.ts`, `GEMINI_API_KEY` |
 | Your site | Consumes recipe JSON for hero-lite | `src/app/Hero.tsx`, bundled `/hero/*` textures |
 
 ## Honest omissions / collapsed notes
