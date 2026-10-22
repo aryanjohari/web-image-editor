@@ -13,7 +13,7 @@ export default defineConfig({
   },
   test: {
     environment: "node",
-    include: ["src/**/*.test.ts"],
+    include: ["src/**/*.test.ts", "api/**/*.test.ts"],
     setupFiles: ["src/test/setup.ts"],
   },
 });
