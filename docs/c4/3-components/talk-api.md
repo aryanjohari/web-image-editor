@@ -6,10 +6,10 @@ Server-side talk router: natural language → validated JSON patch on the closed
 
 | ID / label | Evidence | Role |
 |------------|----------|------|
-| Vercel handler | `api/talk.ts` | Production `POST /api/talk`; CORS; 64 KiB body cap |
+| Vercel handler | `api/talk.entry.ts` | Production `POST /api/talk`; CORS; 64 KiB body cap |
 | Vite middleware | `server/vitePlugin.ts`, `vite.config.ts` | Dev parity — Lab hits same route without separate terminal |
-| Talk core | `server/talkCore.ts` | `processTalk`: validate, soft IP rate limit, timeout, error codes |
-| Gemini client | `server/gemini.ts` | `@google/genai`; model `gemini-2.5-flash`; structured output |
+| Talk core | `api/_lib/talkCore.ts` | `processTalk`: validate, soft IP rate limit, timeout, error codes |
+| Gemini client | `api/_lib/gemini.ts` | `@google/genai`; model `gemini-2.5-flash`; structured output |
 | Normalize | `src/talk/normalize.ts` | Refuse off-lane requests; clamp deltas; map to pack/slider/nudge tools |
 | Talk schema | `src/talk/schema.ts`, `types.ts` | Closed enums for packs, semantic/regional sliders, text tools |
 

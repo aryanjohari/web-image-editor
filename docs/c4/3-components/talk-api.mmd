@@ -3,10 +3,10 @@
 C4Component
   title Components — Talk API
   Container_Boundary(talkApi, "talk-api") {
-    Component(vercelHandler, "Vercel handler", "api/talk.ts", "POST /api/talk production")
+    Component(vercelHandler, "Vercel handler", "api/talk.entry.ts", "POST /api/talk production")
     Component(devMiddleware, "Vite middleware", "server/vitePlugin.ts", "Same route in npm run dev")
-    Component(talkCore, "Talk core", "server/talkCore.ts", "Validate body; rate limit sketch; call Gemini")
-    Component(geminiClient, "Gemini client", "server/gemini.ts", "gemini-2.5-flash; JSON schema response")
+    Component(talkCore, "Talk core", "api/_lib/talkCore.ts", "Validate body; rate limit sketch; call Gemini")
+    Component(geminiClient, "Gemini client", "api/_lib/gemini.ts", "gemini-2.5-flash; JSON schema response")
     Component(normalize, "Normalize (shared)", "src/talk/normalize.ts", "Delta to absolute; refuse generative")
     Component(schema, "Talk schema", "src/talk/schema.ts", "Closed tool enums; pack/slider ids")
   }

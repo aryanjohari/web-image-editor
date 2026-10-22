@@ -47,7 +47,7 @@ npm run preview
 | Item | Notes |
 |------|-------|
 | **Build** | `npm run build` → `dist/` (see [`vercel.json`](vercel.json)) |
-| **Talk API** | [`api/talk.ts`](api/talk.ts) — serverless `POST /api/talk` |
+| **Talk API** | [`api/talk.entry.ts`](api/talk.entry.ts) — serverless `POST /api/talk`, bundled to the generated `api/talk.js` |
 | **MediaPipe** | `public/mediapipe/` populated by `postinstall` / `prebuild` (`scripts/copy-mediapipe-assets.mjs`) |
 | **SPA fallback** | Non-`/api/*` routes → `index.html` |
 
@@ -74,7 +74,7 @@ npm run preview
 | Recipe | `src/recipe/*` |
 | Compositor | `src/compositor/*` |
 | Packs / sliders | `src/packs/*` |
-| Talk | `src/talk/*`, `server/talkCore.ts`, `api/talk.ts` |
+| Talk | `src/talk/*`, `api/_lib/talkCore.ts`, `api/talk.entry.ts` |
 | Masks | `src/masks/*` |
 | Export | `src/export/*` |
 | Assets | `src/assets/idb.ts` |

@@ -76,7 +76,7 @@ Declared in root [`portfolio.yaml`](../portfolio.yaml).
 Deployable pieces:
 
 1. **Lab SPA** — static Vite build; routes `/` (cover), `/lab`, and `/hero`.
-2. **Talk API** — Vercel serverless `api/talk.ts` (+ Vite middleware in dev).
+2. **Talk API** — Vercel serverless `api/talk.entry.ts` (+ Vite middleware in dev).
 3. **Compositor** — browser WebGL2 (`src/compositor/renderer.ts`).
 4. **IndexedDB** — local asset blobs (main, overlay, mask).
 5. **MediaPipe worker** — person mask; assets from `public/mediapipe/`.
